@@ -1,35 +1,30 @@
 const express = require('express');
+const cors = require('cors');
+const dotenv = require('dotenv');
+dotenv.config();
+
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// === ADD THIS ROUTE ===
+// Root route (homepage)
 app.get('/', (req, res) => {
   res.send('JUN’S AI Chatbot is up and running 🚀');
 });
 
-// (keep your existing routes like /chat, etc.)
+// Middleware
+app.use(cors());
+app.use(express.json());
 
-app.listen(PORT, () => {
-  console.log(`JUN’S AI backend running on port ${PORT}`);
-});
-
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-
+// Routes
 const chatRoutes = require('./routes/chat');
 const orderRoutes = require('./routes/orders');
 const recommendRoutes = require('./routes/recommend');
-
-const app = express();
-app.use(cors());
-app.use(express.json());
 
 app.use('/api/chat', chatRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/recommend', recommendRoutes);
 
-const PORT = process.env.PORT || 5000;
+// Start server
 app.listen(PORT, () => {
-  console.log(`JUN'S AI backend running on port ${PORT}`);
+  console.log(`JUN’S AI backend running on port ${PORT}`);
 });
