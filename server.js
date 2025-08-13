@@ -1,26 +1,23 @@
-require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
-
-const chatRoutes = require('./routes/chat');
-const orderRoutes = require('./routes/orders');
-const recommendRoutes = require('./routes/recommend');
-
 const app = express();
-const PORT = process.env.PORT || 8080;
+const port = process.env.PORT || 8080;
 
-app.use(cors());
 app.use(express.json());
 
-// Route handlers
-app.use('/api/chat', chatRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/recommend', recommendRoutes);
-
+// Example base route
 app.get('/', (req, res) => {
-  res.send("🚀 JUN'S AI Chatbot is running!");
+  res.send('✅ JUN\'s AI Chatbot is LIVE!');
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ JUN’S AI Chatbot running on port ${PORT}`);
+// Import routes
+const chatRoutes = require('./routes/chat');
+const ordersRoutes = require('./routes/orders');
+const recommendRoutes = require('./routes/recommend');
+
+app.use('/chat', chatRoutes);
+app.use('/orders', ordersRoutes);
+app.use('/recommend', recommendRoutes);
+
+app.listen(port, () => {
+  console.log(`✅ JUN’S AI Chatbot running on port ${port}`);
 });
