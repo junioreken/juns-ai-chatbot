@@ -8,8 +8,8 @@ app.use(cors());
 app.use(express.json());
 
 // Basic root route to check if server is alive
-app.get("/", (req, res) => {
-  res.send("🚀 JUN’S AI Chatbot Server is running!");
+app.get('/', (req, res) => {
+  res.send('✅ JUN’S AI Chatbot is running and awaiting POST requests at /chat');
 });
 
 // Your AI or Shopify routes here
@@ -17,9 +17,7 @@ app.get("/", (req, res) => {
 app.post("/ask-ai", async (req, res) => {
   res.json({ message: "AI response would go here." });
 });
-app.get('/', (req, res) => {
-  res.send('✅ JUN’S AI Chatbot is running and awaiting POST requests at /chat');
-});
+
 
 // Start server
 app.listen(PORT, () => {
