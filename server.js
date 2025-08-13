@@ -1,23 +1,24 @@
-const express = require('express');
+const express = require("express");
+const cors = require("cors");
 const app = express();
-const port = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 
+// Middleware
+app.use(cors());
 app.use(express.json());
 
-// Example base route
-app.get('/', (req, res) => {
-  res.send('✅ JUN\'s AI Chatbot is LIVE!');
+// Basic root route to check if server is alive
+app.get("/", (req, res) => {
+  res.send("🚀 JUN’S AI Chatbot Server is running!");
 });
 
-// Import routes
-const chatRoutes = require('./routes/chat');
-const ordersRoutes = require('./routes/orders');
-const recommendRoutes = require('./routes/recommend');
+// Your AI or Shopify routes here
+// Example placeholder:
+app.post("/ask-ai", async (req, res) => {
+  res.json({ message: "AI response would go here." });
+});
 
-app.use('/chat', chatRoutes);
-app.use('/orders', ordersRoutes);
-app.use('/recommend', recommendRoutes);
-
-app.listen(port, () => {
-  console.log(`✅ JUN’S AI Chatbot running on port ${port}`);
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
