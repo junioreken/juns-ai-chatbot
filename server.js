@@ -17,6 +17,9 @@ app.get("/", (req, res) => {
 app.post("/ask-ai", async (req, res) => {
   res.json({ message: "AI response would go here." });
 });
+app.get('/', (req, res) => {
+  res.send('✅ JUN’S AI Chatbot is running and awaiting POST requests at /chat');
+});
 
 // Start server
 app.listen(PORT, () => {
