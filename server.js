@@ -7,23 +7,22 @@ const orderRoutes = require('./routes/orders');
 const recommendRoutes = require('./routes/recommend');
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
-
-// Health check
-app.get('/', (req, res) => {
-  res.send("🚀 JUN’S AI Chatbot is up and running!");
-});
 
 // Routes
 app.use('/api/chat', chatRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/recommend', recommendRoutes);
 
+// Health check
+app.get('/', (req, res) => {
+  res.send("✅ JUN'S AI Chatbot is up and running 🚀");
+});
+
 // Start server
 app.listen(PORT, () => {
-  console.log(`✅ JUN’S AI Chatbot running on port ${PORT}`);
+  console.log(`✅ JUN'S AI backend running on port ${PORT}`);
 });
