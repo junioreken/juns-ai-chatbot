@@ -1,49 +1,159 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>JUN'S Chatbot</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: url('https://cdn.shopify.com/s/files/1/0720/1823/9353/files/bg.jpg') no-repeat center center fixed;
-      background-size: cover;
-      margin: 0;
-    }
-    .chatbox {
-      max-width: 400px;
-      margin: 2rem auto;
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-    }
-  </style>
-</head>
-<body>
-  <div class="chatbox">
-    <h2>JUN'S AI Chatbot</h2>
-    <div id="chat-log"></div>
-    <input type="text" id="user-input" placeholder="Ask me something..." />
+<!-- JUN'S AI Chatbot Widget -->
+<style>
+  :root {
+    --bot-color: #000;
+    --bot-text: #fff;
+    --bot-accent: #f5c842;
+  }
+
+  #juns-ai-bubble {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--bot-color);
+    color: var(--bot-text);
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+
+  #juns-ai-chat {
+    position: fixed;
+    bottom: 90px;
+    right: 24px;
+    width: 380px;
+    height: 540px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 9999;
+  }
+
+  #juns-ai-header {
+    background: var(--bot-color);
+    color: var(--bot-text);
+    padding: 1rem;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  #juns-ai-messages {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    font-family: sans-serif;
+    font-size: 14px;
+  }
+
+  #juns-ai-input {
+    display: flex;
+    border-top: 1px solid #ccc;
+  }
+
+  #juns-ai-input input {
+    flex: 1;
+    border: none;
+    padding: 0.75rem;
+    font-size: 14px;
+  }
+
+  #juns-ai-input button {
+    border: none;
+    background: var(--bot-color);
+    color: var(--bot-text);
+    padding: 0 1rem;
+    cursor: pointer;
+  }
+
+  .user-msg {
+    text-align: right;
+    margin-bottom: 8px;
+  }
+
+  .bot-msg {
+    text-align: left;
+    margin-bottom: 8px;
+    color: #333;
+  }
+</style>
+
+<div id="juns-ai-bubble">🤖</div>
+
+<div id="juns-ai-chat">
+  <div id="juns-ai-header">JUN'S AI Chat</div>
+  <div id="juns-ai-messages">
+    <div class="bot-msg">👋 Hello! I’m JUN’S AI Assistant. What’s your name?</div>
+  </div>
+  <div id="juns-ai-input">
+    <input type="text" id="juns-ai-text" placeholder="Type your message..." />
     <button onclick="sendMessage()">Send</button>
   </div>
+</div>
 
-  <script>
-    async function sendMessage() {
-      const input = document.getElementById('user-input');
-      const chatLog = document.getElementById('chat-log');
+<script>
+  const bubble = document.getElementById("juns-ai-bubble");
+  const chat = document.getElementById("juns-ai-chat");
+  const input = document.getElementById("juns-ai-text");
+  const messages = document.getElementById("juns-ai-messages");
 
-      const userMessage = input.value;
-      chatLog.innerHTML += `<p><strong>You:</strong> ${userMessage}</p>`;
+  let userName = '';
+  let emailAsked = false;
 
-      const response = await fetch('/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage })
+  bubble.addEventListener("click", () => {
+    chat.style.display = chat.style.display === "flex" ? "none" : "flex";
+  });
+
+  function sendMessage() {
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    messages.innerHTML += `<div class="user-msg">${msg}</div>`;
+    input.value = '';
+    messages.scrollTop = messages.scrollHeight;
+
+    // Conversation flow
+    if (!userName) {
+      userName = msg;
+      messages.innerHTML += `<div class="bot-msg">Nice to meet you, ${userName}! What's your email?</div>`;
+    } else if (!emailAsked) {
+      emailAsked = msg;
+      messages.innerHTML += `<div class="bot-msg">Thanks! You can now ask me about your order, item info, or request a dress recommendation 👗</div>`;
+    } else {
+      fetch("https://juns-ai-chatbot-production.up.railway.app/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ message: msg })
+      })
+      .then(res => res.json())
+      .then(data => {
+        messages.innerHTML += `<div class="bot-msg">${data.reply || "🤖 Sorry, I didn’t get that."}</div>`;
+        messages.scrollTop = messages.scrollHeight;
+      })
+      .catch(() => {
+        messages.innerHTML += `<div class="bot-msg">⚠️ Error reaching the AI server.</div>`;
       });
-
-      const data = await response.json();
-      chatLog.innerHTML += `<p><strong>JUN'S AI:</strong> ${data.reply}</p>`;
-      input.value = '';
     }
-  </script>
-</body>
-</html>
+  }
+
+  // Optional: enter key support
+  input.addEventListener("keypress", function(e) {
+    if (e.key === "Enter") sendMessage();
+  });
+
+  // Show bubble after 5s
+  setTimeout(() => {
+    bubble.style.display = "flex";
+  }, 5000);
+</script>
