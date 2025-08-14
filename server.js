@@ -1,54 +1,55 @@
 const express = require('express');
-const cors = require('cors');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 const { OpenAI } = require('openai');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.static('public')); // Serve chatbot UI
 
-// OpenAI client setup
+// OpenAI config
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Root route
+// Root route for testing
 app.get('/', (req, res) => {
   res.send("🎉 JUN'S AI Chatbot Backend is Running!");
 });
 
-// Chat endpoint
+// Main chat route
 app.post('/chat', async (req, res) => {
-  const { message } = req.body;
+  const userMessage = req.body.message;
 
-  if (!message) {
-    return res.status(400).json({ error: 'No message provided.' });
+  if (!userMessage) {
+    return res.status(400).json({ reply: "Message missing from request." });
   }
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+    const chatResponse = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo', // or 'gpt-4'
       messages: [
-        { role: 'system', content: "You are JUN'S AI, a stylish and helpful fashion assistant. Answer questions about store products, orders, and recommend trendy dresses. Be warm, but brief and helpful." },
-        { role: 'user', content: message }
+        { role: 'system', content: "You are JUN'S fashion AI chatbot. Greet users, ask for their name and email, and help with dress recommendations, order questions, or connect them to a human if needed." },
+        { role: 'user', content: userMessage }
       ],
-      temperature: 0.7
+      temperature: 0.7,
     });
 
-    const botReply = response.choices?.[0]?.message?.content?.trim();
+    const reply = chatResponse.choices[0]?.message?.content || "I'm not sure how to answer that.";
 
-    res.json({ reply: botReply || "Sorry, I didn't understand that." });
-  } catch (err) {
-    console.error('OpenAI error:', err);
-    res.status(500).json({ error: 'Failed to get response from AI.' });
+    res.json({ reply });
+  } catch (error) {
+    console.error('Chat error:', error);
+    res.status(500).json({ reply: "Sorry, something went wrong with the AI response." });
   }
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`✅ JUN'S AI backend is live on port ${port}`);
 });
