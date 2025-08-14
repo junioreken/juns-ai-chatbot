@@ -1,45 +1,46 @@
-import express from 'express';
-import cors from 'cors';
-import { OpenAI } from 'openai';
+const express = require("express");
+const OpenAI = require("openai");
+const cors = require("cors");
+const bodyParser = require("body-parser");
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+const port = process.env.PORT || 3000;
 
-// Initialize OpenAI using Railway-provided environment variable
+// Middleware
+app.use(cors());
+app.use(bodyParser.json());
+
+// Setup OpenAI client (Railway will inject OPENAI_API_KEY as env var)
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
-app.post('/chat', async (req, res) => {
-  const { message } = req.body;
+// Serve your chatbot UI
+app.use(express.static("public"));
 
+// API endpoint
+app.post("/api/chat", async (req, res) => {
   try {
-    const chatResponse = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [
-        { role: 'system', content: `You're JUN'S AI — a friendly fashion assistant for a Shopify store. Greet users, ask their name/email if it's their first time, then assist with store-related questions like orders, dress recommendations, or escalation.` },
-        { role: 'user', content: message }
-      ],
-      temperature: 0.7
+    const userMessage = req.body.message;
+
+    const chatCompletion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: userMessage }],
     });
 
-    const reply = chatResponse.choices[0]?.message?.content;
-    res.json({ response: reply || "Sorry, I couldn't generate a response." });
-
+    const response = chatCompletion.choices[0]?.message?.content || "No response";
+    res.json({ response });
   } catch (error) {
-    console.error('❌ OpenAI error:', error);
+    console.error("OpenAI error:", error.message);
     res.status(500).json({ response: "Sorry, something went wrong with the AI response." });
   }
 });
 
-// Optional: Home route
-app.get('/', (req, res) => {
+// Root route fallback
+app.get("/", (req, res) => {
   res.send("🎉 JUN'S AI Chatbot Backend is Running!");
 });
 
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`✅ Server is running on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
 });
