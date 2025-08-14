@@ -1,86 +1,63 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const cors = require("cors");
-const path = require("path");
-const axios = require("axios");
-require("dotenv").config();
+const express = require('express');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const { Configuration, OpenAIApi } = require('openai');
+
+dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8080;
 
-// Middlewares
 app.use(cors());
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.json());
 
-// === OpenAI Configuration ===
-const { OpenAI } = require("openai");
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// OpenAI Config
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+const openai = new OpenAIApi(configuration);
 
-// === Chatbot Endpoint ===
-app.post("/chat", async (req, res) => {
-  const userMessage = req.body.message;
+// Root endpoint
+app.get('/', (req, res) => {
+  res.send("🎉 JUN'S AI Chatbot Backend is Running!");
+});
 
+// Chat endpoint
+app.post('/chat', async (req, res) => {
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: `You are JUN’S AI Chatbot — a helpful assistant for a fashion store. You help with:
-          - Answering questions about orders and items
-          - Recommending stylish dresses
-          - Tracking orders via /track endpoint
-          - Escalating to a human when needed`,
-        },
-        {
-          role: "user",
-          content: userMessage,
-        },
-      ],
+    const userMessage = req.body.message;
+
+    const prompt = `
+You are JUN'S AI chatbot. You assist with:
+1. Order tracking.
+2. Answering product or store questions.
+3. Recommending dresses based on user preferences.
+4. Escalating to live support if needed.
+
+User: ${userMessage}
+AI:`;
+
+    const completion = await openai.createCompletion({
+      model: 'text-davinci-003',
+      prompt,
+      max_tokens: 150,
     });
 
-    const reply = completion.choices[0].message.content;
+    const reply = completion.data.choices[0]?.text?.trim() || "Sorry, I didn’t understand that.";
     res.json({ reply });
-  } catch (err) {
-    console.error("OpenAI Error:", err.message);
-    res.status(500).json({ error: "Chatbot failed to respond." });
+  } catch (error) {
+    console.error('Chat error:', error);
+    res.status(500).json({ reply: "Oops! Something went wrong. Please try again." });
   }
 });
 
-// === Order Tracking Endpoint (/track) ===
-app.post("/track", async (req, res) => {
-  const { orderId } = req.body;
-  const SHOPIFY_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
-  const ADMIN_API_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
-
-  try {
-    const response = await axios.get(
-      `https://${SHOPIFY_DOMAIN}/admin/api/2023-04/orders.json?name=${orderId}`,
-      {
-        headers: {
-          "X-Shopify-Access-Token": ADMIN_API_TOKEN,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    const order = response.data.orders[0];
-    if (!order) {
-      return res.json({ status: "Order not found." });
-    }
-
-    const status = order.fulfillment_status || "Not fulfilled yet";
-    const tracking = order.fulfillments?.[0]?.tracking_number || "No tracking available";
-
-    res.json({ status, tracking });
-  } catch (err) {
-    console.error("Tracking error:", err.message);
-    res.status(500).json({ error: "Unable to fetch order status." });
-  }
+// Order tracking endpoint
+app.post('/track', async (req, res) => {
+  const { orderId, email } = req.body;
+  // TODO: Add Shopify API logic here
+  res.json({ status: "Order tracking coming soon!" });
 });
 
-// === Start Server ===
 app.listen(port, () => {
-  console.log(`✅ JUN'S AI Chatbot server running on port ${port}`);
+  console.log(`✅ Server running on port ${port}`);
 });
