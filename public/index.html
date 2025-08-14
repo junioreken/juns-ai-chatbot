@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>JUN'S AI Chatbot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f7f7;
+      padding: 20px;
+    }
+    #chatbox {
+      width: 100%;
+      max-width: 400px;
+      height: 500px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+    }
+    #user-input {
+      width: calc(100% - 70px);
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    #send-btn {
+      padding: 10px 15px;
+      background: black;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h2>JUN'S AI Chatbot</h2>
+  <div id="chatbox"></div>
+  <input type="text" id="user-input" placeholder="Ask something..." />
+  <button id="send-btn">Send</button>
+
+  <script>
+    const chatbox = document.getElementById('chatbox');
+    const input = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    function appendMessage(role, text) {
+      const msg = document.createElement('div');
+      msg.innerHTML = `<strong>${role}:</strong> ${text}`;
+      chatbox.appendChild(msg);
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    sendBtn.onclick = async () => {
+      const message = input.value;
+      if (!message) return;
+      appendMessage("You", message);
+      input.value = "";
+
+      const res = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      });
+
+      const data = await res.json();
+      appendMessage("JUN'S AI", data.reply);
+    };
+  </script>
+</body>
+</html>
