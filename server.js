@@ -1,60 +1,50 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const { OpenAI } = require('openai');
+const express = require("express");
+const bodyParser = require("body-parser");
+const cors = require("cors");
+const path = require("path");
+const { Configuration, OpenAIApi } = require("openai");
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware
+// Setup OpenAI with Railway variable
+const openai = new OpenAIApi(
+  new Configuration({
+    apiKey: process.env.OPENAI_API_KEY, // You already set this in Railway
+  })
+);
+
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static('public')); // Serves chatbot UI
+app.use(express.static(path.join(__dirname, "public"))); // to serve index.html
 
-// ✅ Get API Key from Railway variable (not from .env)
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // ✅ This must match the variable name in Railway
+// Root route: serve index.html (chat UI)
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Test route
-app.get('/', (req, res) => {
-  res.send("🎉 JUN'S AI Chatbot Backend is Running!");
-});
+// Chatbot API route
+app.post("/chat", async (req, res) => {
+  const { message } = req.body;
 
-// Chat route
-app.post('/chat', async (req, res) => {
-  const userMessage = req.body.message;
-
-  if (!userMessage) {
-    return res.status(400).json({ reply: "Message is missing." });
+  if (!message) {
+    return res.status(400).json({ error: "Message is required." });
   }
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content: "You are JUN'S fashion AI assistant. Greet the customer, ask for their name and email, and help them with dress recommendations, order tracking, or connect to a human if needed.",
-        },
-        {
-          role: 'user',
-          content: userMessage,
-        },
-      ],
-      temperature: 0.7,
+    const completion = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: message }],
     });
 
-    const aiReply = response.choices?.[0]?.message?.content ?? "I'm not sure how to answer that.";
-
-    res.json({ reply: aiReply });
-  } catch (err) {
-    console.error('OpenAI error:', err.message);
-    res.status(500).json({ reply: "Something went wrong. Please try again later." });
+    const reply = completion.data.choices[0].message.content;
+    res.json({ reply });
+  } catch (error) {
+    console.error("OpenAI error:", error);
+    res.status(500).json({ error: "Failed to generate response." });
   }
 });
 
-// Start the server
 app.listen(port, () => {
-  console.log(`✅ JUN'S AI backend running on port ${port}`);
+  console.log(`✅ JUN'S AI Chatbot server running on port ${port}`);
 });
