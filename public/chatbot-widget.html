@@ -2,39 +2,100 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>JUN'S AI Chatbot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body {
-      font-family: 'Helvetica Neue', sans-serif;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f4f4;
+    }
+    #chat-container {
+      width: 100%;
+      height: 100vh;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-      background: #f8f8f8;
+      padding: 20px;
+      box-sizing: border-box;
+      background: white;
     }
-    .chatbox {
-      width: 100%;
-      max-width: 420px;
-      height: 600px;
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
       border: 1px solid #ccc;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      overflow: hidden;
+      background: #fafafa;
+    }
+    .message {
+      margin-bottom: 15px;
+    }
+    .user {
+      text-align: right;
+      color: #333;
+    }
+    .ai {
+      text-align: left;
+      color: #0077cc;
+    }
+    #input-area {
+      display: flex;
+      margin-top: 15px;
+    }
+    #input-area input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    #input-area button {
+      margin-left: 10px;
+      padding: 10px 15px;
+      border: none;
+      background: #000;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h2>👗 Welcome to JUN'S AI Chatbot</h2>
-  <div class="chatbox">
-    <iframe
-      src="/chatbot-widget.html"
-      style="width:100%; height:100%; border:none;"
-      title="Chatbot">
-    </iframe>
+  <div id="chat-container">
+    <h2>JUN’S AI Assistant</h2>
+    <div id="messages"></div>
+    <div id="input-area">
+      <input type="text" id="user-input" placeholder="Ask me about products, dresses, or orders..." />
+      <button onclick="sendMessage()">Send</button>
+    </div>
   </div>
+
+  <script>
+    async function sendMessage() {
+      const input = document.getElementById('user-input');
+      const message = input.value.trim();
+      if (!message) return;
+
+      appendMessage(message, 'user');
+      input.value = '';
+
+      try {
+        const res = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message })
+        });
+        const data = await res.json();
+        appendMessage(data.reply, 'ai');
+      } catch (err) {
+        appendMessage("Sorry, I couldn't connect to the AI.", 'ai');
+      }
+    }
+
+    function appendMessage(text, sender) {
+      const msg = document.createElement('div');
+      msg.className = 'message ' + sender;
+      msg.textContent = text;
+      document.getElementById('messages').appendChild(msg);
+    }
+  </script>
 </body>
 </html>
-
