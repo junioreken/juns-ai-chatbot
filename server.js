@@ -1,50 +1,45 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const cors = require("cors");
-const path = require("path");
-const { Configuration, OpenAIApi } = require("openai");
+import express from 'express';
+import cors from 'cors';
+import { OpenAI } from 'openai';
 
 const app = express();
-const port = process.env.PORT || 3000;
-
-// Setup OpenAI with Railway variable
-const openai = new OpenAIApi(
-  new Configuration({
-    apiKey: process.env.OPENAI_API_KEY, // You already set this in Railway
-  })
-);
-
 app.use(cors());
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "public"))); // to serve index.html
+app.use(express.json());
 
-// Root route: serve index.html (chat UI)
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+// Initialize OpenAI using Railway-provided environment variable
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
 });
 
-// Chatbot API route
-app.post("/chat", async (req, res) => {
+app.post('/chat', async (req, res) => {
   const { message } = req.body;
 
-  if (!message) {
-    return res.status(400).json({ error: "Message is required." });
-  }
-
   try {
-    const completion = await openai.createChatCompletion({
-      model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: message }],
+    const chatResponse = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        { role: 'system', content: `You're JUN'S AI — a friendly fashion assistant for a Shopify store. Greet users, ask their name/email if it's their first time, then assist with store-related questions like orders, dress recommendations, or escalation.` },
+        { role: 'user', content: message }
+      ],
+      temperature: 0.7
     });
 
-    const reply = completion.data.choices[0].message.content;
-    res.json({ reply });
+    const reply = chatResponse.choices[0]?.message?.content;
+    res.json({ response: reply || "Sorry, I couldn't generate a response." });
+
   } catch (error) {
-    console.error("OpenAI error:", error);
-    res.status(500).json({ error: "Failed to generate response." });
+    console.error('❌ OpenAI error:', error);
+    res.status(500).json({ response: "Sorry, something went wrong with the AI response." });
   }
 });
 
-app.listen(port, () => {
-  console.log(`✅ JUN'S AI Chatbot server running on port ${port}`);
+// Optional: Home route
+app.get('/', (req, res) => {
+  res.send("🎉 JUN'S AI Chatbot Backend is Running!");
+});
+
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`✅ Server is running on port ${PORT}`);
 });
