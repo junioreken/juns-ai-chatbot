@@ -1,101 +1,106 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>JUN'S AI Chatbot</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      background: #f4f4f4;
-    }
-    #chat-container {
-      width: 100%;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      padding: 20px;
-      box-sizing: border-box;
-      background: white;
-    }
-    #messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px;
-      border: 1px solid #ccc;
-      background: #fafafa;
-    }
-    .message {
-      margin-bottom: 15px;
-    }
-    .user {
-      text-align: right;
-      color: #333;
-    }
-    .ai {
-      text-align: left;
-      color: #0077cc;
-    }
-    #input-area {
-      display: flex;
-      margin-top: 15px;
-    }
-    #input-area input {
-      flex: 1;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-    #input-area button {
-      margin-left: 10px;
-      padding: 10px 15px;
-      border: none;
-      background: #000;
-      color: white;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-  <div id="chat-container">
-    <h2>JUN’S AI Assistant</h2>
-    <div id="messages"></div>
-    <div id="input-area">
-      <input type="text" id="user-input" placeholder="Ask me about products, dresses, or orders..." />
+<!-- public/chatbot-widget.html -->
+<div id="juns-chatbot">
+  <div id="chat-window">
+    <div id="chat-header">JUN'S AI Chatbot</div>
+    <div id="chat-body"></div>
+    <div id="chat-input">
+      <input type="text" id="user-input" placeholder="Ask me something..." />
       <button onclick="sendMessage()">Send</button>
     </div>
   </div>
+  <div id="chat-toggle" onclick="toggleChat()">💬</div>
+</div>
 
-  <script>
-    async function sendMessage() {
-      const input = document.getElementById('user-input');
-      const message = input.value.trim();
-      if (!message) return;
+<style>
+  #juns-chatbot {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    font-family: Arial, sans-serif;
+    z-index: 9999;
+  }
 
-      appendMessage(message, 'user');
-      input.value = '';
+  #chat-toggle {
+    background: black;
+    color: white;
+    padding: 12px;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  }
 
-      try {
-        const res = await fetch('/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message })
-        });
-        const data = await res.json();
-        appendMessage(data.reply, 'ai');
-      } catch (err) {
-        appendMessage("Sorry, I couldn't connect to the AI.", 'ai');
-      }
+  #chat-window {
+    display: none;
+    flex-direction: column;
+    width: 320px;
+    height: 400px;
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(0,0,0,0.3);
+  }
+
+  #chat-header {
+    background: black;
+    color: white;
+    padding: 12px;
+    font-weight: bold;
+  }
+
+  #chat-body {
+    flex: 1;
+    padding: 12px;
+    overflow-y: auto;
+  }
+
+  #chat-input {
+    display: flex;
+    border-top: 1px solid #ccc;
+  }
+
+  #chat-input input {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    outline: none;
+  }
+
+  #chat-input button {
+    background: black;
+    color: white;
+    border: none;
+    padding: 0 16px;
+    cursor: pointer;
+  }
+</style>
+
+<script>
+  function toggleChat() {
+    const win = document.getElementById("chat-window");
+    win.style.display = win.style.display === "flex" ? "none" : "flex";
+  }
+
+  async function sendMessage() {
+    const input = document.getElementById("user-input");
+    const text = input.value.trim();
+    if (!text) return;
+
+    const body = document.getElementById("chat-body");
+    body.innerHTML += `<div><strong>You:</strong> ${text}</div>`;
+    input.value = "";
+
+    try {
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text })
+      });
+
+      const data = await res.json();
+      body.innerHTML += `<div><strong>JUN'S AI:</strong> ${data.reply}</div>`;
+      body.scrollTop = body.scrollHeight;
+    } catch (err) {
+      body.innerHTML += `<div><strong>JUN'S AI:</strong> Oops! Something went wrong.</div>`;
     }
-
-    function appendMessage(text, sender) {
-      const msg = document.createElement('div');
-      msg.className = 'message ' + sender;
-      msg.textContent = text;
-      document.getElementById('messages').appendChild(msg);
-    }
-  </script>
-</body>
-</html>
+  }
+</script>
