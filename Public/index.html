@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>JUN’S AI Chatbot</title>
+  </head>
+  <body>
+    <h1>JUN’S AI Chatbot</h1>
+    <input type="text" id="message" placeholder="Type your message here" />
+    <button onclick="send()">Send</button>
+    <p><strong>Response:</strong> <span id="response"></span></p>
+
+    <script>
+      async function send() {
+        const message = document.getElementById("message").value;
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: message, userId: "test-user" }),
+        });
+        const data = await res.json();
+        document.getElementById("response").innerText = data.reply;
+      }
+    </script>
+  </body>
+</html>
