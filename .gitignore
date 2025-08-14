@@ -1,5 +1,5 @@
-# Node modules
-node_modules/
+# Node.js dependencies
+/node_modules
 
 # Environment variables
 .env
@@ -8,21 +8,17 @@ node_modules/
 logs
 *.log
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
-# OS-specific files
+# Runtime data
+pids
+*.pid
+*.seed
+
+# OS junk files
 .DS_Store
 Thumbs.db
 
-# Editor directories and files
+# Optional: Ignore local dev settings
 .vscode/
 .idea/
-*.swp
-
-# Railway CLI local project config
-.railway/
-
-# Build artifacts
-dist/
-build/
+*.sublime-workspace
