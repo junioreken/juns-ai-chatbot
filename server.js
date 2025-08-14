@@ -1,58 +1,45 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const cors = require('cors');
-const dotenv = require('dotenv');
-const { OpenAI } = require('openai');
+const path = require('path');
+require('dotenv').config();
 
-dotenv.config();
+const { OpenAI } = require('openai'); // v4 SDK
 
 const app = express();
 const port = process.env.PORT || 8080;
 
+// Middleware
 app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Serve static chatbot frontend from /public folder
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Root route (for Railway health check)
+// Route: Serve chatbot interface
 app.get('/', (req, res) => {
-  res.send('🎉 JUN\'S AI Chatbot Backend is Running!');
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Chatbot endpoint
+// Route: Handle chat message from frontend
 app.post('/chat', async (req, res) => {
-  const { message, name, email } = req.body;
-
+  const { message } = req.body;
   if (!message) {
     return res.status(400).json({ error: 'Message is required' });
   }
 
   try {
-    const chatResponse = await openai.chat.completions.create({
-      model: 'gpt-4',
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
       messages: [
         {
           role: 'system',
-          content: `
-You are JUN’S AI Chatbot, the assistant for a fashion dropshipping store called JUN’S.
-
-You assist users with:
-1. 💬 Questions about store, orders, shipping, or sizing.
-2. 👗 Dress recommendations based on user preferences (style, color, occasion, season).
-3. 🧾 Guiding users to provide their name and email.
-4. 🆘 Offering to connect with a live person if they want human support.
-
-Respond in a helpful, stylish, and friendly tone.
-If the user just said "hey" or "hello", greet them back and ask how you can assist.
-
-If they ask for a dress recommendation, follow up with questions like:
-- “What’s the occasion?”
-- “Preferred color or style?”
-- “Do you want a classy or casual look?”
-
-Make responses short and readable for a small chat bubble. Do not mention OpenAI or that you're an AI model.
-          `
+          content: `You are JUN'S AI, a helpful fashion and customer service assistant. Be friendly, clear, and helpful. You can:
+          - Answer questions about orders or store policies.
+          - Recommend dresses and styles based on customer input.
+          - Escalate to a human if needed.`
         },
         {
           role: 'user',
@@ -61,15 +48,15 @@ Make responses short and readable for a small chat bubble. Do not mention OpenAI
       ]
     });
 
-    const botMessage = chatResponse.choices[0].message.content.trim();
-    res.json({ reply: botMessage });
-
+    const reply = response.choices[0]?.message?.content || 'Sorry, no reply.';
+    res.json({ reply });
   } catch (error) {
-    console.error('OpenAI error:', error);
-    res.status(500).json({ error: 'An error occurred while processing your message.' });
+    console.error('OpenAI Error:', error);
+    res.status(500).json({ error: 'Failed to get response from AI.' });
   }
 });
 
+// Start the server
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
 });
