@@ -1,67 +1,86 @@
 const express = require("express");
+const bodyParser = require("body-parser");
 const cors = require("cors");
-const dotenv = require("dotenv");
+const path = require("path");
 const axios = require("axios");
-
-dotenv.config();
+require("dotenv").config();
 
 const app = express();
+const port = process.env.PORT || 3000;
+
+// Middlewares
 app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, "public")));
 
-const PORT = process.env.PORT || 8080;
+// === OpenAI Configuration ===
+const { OpenAI } = require("openai");
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Main route for testing
-app.get("/", (req, res) => {
-  res.send("🎉 JUN'S AI Chatbot Backend is Running!");
-});
-
-// Chat route
+// === Chatbot Endpoint ===
 app.post("/chat", async (req, res) => {
-  const { message } = req.body;
+  const userMessage = req.body.message;
 
   try {
-    const response = await axios.post(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a helpful AI assistant for JUN'S fashion brand. Answer questions about store items, orders, and recommend dresses with elegance.",
-          },
-          { role: "user", content: message },
-        ],
-      },
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: `You are JUN’S AI Chatbot — a helpful assistant for a fashion store. You help with:
+          - Answering questions about orders and items
+          - Recommending stylish dresses
+          - Tracking orders via /track endpoint
+          - Escalating to a human when needed`,
+        },
+        {
+          role: "user",
+          content: userMessage,
+        },
+      ],
+    });
+
+    const reply = completion.choices[0].message.content;
+    res.json({ reply });
+  } catch (err) {
+    console.error("OpenAI Error:", err.message);
+    res.status(500).json({ error: "Chatbot failed to respond." });
+  }
+});
+
+// === Order Tracking Endpoint (/track) ===
+app.post("/track", async (req, res) => {
+  const { orderId } = req.body;
+  const SHOPIFY_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
+  const ADMIN_API_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
+
+  try {
+    const response = await axios.get(
+      `https://${SHOPIFY_DOMAIN}/admin/api/2023-04/orders.json?name=${orderId}`,
       {
         headers: {
+          "X-Shopify-Access-Token": ADMIN_API_TOKEN,
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         },
       }
     );
 
-    const reply = response.data.choices[0].message.content;
-    res.json({ reply });
-  } catch (error) {
-    console.error("Chat error:", error.response?.data || error.message);
-    res.status(500).json({ error: "Error fetching response" });
+    const order = response.data.orders[0];
+    if (!order) {
+      return res.json({ status: "Order not found." });
+    }
+
+    const status = order.fulfillment_status || "Not fulfilled yet";
+    const tracking = order.fulfillments?.[0]?.tracking_number || "No tracking available";
+
+    res.json({ status, tracking });
+  } catch (err) {
+    console.error("Tracking error:", err.message);
+    res.status(500).json({ error: "Unable to fetch order status." });
   }
 });
 
-// Order Tracking Endpoint
-app.post("/order-status", async (req, res) => {
-  const { orderNumber, email } = req.body;
-
-  // Replace this mock response with Shopify API integration later
-  res.json({
-    status: "Shipped",
-    trackingLink: "https://track.junsfashion.com/123456",
-    message: `Order ${orderNumber} is on the way!`,
-  });
-});
-
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+// === Start Server ===
+app.listen(port, () => {
+  console.log(`✅ JUN'S AI Chatbot server running on port ${port}`);
 });
