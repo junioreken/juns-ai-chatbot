@@ -66,4 +66,50 @@
       display: flex;
       padding: 10px;
       border-top: 1px solid #ccc;
-      ba
+      background: #fafafa;
+    }
+
+    #userInput {
+      flex: 1;
+      border: none;
+      border-radius: 16px;
+      padding: 10px 14px;
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    #sendButton {
+      margin-left: 8px;
+      background: #007aff;
+      color: white;
+      border: none;
+      border-radius: 16px;
+      padding: 0 16px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    #typingIndicator {
+      padding: 4px 12px;
+      font-size: 12px;
+      color: #555;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">JUN'S AI</div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div id="typingIndicator"></div>
+    <div class="chat-input">
+      <input id="userInput" type="text" placeholder="Ask me anything..." autocomplete="off"/>
+      <button id="sendButton">Send</button>
+    </div>
+  </div>
+
+  <script src="chatbot.js"></script>
+</body>
+</html>
