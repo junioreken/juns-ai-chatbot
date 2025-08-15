@@ -1,75 +1,69 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const { Configuration, OpenAIApi } = require('openai');
+import express from "express";
+import cors from "cors";
+import bodyParser from "body-parser";
+import OpenAI from "openai";
 
 const app = express();
-const port = process.env.PORT || 8080;
-
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static('public'));
 
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
+// ✅ Correct way to use Railway environment variable (OPENAI_API_KEY)
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
 });
-const openai = new OpenAIApi(configuration);
 
-// Simple memory per session (not persistent)
-const chatMemory = [];
+const suggestions = [
+  "Do you want a dress recommendation?",
+  "Can I help you find an outfit for a wedding?",
+  "Would you like to know your order status?",
+  "Looking for something elegant or casual?",
+  "Want help with sizing or shipping info?"
+];
 
-app.post('/chat', async (req, res) => {
+const greetings = {
+  en: "Hi! I'm JUN'S AI 👗 Your fashion assistant. How can I help you today?",
+  fr: "Salut ! Je suis JUN'S AI 👗 votre assistante mode. Comment puis-je vous aider aujourd’hui ?"
+};
+
+app.post("/chat", async (req, res) => {
+  const { message, language, name, email } = req.body;
+
+  if (name && email) {
+    console.log("Tracking user:", { name, email });
+    // (Optional: send to webhook)
+  }
+
   try {
-    const { message, language } = req.body;
+    let prompt;
 
-    if (!message) {
-      return res.status(400).json({ error: 'No message provided' });
+    if (message.toLowerCase() === "hi" || message.toLowerCase() === "bonjour") {
+      prompt = language === "fr" ? greetings.fr : greetings.en;
+    } else {
+      prompt = `You are JUN'S AI, a helpful and stylish fashion assistant for a dress brand. Reply in ${language === "fr" ? "French" : "English"}. The user says: "${message}"`;
     }
 
-    // Basic webhook logic: capture name/email from message
-    const nameMatch = message.match(/(my name is|je m'appelle)\s([a-zA-Z]+)/i);
-    const emailMatch = message.match(/[\w._%+-]+@[\w.-]+\.[a-zA-Z]{2,}/);
-
-    if (nameMatch || emailMatch) {
-      const name = nameMatch ? nameMatch[2] : '';
-      const email = emailMatch ? emailMatch[0] : '';
-      if (name || email) {
-        await fetch('https://hooks.zapier.com/hooks/catch/123456/abcde/', {
-          method: 'POST',
-          body: JSON.stringify({ name, email }),
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-    }
-
-    // Build conversation history
-    chatMemory.push({ role: 'user', content: message });
-
-    const completion = await openai.createChatCompletion({
-      model: 'gpt-4o',
+    const chatResponse = await openai.chat.completions.create({
       messages: [
-        {
-          role: 'system',
-          content:
-            language === 'fr'
-              ? "Tu es JUN'S AI, un assistant amical pour un site de vêtements. Aide les clients à trouver des robes, suivre leurs commandes, ou répondre à leurs questions en français. Sois bref, utile et élégant."
-              : "You are JUN'S AI, a friendly assistant for a fashion site. Help customers find dresses, track orders, or answer questions in English. Be concise, helpful, and elegant.",
-        },
-        ...chatMemory.slice(-10),
+        { role: "system", content: "You're a smart assistant for a dress fashion brand called JUN'S, answering in a friendly tone." },
+        { role: "user", content: prompt }
       ],
-      temperature: 0.7,
+      model: "gpt-4o",
+      temperature: 0.8
     });
 
-    const reply = completion.data.choices[0].message.content;
-    chatMemory.push({ role: 'assistant', content: reply });
+    const reply = chatResponse.choices[0].message.content;
 
-    res.json({ reply });
+    res.json({
+      reply,
+      suggestions
+    });
+
   } catch (error) {
-    console.error('Chat error:', error.message);
-    res.status(500).json({ reply: 'Oops, something went wrong.' });
+    console.error("Chat error:", error.message);
+    res.status(500).json({ reply: "Oops, something went wrong. Please try again later." });
   }
 });
 
-app.listen(port, () => {
-  console.log(`✅ JUN'S AI Chatbot running on port ${port}`);
+app.listen(8080, () => {
+  console.log("✅ JUN'S AI backend running on port 8080");
 });
