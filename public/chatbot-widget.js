@@ -1,7 +1,7 @@
 (() => {
   const style = document.createElement('link');
   style.rel = 'stylesheet';
-  style.href = 'https://your-domain/chatbot-widget.css';
+  style.href = 'https://juns-ai-chatbot-production.up.railway.app/chatbot-widget.css';
   document.head.appendChild(style);
 
   const widget = document.createElement('div');
@@ -39,7 +39,7 @@
     addMessage('user', text);
     input.value = '';
     try {
-      const res = await fetch('https://your-domain/chat', {
+      const res = await fetch('https://juns-ai-chatbot-production.up.railway.app/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text })
