@@ -1,57 +1,75 @@
 const express = require('express');
-const path = require('path');
 const bodyParser = require('body-parser');
-const { OpenAI } = require('openai');
 const cors = require('cors');
+const { Configuration, OpenAIApi } = require('openai');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = process.env.PORT || 8080;
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static('public'));
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
 });
+const openai = new OpenAIApi(configuration);
+
+// Simple memory per session (not persistent)
+const chatMemory = [];
 
 app.post('/chat', async (req, res) => {
-  const { message, name, email, lang } = req.body;
-
-  if (!message) {
-    return res.status(400).json({ error: 'Missing message' });
-  }
-
   try {
-    const intro = lang === 'fr'
-      ? "Tu es JUN’S AI – un assistant mode qui aide à répondre aux questions sur les produits, commandes, robes et conseils de style."
-      : "You are JUN’S AI – a fashion-savvy assistant that helps answer questions about products, dresses, orders, and styling tips.";
+    const { message, language } = req.body;
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+    if (!message) {
+      return res.status(400).json({ error: 'No message provided' });
+    }
+
+    // Basic webhook logic: capture name/email from message
+    const nameMatch = message.match(/(my name is|je m'appelle)\s([a-zA-Z]+)/i);
+    const emailMatch = message.match(/[\w._%+-]+@[\w.-]+\.[a-zA-Z]{2,}/);
+
+    if (nameMatch || emailMatch) {
+      const name = nameMatch ? nameMatch[2] : '';
+      const email = emailMatch ? emailMatch[0] : '';
+      if (name || email) {
+        await fetch('https://hooks.zapier.com/hooks/catch/123456/abcde/', {
+          method: 'POST',
+          body: JSON.stringify({ name, email }),
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // Build conversation history
+    chatMemory.push({ role: 'user', content: message });
+
+    const completion = await openai.createChatCompletion({
+      model: 'gpt-4o',
       messages: [
-        { role: 'system', content: intro },
-        { role: 'user', content: message }
-      ]
+        {
+          role: 'system',
+          content:
+            language === 'fr'
+              ? "Tu es JUN'S AI, un assistant amical pour un site de vêtements. Aide les clients à trouver des robes, suivre leurs commandes, ou répondre à leurs questions en français. Sois bref, utile et élégant."
+              : "You are JUN'S AI, a friendly assistant for a fashion site. Help customers find dresses, track orders, or answer questions in English. Be concise, helpful, and elegant.",
+        },
+        ...chatMemory.slice(-10),
+      ],
+      temperature: 0.7,
     });
 
-    const reply = response.choices[0]?.message?.content || "Sorry, I don't know how to answer that.";
-
-    // Example webhook logging (name/email)
-    console.log(`New chat from ${name || 'anonymous'} (${email || 'no email'})`);
+    const reply = completion.data.choices[0].message.content;
+    chatMemory.push({ role: 'assistant', content: reply });
 
     res.json({ reply });
   } catch (error) {
-    console.error('OpenAI error:', error);
-    res.status(500).json({ reply: "Oops! Something went wrong." });
+    console.error('Chat error:', error.message);
+    res.status(500).json({ reply: 'Oops, something went wrong.' });
   }
 });
 
-// Serve frontend
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.listen(PORT, () => {
-  console.log(`🎉 JUN'S AI Chatbot is live at http://localhost:${PORT}`);
+app.listen(port, () => {
+  console.log(`✅ JUN'S AI Chatbot running on port ${port}`);
 });
