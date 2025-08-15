@@ -3,151 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <title>JUN'S AI Chatbot</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      margin: 0;
-      background: #f0f0f0;
-    }
-
-    #chat-container {
-      width: 100%;
-      max-width: 400px;
-      margin: 0 auto;
-      padding: 10px;
-      background: #ffffff;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    #chat {
-      flex-grow: 1;
-      overflow-y: auto;
-      padding: 10px;
-    }
-
-    .message {
-      max-width: 80%;
-      margin: 8px 0;
-      padding: 10px 14px;
-      border-radius: 18px;
-      font-size: 14px;
-      line-height: 1.4;
-      display: inline-block;
-    }
-
-    .user {
-      background: #007aff;
-      color: white;
-      align-self: flex-end;
-      border-bottom-right-radius: 0;
-    }
-
-    .bot {
-      background: #e5e5ea;
-      color: black;
-      align-self: flex-start;
-      border-bottom-left-radius: 0;
-    }
-
-    #typing {
-      font-style: italic;
-      font-size: 13px;
-      color: gray;
-      margin: 5px;
-    }
-
-    #input-container {
-      display: flex;
-      border-top: 1px solid #ccc;
-    }
-
-    #input {
-      flex-grow: 1;
-      padding: 10px;
-      font-size: 14px;
-      border: none;
-      outline: none;
-    }
-
-    button {
-      padding: 10px;
-      font-size: 14px;
-      background: black;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
-  <div id="chat-container">
-    <div id="chat"></div>
-    <div id="typing" style="display:none;">JUN’S AI is typing...</div>
-    <div id="input-container">
-      <input type="text" id="input" placeholder="Ask me anything...">
-      <button onclick="sendMessage()">Send</button>
+  <div class="chatbox">
+    <div class="header">JUN'S AI Chatbot</div>
+    <div id="chat-messages" class="chat-messages"></div>
+    <div id="typing-indicator" class="typing-indicator" style="display: none;">JUN’S AI is typing...</div>
+    <div class="input-area">
+      <input type="text" id="user-input" placeholder="Ask me anything..." />
+      <button id="send-button">Send</button>
     </div>
   </div>
-
-  <script>
-    const chat = document.getElementById("chat");
-    const input = document.getElementById("input");
-    const typing = document.getElementById("typing");
-
-    let userLanguage = null;
-
-    function appendMessage(text, isUser) {
-      const msg = document.createElement("div");
-      msg.className = `message ${isUser ? "user" : "bot"}`;
-      msg.textContent = text;
-      chat.appendChild(msg);
-      chat.scrollTop = chat.scrollHeight;
-    }
-
-    function speak(text) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      speechSynthesis.speak(utterance);
-    }
-
-    async function sendMessage() {
-      const message = input.value.trim();
-      if (!message) return;
-      appendMessage(message, true);
-      input.value = "";
-      typing.style.display = "block";
-
-      try {
-        const res = await fetch("/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message })
-        });
-
-        const data = await res.json();
-        const reply = data.reply || "Sorry, no response.";
-        appendMessage(reply, false);
-        speak(reply);
-      } catch (err) {
-        appendMessage("Oops! Something went wrong.", false);
-      }
-
-      typing.style.display = "none";
-    }
-
-    input.addEventListener("keypress", e => {
-      if (e.key === "Enter") sendMessage();
-    });
-
-    // Initial language preference + prompt
-    window.onload = () => {
-      const langPrompt = "Hi! Would you like to chat in English or French?";
-      appendMessage(langPrompt, false);
-      speak(langPrompt);
-    };
-  </script>
+  <script src="chatbot.js"></script>
 </body>
 </html>
