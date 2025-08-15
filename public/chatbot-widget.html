@@ -1,21 +1,133 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>JUN'S AI Chatbot</title>
-  <link rel="stylesheet" href="/styles.css" />
-</head>
-<body>
-  <div class="chat-container">
-    <div class="chat-header">JUN'S AI Chatbot</div>
-    <div id="chat-box" class="chat-box"></div>
-    <div id="typing-indicator" class="typing">JUN’S AI is typing...</div>
-    <form id="chat-form" class="chat-form">
-      <input type="text" id="chat-input" placeholder="Ask me anything..." autocomplete="off" required/>
-      <button type="submit">Send</button>
-    </form>
-  </div>
-  <script src="/chatbot-widget.js"></script>
-</body>
-</html>
+<!-- JUN'S AI Chatbot -->
+<style>
+  #juns-ai-popup, #juns-ai-button, #juns-chat-frame {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    z-index: 999999;
+  }
+
+  #juns-ai-popup {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: linear-gradient(to right, #f6d8e6, #fbe7c6);
+    border: 1px solid rgba(0,0,0,0.1);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    border-radius: 16px;
+    padding: 14px 20px;
+    display: none;
+    animation: slideIn 0.5s ease-out;
+    gap: 10px;
+    align-items: center;
+  }
+
+  #juns-ai-popup input {
+    border: none;
+    outline: none;
+    background: transparent;
+    width: 180px;
+    font-size: 14px;
+  }
+
+  #juns-ai-button {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: black;
+    color: white;
+    width: 60px;
+    height: 60px;
+    font-weight: bold;
+    font-size: 10px;
+    text-align: center;
+    border-radius: 50%;
+    line-height: 1.1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+
+  #juns-chat-frame {
+    position: fixed;
+    bottom: 90px;
+    right: 24px;
+    width: 380px;
+    height: 560px;
+    border: none;
+    border-radius: 12px;
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    #juns-ai-popup {
+      width: 90%;
+      top: 16px;
+      left: 5%;
+      flex-direction: column;
+    }
+
+    #juns-ai-popup input {
+      width: 100%;
+    }
+
+    #juns-chat-frame {
+      width: 95%;
+      height: 90%;
+      right: 2.5%;
+      bottom: 100px;
+    }
+
+    #juns-ai-button {
+      width: 52px;
+      height: 52px;
+      font-size: 9px;
+    }
+  }
+
+  @keyframes slideIn {
+    0% { opacity: 0; transform: translateY(-20px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+</style>
+
+<div id="juns-ai-popup">
+  <strong style="font-size: 14px;">JUN'S AI</strong>
+  <input id="themeInput" placeholder="Event theme? (e.g. wedding)" />
+  <button id="sendTheme" style="cursor:pointer;">🎯</button>
+  <button id="closePopup" style="background:none;border:none;cursor:pointer;">❌</button>
+</div>
+
+<div id="juns-ai-button"><span>JUN’S</span><span>AI</span></div>
+<iframe id="juns-chat-frame" src="https://juns-ai-chatbot-production.up.railway.app/index.js" allow="clipboard-write"></iframe>
+
+<script>
+  function shouldShowPopup() {
+    const path = window.location.pathname;
+    return path === "/" || path.includes("/product") || path.includes("/event-dress-recommendations");
+  }
+
+  if (shouldShowPopup()) {
+    setTimeout(() => {
+      document.getElementById("juns-ai-popup").style.display = "flex";
+    }, 5000);
+  }
+
+  document.getElementById("sendTheme").addEventListener("click", () => {
+    const theme = document.getElementById("themeInput").value.trim();
+    if (theme) {
+      const encoded = encodeURIComponent(theme);
+      window.location.href = `/pages/event-dress-recommendations?theme=${encoded}`;
+    }
+  });
+
+  document.getElementById("closePopup").addEventListener("click", () => {
+    document.getElementById("juns-ai-popup").style.display = "none";
+    document.getElementById("juns-ai-button").style.display = "flex";
+  });
+
+  document.getElementById("juns-ai-button").addEventListener("click", () => {
+    const frame = document.getElementById("juns-chat-frame");
+    frame.style.display = frame.style.display === "block" ? "none" : "block";
+  });
+</script>
