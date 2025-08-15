@@ -4,49 +4,48 @@ const bodyParser = require('body-parser');
 const { OpenAI } = require('openai');
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY // DO NOT EXPOSE in frontend!
-});
-
-// Serve static files from /public
+// Serve static files (chatbot UI)
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json());
 
-// Handle chatbot messages
-app.post('/chat', async (req, res) => {
-  const { message } = req.body;
+// OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
-  if (!message) {
-    return res.status(400).json({ error: 'Missing message.' });
-  }
+// POST route for AI replies
+app.post('/chat', async (req, res) => {
+  const { message, language } = req.body;
+
+  const systemPrompt = language === 'fr'
+    ? "Tu es JUN'S AI – un assistant de mode utile pour répondre aux questions sur les produits, les robes, les commandes et les conseils de style."
+    : "You are JUN'S AI – a helpful fashion assistant that answers questions about products, dresses, orders, and style tips.";
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
       messages: [
-        {
-          role: 'system',
-          content: "You are JUN'S AI, a helpful fashion assistant. You help users choose dresses, answer product questions, and support order issues."
-        },
-        { role: 'user', content: message }
+        { role: "system", content: systemPrompt },
+        { role: "user", content: message }
       ]
     });
 
-    const reply = response.choices[0]?.message?.content;
-    res.json({ reply });
+    const aiReply = completion.choices[0]?.message?.content || "Sorry, I didn’t get that.";
+    res.json({ reply: aiReply });
+
   } catch (err) {
-    console.error('Chat error:', err.message);
-    res.status(500).json({ reply: "Oops! Something went wrong." });
+    console.error("OpenAI error:", err.message);
+    res.status(500).json({ reply: "Oops, something went wrong." });
   }
 });
 
-// Fallback to index.html
-app.get('*', (req, res) => {
+// Serve index.html as fallback
+app.get('*', (_, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ JUN'S AI Chatbot running on port ${PORT}`);
+  console.log(`✅ JUN'S AI Chatbot running at http://localhost:${PORT}`);
 });
