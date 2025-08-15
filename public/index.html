@@ -1,13 +1,148 @@
-<!-- public/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>JUN’S AI Chatbot</title>
+  <title>JUN'S AI Chatbot</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #f0f0f0;
+      margin: 0;
+      padding: 0;
+    }
+
+    #chat-container {
+      width: 100%;
+      max-width: 420px;
+      height: 100vh;
+      margin: 0 auto;
+      background: white;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .message {
+      max-width: 75%;
+      margin-bottom: 12px;
+      padding: 10px 14px;
+      border-radius: 20px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .user {
+      align-self: flex-end;
+      background: #007aff;
+      color: white;
+    }
+
+    .bot {
+      align-self: flex-start;
+      background: #e5e5ea;
+      color: black;
+    }
+
+    #input-form {
+      display: flex;
+      padding: 10px;
+      border-top: 1px solid #ddd;
+      background: white;
+    }
+
+    #input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      font-size: 14px;
+    }
+
+    #send-btn {
+      margin-left: 10px;
+      padding: 10px 16px;
+      border: none;
+      background: #007aff;
+      color: white;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+
+    .typing {
+      font-style: italic;
+      font-size: 13px;
+      color: gray;
+      margin-bottom: 8px;
+    }
+  </style>
 </head>
 <body>
-  <h1>🎉 JUN'S AI Chatbot is Live</h1>
-  <script src="/chatbot-widget.js"></script>
+  <div id="chat-container">
+    <div id="messages">
+      <div class="bot message">Welcome to JUN'S AI! 🇬🇧/🇫🇷<br>Please choose your language: <br><strong>Type "English" or "Français"</strong></div>
+    </div>
+    <div id="typing-indicator" class="typing" style="display:none">JUN'S AI is typing...</div>
+    <form id="input-form">
+      <input type="text" id="input" placeholder="Type your message..." autocomplete="off" />
+      <button type="submit" id="send-btn">Send</button>
+    </form>
+  </div>
+
+  <audio id="reply-sound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg" preload="auto"></audio>
+
+  <script>
+    const form = document.getElementById('input-form');
+    const input = document.getElementById('input');
+    const messages = document.getElementById('messages');
+    const typing = document.getElementById('typing-indicator');
+    const sound = document.getElementById('reply-sound');
+
+    let selectedLanguage = null;
+
+    const addMessage = (text, sender) => {
+      const msg = document.createElement('div');
+      msg.className = `message ${sender}`;
+      msg.innerText = text;
+      messages.appendChild(msg);
+      messages.scrollTop = messages.scrollHeight;
+    };
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = input.value.trim();
+      if (!msg) return;
+
+      addMessage(msg, 'user');
+      input.value = '';
+      typing.style.display = 'block';
+
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg, language: selectedLanguage || 'en' })
+      });
+
+      const data = await res.json();
+      typing.style.display = 'none';
+      if (data.reply) {
+        addMessage(data.reply, 'bot');
+        sound.play();
+      }
+
+      if (!selectedLanguage && (msg.toLowerCase().includes('english') || msg.toLowerCase().includes('français') || msg.toLowerCase().includes('french'))) {
+        selectedLanguage = msg.toLowerCase().includes('fr') ? 'fr' : 'en';
+        addMessage(selectedLanguage === 'fr'
+          ? "Souhaitez-vous une recommandation de robe ? 👗"
+          : "Would you like a dress recommendation? 👗", 'bot');
+      }
+    });
+  </script>
 </body>
 </html>
-
