@@ -8,8 +8,9 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
       margin: 0; padding: 0;
-      background: #f2f2f2;
+      background: #f5f5f5;
     }
+
     #chat {
       max-width: 600px;
       margin: auto;
@@ -18,50 +19,71 @@
       display: flex;
       flex-direction: column;
     }
+
     #messages {
       flex: 1;
       overflow-y: auto;
       padding-bottom: 20px;
+      display: flex;
+      flex-direction: column;
     }
+
     .msg {
-      max-width: 80%;
-      margin-bottom: 12px;
+      max-width: 75%;
       padding: 10px 14px;
-      border-radius: 18px;
+      border-radius: 20px;
+      margin: 6px 0;
+      font-size: 15px;
       line-height: 1.5;
-      word-wrap: break-word;
     }
+
     .ai {
-      background: #eee;
+      background-color: #e5e5ea;
+      color: black;
       align-self: flex-start;
-      color: #000;
     }
+
     .user {
-      background: #007aff;
+      background-color: #007aff;
       color: white;
       align-self: flex-end;
     }
-    #input-area {
-      display: flex;
-      gap: 10px;
-    }
-    input, button {
-      padding: 10px;
-      font-size: 16px;
-    }
+
     #typing {
       font-style: italic;
       font-size: 14px;
       color: grey;
+      margin-bottom: 8px;
       display: none;
     }
+
     #suggestions button {
-      margin: 4px;
-      background: #ddd;
+      background: #e1e1e1;
       border: none;
-      border-radius: 14px;
+      border-radius: 16px;
       padding: 6px 12px;
+      margin: 4px;
       cursor: pointer;
+      font-size: 14px;
+    }
+
+    #input-area {
+      display: flex;
+      gap: 8px;
+    }
+
+    input, button {
+      padding: 10px;
+      font-size: 15px;
+    }
+
+    @media (max-width: 600px) {
+      #chat {
+        padding: 10px;
+      }
+      .msg {
+        font-size: 14px;
+      }
     }
   </style>
 </head>
@@ -69,9 +91,9 @@
   <div id="chat">
     <div id="messages"></div>
     <div id="typing">JUN’S AI is typing...</div>
-    <div id="suggestions" style="margin-top: 8px;"></div>
+    <div id="suggestions"></div>
     <div id="input-area">
-      <input id="userInput" placeholder="Ask something..." />
+      <input id="userInput" placeholder="Type your message..." />
       <button onclick="send()">Send</button>
     </div>
   </div>
@@ -80,16 +102,17 @@
     let lang = '';
     let name = '';
     let email = '';
+    let initialized = false;
 
     const messages = document.getElementById("messages");
     const input = document.getElementById("userInput");
     const typing = document.getElementById("typing");
 
-    const suggestions = [
+    const popularSuggestions = [
       "Do you want a dress recommendation?",
       "Where is my order?",
-      "What size should I choose?",
       "Do you offer returns?",
+      "Which size should I choose?",
     ];
 
     function addMessage(content, sender) {
@@ -103,14 +126,14 @@
     function setSuggestions() {
       const container = document.getElementById("suggestions");
       container.innerHTML = '';
-      suggestions.forEach(s => {
-        const b = document.createElement("button");
-        b.innerText = s;
-        b.onclick = () => {
-          input.value = s;
+      popularSuggestions.forEach(text => {
+        const btn = document.createElement("button");
+        btn.textContent = text;
+        btn.onclick = () => {
+          input.value = text;
           send();
         };
-        container.appendChild(b);
+        container.appendChild(btn);
       });
     }
 
@@ -125,7 +148,7 @@
       const res = await fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, name, email, lang })
+        body: JSON.stringify({ message: text, lang, name, email })
       });
 
       const data = await res.json();
@@ -133,18 +156,72 @@
       addMessage(data.reply, 'ai');
     }
 
-    async function askLanguage() {
-      lang = prompt("Please choose your language: English or Français").toLowerCase().includes("fr") ? "fr" : "en";
-      name = prompt(lang === 'fr' ? "Quel est votre prénom ?" : "What's your first name?");
-      email = prompt(lang === 'fr' ? "Quelle est votre adresse e-mail ?" : "What’s your email?");
-      const welcome = lang === 'fr'
-        ? `Bonjour ${name} 👋 Je suis JUN’S AI. Posez-moi vos questions ou demandez une recommandation de robe !`
-        : `Hi ${name} 👋 I'm JUN’S AI. Ask me anything or get a dress recommendation!`;
-      addMessage(welcome, 'ai');
-      setSuggestions();
+    function askInitialQuestions() {
+      const langPrompt = "Please choose your language:\n1. English\n2. Français";
+      addMessage(langPrompt, 'ai');
+      const check = setInterval(() => {
+        if (lang) {
+          clearInterval(check);
+          const namePrompt = lang === 'fr' ? "Quel est votre prénom ?" : "What is your name?";
+          addMessage(namePrompt, 'ai');
+        }
+      }, 500);
     }
 
-    askLanguage();
+    input.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") send();
+    });
+
+    // Capture user responses
+    const responseQueue = [];
+
+    const observer = new MutationObserver(() => {
+      if (initialized) return;
+      initialized = true;
+
+      const checkLang = setInterval(() => {
+        const lastMsg = messages.lastChild?.textContent?.toLowerCase();
+        if (!lang && lastMsg) {
+          if (lastMsg.includes('1') || lastMsg.includes('english')) lang = 'en';
+          if (lastMsg.includes('2') || lastMsg.includes('français') || lastMsg.includes('francais')) lang = 'fr';
+        }
+        if (lang) {
+          clearInterval(checkLang);
+          const nameMsg = lang === 'fr' ? "Quel est votre prénom ?" : "What is your name?";
+          addMessage(nameMsg, 'ai');
+
+          const checkName = setInterval(() => {
+            const latest = messages.lastChild?.textContent;
+            if (!name && latest && latest !== nameMsg) {
+              name = latest;
+              clearInterval(checkName);
+              const emailMsg = lang === 'fr' ? "Quelle est votre adresse e-mail ?" : "What’s your email address?";
+              addMessage(emailMsg, 'ai');
+
+              const checkEmail = setInterval(() => {
+                const e = messages.lastChild?.textContent;
+                if (!email && e && e !== emailMsg) {
+                  email = e;
+                  clearInterval(checkEmail);
+                  const welcome = lang === 'fr'
+                    ? `Bonjour ${name} 👋 Je suis JUN’S AI. Posez-moi vos questions ou demandez une recommandation !`
+                    : `Hi ${name} 👋 I'm JUN’S AI. Ask me anything or get a dress recommendation!`;
+                  addMessage(welcome, 'ai');
+                  setSuggestions();
+                }
+              }, 1000);
+            }
+          }, 1000);
+        }
+      }, 1000);
+    });
+
+    observer.observe(messages, { childList: true });
+
+    // Start the convo
+    window.onload = () => {
+      askInitialQuestions();
+    };
   </script>
 </body>
 </html>
