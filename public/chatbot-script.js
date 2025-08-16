@@ -1,83 +1,25 @@
 document.addEventListener('DOMContentLoaded', function () {
-  const bubble = document.createElement('div');
-  bubble.id = 'chatbot-bubble';
-  bubble.innerText = 'JUN’S\nAI';
-  document.body.appendChild(bubble);
-
-  const chatWindow = document.createElement('div');
-  chatWindow.id = 'chatbot-window';
-  chatWindow.innerHTML = `
-    <div class="chat-header">JUN’S AI</div>
-    <div class="chat-body"></div>
-    <input type="text" id="chat-input" placeholder="Type your message..." />
+  const botUI = document.createElement('div');
+  botUI.innerHTML = `
+    <div id="juns-chatbot">
+      <iframe src="https://juns-ai-chatbot-production.up.railway.app/chatbot-widget.html" width="100%" height="100%" style="border:none;"></iframe>
+    </div>
+    <div id="juns-toggle">JUN’S<br>AI</div>
   `;
-  document.body.appendChild(chatWindow);
+  document.body.appendChild(botUI);
 
-  let lang = '';
-  let name = '';
-  let email = '';
-
-  const chatBody = chatWindow.querySelector('.chat-body');
-  const chatInput = chatWindow.querySelector('#chat-input');
-
-  function addMessage(content, fromAI = false) {
-    const msg = document.createElement('div');
-    msg.className = fromAI ? 'ai-msg' : 'user-msg';
-    msg.innerText = content;
-    chatBody.appendChild(msg);
-    chatBody.scrollTop = chatBody.scrollHeight;
-  }
-
-  async function askAI(message) {
-    addMessage(message);
-    chatInput.value = '';
-    const res = await fetch('/api/ask', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message }),
-    });
-    const data = await res.json();
-    addMessage(data.reply, true);
-  }
-
-  bubble.addEventListener('click', () => {
-    chatWindow.style.display = 'flex';
-    bubble.style.display = 'none';
-
-    setTimeout(() => {
-      addMessage("👋 Bonjour! English or French?");
-    }, 300);
+  document.getElementById('juns-toggle').addEventListener('click', () => {
+    const bot = document.getElementById('juns-chatbot');
+    bot.style.display = bot.style.display === 'flex' ? 'none' : 'flex';
   });
 
-  chatInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const msg = chatInput.value;
-      if (!lang) {
-        lang = msg.toLowerCase();
-        askAI(`User chose ${lang}. Greet them.`);
-        setTimeout(() => {
-          askAI("Show options: Recommend a dress, Track order, Change theme, Speak to support.");
-        }, 500);
-        return;
-      }
+  // Optional popup for homepage/product page only
+  if (window.location.pathname === '/' || window.location.pathname.includes('product')) {
+    const popup = document.createElement('div');
+    popup.id = 'juns-popup';
+    popup.innerHTML = `<p>👗 What kind of dress are you looking for? (e.g. wedding, party, casual)</p>`;
+    document.body.appendChild(popup);
 
-      if (!name || !email) {
-        if (!name) {
-          name = msg;
-          addMessage(`Nice to meet you, ${name}! What's your email?`);
-        } else {
-          email = msg;
-          fetch('/api/save-user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email }),
-          });
-          askAI(`User is ${name}, email is ${email}. Continue normal chat.`);
-        }
-        return;
-      }
-
-      askAI(msg);
-    }
-  });
+    setTimeout(() => popup.remove(), 10000);
+  }
 });
