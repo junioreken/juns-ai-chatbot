@@ -12,15 +12,13 @@ function createPopup() {
   const popup = document.createElement("div");
   popup.id = "juns-ai-popup";
   popup.innerHTML = `
-    <div class="popup-inner">
-      <strong>JUN'S AI</strong>
-      <input type="text" id="themeInput" placeholder="Your dress theme? (e.g. wedding)" />
-      <button id="sendTheme">🎯</button>
-      <button id="closePopup">❌</button>
-    </div>
+    <strong>JUN'S AI</strong>
+    <input type="text" id="themeInput" placeholder="Your dress theme? (e.g. wedding)" />
+    <button id="sendTheme">🎯</button>
+    <button id="closePopup">❌</button>
   `;
   document.body.appendChild(popup);
-  setTimeout(() => popup.style.display = 'flex', 4000);
+  setTimeout(() => popup.style.display = 'flex', 5000);
 
   document.getElementById('sendTheme').onclick = () => {
     const theme = document.getElementById('themeInput').value.trim();
@@ -68,7 +66,7 @@ function addMessage(content, from) {
   msgBox.className = `bubble ${from}`;
   msgBox.textContent = content;
   document.getElementById("juns-ai-messages").appendChild(msgBox);
-  document.getElementById("juns-ai-messages").scrollTop = 9999;
+  document.getElementById("juns-ai-messages").scrollTop = document.getElementById("juns-ai-messages").scrollHeight;
 }
 
 function sendToAI(message, name, email, lang) {
