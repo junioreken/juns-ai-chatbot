@@ -1,65 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>JUN’S AI</title>
-  <link rel="stylesheet" href="/chatbot-style.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .bubble {
+      padding: 12px;
+      margin: 8px;
+      border-radius: 20px;
+      max-width: 75%;
+    }
+    .ai {
+      background: #eee;
+      align-self: flex-start;
+    }
+    .user {
+      background: #0b93f6;
+      color: white;
+      align-self: flex-end;
+    }
+    #chatbox {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding: 10px;
+      overflow-y: scroll;
+    }
+    #input {
+      display: flex;
+      border-top: 1px solid #ccc;
+    }
+    input {
+      flex: 1;
+      padding: 10px;
+      border: none;
+    }
+    button {
+      padding: 10px;
+      background: black;
+      color: white;
+      border: none;
+    }
+  </style>
 </head>
 <body>
-  <div id="juns-chatbox">
-    <div class="chat-messages" id="chat">
-      <div class="message ai">Hi! Choose a language / Choisissez une langue: 🇬🇧 English | 🇫🇷 Français</div>
-    </div>
-    <div id="typing"></div>
-    <div id="chat-input">
-      <input id="msgInput" placeholder="Type your message..." />
-      <button onclick="sendMessage()">Send</button>
-    </div>
+  <div id="chatbox"></div>
+  <div id="input">
+    <input id="message" placeholder="Type your message..." />
+    <button onclick="send()">Send</button>
   </div>
 
   <script>
-    let lang = '';
-    let name = '';
-    let email = '';
+    const chatbox = document.getElementById('chatbox');
 
-    function addMessage(content, sender = 'user') {
+    function appendBubble(message, sender) {
       const div = document.createElement('div');
-      div.className = 'message ' + sender;
-      div.innerText = content;
-      document.getElementById('chat').appendChild(div);
-      document.getElementById('chat').scrollTop = 99999;
+      div.className = `bubble ${sender}`;
+      div.innerText = message;
+      chatbox.appendChild(div);
+      chatbox.scrollTop = chatbox.scrollHeight;
     }
 
-    async function sendMessage() {
-      const msg = document.getElementById('msgInput').value;
-      if (!msg) return;
-      addMessage(msg, 'user');
-      document.getElementById('msgInput').value = '';
-      document.getElementById('typing').innerText = "JUN’S AI is typing...";
+    async function send() {
+      const msg = document.getElementById('message').value;
+      appendBubble(msg, 'user');
+      document.getElementById('message').value = '';
 
-      const res = await fetch('/chat', {
+      const res = await fetch('https://juns-ai-chatbot-production.up.railway.app/api/gpt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: msg, lang, name, email })
+        body: JSON.stringify({ message: msg })
       });
       const data = await res.json();
-      addMessage(data.reply, 'ai');
-      document.getElementById('typing').innerText = "";
-
-      if (!lang && msg.toLowerCase().includes('fr')) lang = 'fr';
-      if (!lang && msg.toLowerCase().includes('en')) lang = 'en';
-
-      if (!name && lang) {
-        setTimeout(() => {
-          addMessage(lang === 'fr' ? "Quel est votre prénom ?" : "What's your name?", 'ai');
-        }, 1000);
-      }
-
-      if (!email && name) {
-        setTimeout(() => {
-          addMessage(lang === 'fr' ? "Quel est votre email ?" : "What's your email?", 'ai');
-        }, 1000);
-      }
+      appendBubble(data.reply, 'ai');
     }
   </script>
 </body>
