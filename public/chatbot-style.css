@@ -1,129 +1,119 @@
-/* Chatbot container */
-#chatbot-container {
+/* ------------------ Chatbox Container ------------------ */
+#juns-ai-chatbox {
   position: fixed;
   bottom: 80px;
   right: 20px;
-  max-width: 360px;
-  width: 90%;
-  height: 500px;
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.25);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  display: flex;
-  flex-direction: column;
+  width: 310px;
+  max-height: 500px;
+  background: #f2f2f2;
+  border-radius: 14px;
   overflow: hidden;
-  z-index: 9999;
+  box-shadow: 0 0 14px rgba(0, 0, 0, 0.25);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  display: none;
+  z-index: 99999;
+  flex-direction: column;
 }
 
-/* Chat header */
-#chatbot-header {
-  background-color: black;
+/* ------------------ Header ------------------ */
+.chat-header {
+  background: #000;
   color: white;
-  font-weight: bold;
+  padding: 12px;
   text-align: center;
-  padding: 15px;
-  font-size: 18px;
-  border-top-left-radius: 20px;
-  border-top-right-radius: 20px;
+  font-weight: bold;
+  font-size: 16px;
 }
 
-/* Messages area */
-#chatbot-messages {
-  flex: 1;
-  padding: 15px;
+/* ------------------ Messages Area ------------------ */
+.chat-messages {
+  padding: 14px;
   overflow-y: auto;
-  background: #f9f9f9;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-/* Message bubbles */
-.message {
+/* ------------------ Bubbles (iMessage / Siri Style) ------------------ */
+.bubble {
   padding: 12px 16px;
-  border-radius: 25px;
+  border-radius: 22px;
   max-width: 80%;
-  word-wrap: break-word;
   font-size: 15px;
-  line-height: 1.4;
+  line-height: 1.5;
+  word-wrap: break-word;
+  white-space: pre-wrap;
 }
 
-.message.user {
-  align-self: flex-end;
-  background-color: #007aff;
-  color: white;
-  border-bottom-right-radius: 5px;
-}
-
-.message.bot {
+.bubble.ai {
+  background: #e5e5ea;
+  color: #000;
   align-self: flex-start;
-  background-color: #e5e5ea;
-  color: black;
-  border-bottom-left-radius: 5px;
+  border-bottom-left-radius: 4px;
 }
 
-/* Input area */
-#chatbot-input-area {
+.bubble.user {
+  background: #007aff;
+  color: #fff;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+
+/* ------------------ Typing Loader ------------------ */
+.bubble.loading {
+  background: #e0e0e0;
+  font-style: italic;
+  align-self: flex-start;
+}
+
+/* ------------------ Input Area ------------------ */
+.chat-input-container {
   display: flex;
-  border-top: 1px solid #ddd;
-  padding: 10px;
-  background: white;
+  border-top: 1px solid #ccc;
 }
 
-#chatbot-input {
+.chat-input-container input {
   flex: 1;
-  padding: 10px 14px;
-  border-radius: 20px;
-  border: 1px solid #ccc;
-  outline: none;
-  font-size: 14px;
-  margin-right: 10px;
-}
-
-#chatbot-send {
-  background-color: black;
-  color: white;
-  padding: 10px 18px;
   border: none;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: bold;
+  padding: 12px 14px;
   font-size: 14px;
 }
 
-/* Bubble button (bottom-right Siri style) */
-#chatbot-bubble {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: black;
+.chat-input-container button {
+  background: #000;
   color: white;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  font-size: 12px;
+  border: none;
+  padding: 0 16px;
   font-weight: bold;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-  text-align: center;
-  line-height: 1;
+  font-size: 14px;
 }
 
-/* Suggestion buttons */
+/* ------------------ Siri-Style Chat Bubble ------------------ */
+#chat-circle {
+  background-color: #000;
+  color: #fff;
+  border-radius: 50%;
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+  line-height: 1.1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+
+/* ------------------ Suggestion Buttons (Recommendations) ------------------ */
 .suggestion-btn {
-  display: inline-block;
   background-color: #f1f1f1;
-  color: black;
+  color: #000;
   padding: 8px 14px;
   border-radius: 20px;
-  margin: 4px 4px 0 0;
   font-size: 13px;
+  display: inline-block;
+  margin-top: 6px;
+  margin-right: 6px;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
@@ -132,21 +122,79 @@
   background-color: #ddd;
 }
 
-/* Responsive: Mobile adjustment */
-@media (max-width: 500px) {
-  #chatbot-container {
-    bottom: 70px;
-    width: 95%;
-    height: 450px;
+/* ------------------ Popup Position + Input ------------------ */
+#juns-ai-popup {
+  display: none;
+  position: fixed;
+  top: 80px;
+  left: 20px;
+  z-index: 9999;
+  background: #fff;
+  border: 2px solid #000;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+
+.popup-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#juns-ai-popup input {
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+#juns-ai-popup button {
+  padding: 6px;
+  cursor: pointer;
+  border: none;
+  background: #000;
+  color: #fff;
+  border-radius: 6px;
+}
+
+/* ------------------ Button Position ------------------ */
+#juns-ai-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ------------------ Mobile Responsive ------------------ */
+@media screen and (max-width: 600px) {
+  #juns-ai-chatbox {
+    width: 92%;
+    right: 4%;
+    bottom: 90px;
+    max-height: 85vh;
   }
 
-  #chatbot-bubble {
-    width: 50px;
-    height: 50px;
-    font-size: 11px;
+  #chat-circle {
+    padding: 10px 12px;
+    font-size: 12px;
   }
 
-  .message {
+  .bubble {
     font-size: 14px;
+    max-width: 90%;
+  }
+
+  #juns-ai-popup {
+    top: 40px;
+    left: 10px;
+    max-width: 90%;
+  }
+
+  .suggestion-btn {
+    font-size: 12px;
+    padding: 6px 10px;
   }
 }
