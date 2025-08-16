@@ -1,52 +1,64 @@
-import express from 'express';
-import cors from 'cors';
-import bodyParser from 'body-parser';
-import fetch from 'node-fetch';
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const axios = require('axios');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-const SHOPIFY_DOMAIN = 'https://j1ncvb-1b.myshopify.com';
-const SHOPIFY_TOKEN = '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';
-
+// Homepage route (for Railway/Vercel ping test)
 app.get('/', (req, res) => {
-  res.send("JUN'S AI Chatbot Server is Live 🚀");
+  res.send(`<h2>JUN'S AI Chatbot Server is Live 🚀</h2>`);
 });
 
-app.post('/chat', async (req, res) => {
+// AI Chat Endpoint
+app.post('/api/chat', async (req, res) => {
   const { message, theme, language } = req.body;
 
-  try {
-    // Fetch products based on the preferred theme
-    const response = await fetch(`${SHOPIFY_DOMAIN}/admin/api/2023-01/products.json`, {
-      headers: {
-        'X-Shopify-Access-Token': SHOPIFY_TOKEN,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    const data = await response.json();
-    const products = data.products || [];
-
-    // Filter by title including theme
-    const filtered = products.filter(p =>
-      p.title.toLowerCase().includes(theme?.toLowerCase() || 'wedding')
-    );
-
-    const sample = filtered.slice(0, 3).map(p => `${p.title}: ${SHOPIFY_DOMAIN}/products/${p.handle}`).join('\n');
-
-    // Reply using basic AI logic (can be replaced by OpenAI if desired)
-    const reply = `Here are some lovely ${theme || 'wedding'} dresses:\n\n${sample || 'No themed products found yet. Please check back soon!'}`;
-
-    res.json({ reply });
-  } catch (err) {
-    console.error('Error in /chat:', err);
-    res.status(500).json({ reply: 'Sorry, something went wrong. Please try again later.' });
+  if (!message) {
+    return res.status(400).json({ error: 'Missing message' });
   }
+
+  // 👇 GPT response simulation
+  const reply = `(${language === 'fr' ? 'FR' : 'EN'}) [${theme || 'default'}] You said: "${message}". Here’s a stylish answer from JUN’S AI! 💬👗`;
+
+  res.json({ reply });
 });
 
-const PORT = process.env.PORT || 3000;
+// Theme Change Redirection Logic (if needed)
+app.post('/api/change-theme', (req, res) => {
+  const { selectedTheme } = req.body;
+
+  if (!selectedTheme) {
+    return res.status(400).json({ error: 'Theme missing' });
+  }
+
+  // Example: redirect URL
+  const redirectURL = `/pages/theme-${selectedTheme.toLowerCase()}`;
+  res.json({ redirect: redirectURL });
+});
+
+// Order Tracking (optional example)
+app.post('/api/track-order', async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Missing email' });
+  }
+
+  // You would replace this with real Shopify Storefront API logic
+  res.json({
+    status: 'Processing',
+    eta: '3-5 business days',
+    email,
+    message: `Order for ${email} is being prepared.`
+  });
+});
+
 app.listen(PORT, () => {
-  console.log(`JUN'S AI Server running on port ${PORT}`);
+  console.log(`✅ JUN'S Chatbot backend live at http://localhost:${PORT}`);
 });
