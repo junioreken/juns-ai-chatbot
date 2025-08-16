@@ -1,80 +1,52 @@
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const axios = require("axios");
-const path = require("path");
+import express from 'express';
+import cors from 'cors';
+import bodyParser from 'body-parser';
+import fetch from 'node-fetch';
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// 🔁 Serve static frontend files like chatbot-script.js and chatbot-style.css
-app.use(express.static(path.join(__dirname, "public"))); // <-- folder where the files are
+const SHOPIFY_DOMAIN = 'https://j1ncvb-1b.myshopify.com';
+const SHOPIFY_TOKEN = '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';
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const SHOPIFY_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
-const STOREFRONT_ACCESS_TOKEN = process.env.SHOPIFY_API_KEY;
-
-// 🟢 Root route shows basic status or you can serve HTML later
-app.get("/", (req, res) => {
+app.get('/', (req, res) => {
   res.send("JUN'S AI Chatbot Server is Live 🚀");
 });
 
-// 🟢 Shopify product recommendation route
-app.post("/recommendation", async (req, res) => {
-  const { theme } = req.body;
+app.post('/chat', async (req, res) => {
+  const { message, theme, language } = req.body;
+
   try {
-    const response = await axios.post(
-      `https://${SHOPIFY_DOMAIN}/api/2023-04/graphql.json`,
-      {
-        query: `
-        {
-          products(first: 3, query: "${theme}") {
-            edges {
-              node {
-                title
-                onlineStoreUrl
-                featuredImage { url }
-              }
-            }
-          }
-        }
-        `,
+    // Fetch products based on the preferred theme
+    const response = await fetch(`${SHOPIFY_DOMAIN}/admin/api/2023-01/products.json`, {
+      headers: {
+        'X-Shopify-Access-Token': SHOPIFY_TOKEN,
+        'Content-Type': 'application/json',
       },
-      {
-        headers: {
-          "X-Shopify-Storefront-Access-Token": STOREFRONT_ACCESS_TOKEN,
-          "Content-Type": "application/json",
-        },
-      }
+    });
+
+    const data = await response.json();
+    const products = data.products || [];
+
+    // Filter by title including theme
+    const filtered = products.filter(p =>
+      p.title.toLowerCase().includes(theme?.toLowerCase() || 'wedding')
     );
-    const products = response.data.data.products.edges.map(e => e.node);
-    res.json({ products });
+
+    const sample = filtered.slice(0, 3).map(p => `${p.title}: ${SHOPIFY_DOMAIN}/products/${p.handle}`).join('\n');
+
+    // Reply using basic AI logic (can be replaced by OpenAI if desired)
+    const reply = `Here are some lovely ${theme || 'wedding'} dresses:\n\n${sample || 'No themed products found yet. Please check back soon!'}`;
+
+    res.json({ reply });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch products." });
+    console.error('Error in /chat:', err);
+    res.status(500).json({ reply: 'Sorry, something went wrong. Please try again later.' });
   }
 });
 
-// 🟢 Shopify order tracking
-app.post("/track-order", async (req, res) => {
-  const { email } = req.body;
-  try {
-    const response = await axios.get(
-      `https://${SHOPIFY_DOMAIN}/admin/api/2023-04/orders.json?email=${email}`,
-      {
-        headers: {
-          "X-Shopify-Access-Token": process.env.SHOPIFY_ADMIN_API_KEY,
-        },
-      }
-    );
-    res.json({ orders: response.data.orders });
-  } catch (error) {
-    res.status(500).json({ error: "Error fetching orders" });
-  }
-});
-
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 JUN'S AI Chatbot running on port ${PORT}`);
+  console.log(`JUN'S AI Server running on port ${PORT}`);
 });
