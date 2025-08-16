@@ -1,58 +1,82 @@
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const fetch = require('node-fetch');
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const axios = require("axios");
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const SHOPIFY_STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
-const SHOPIFY_TOKEN = process.env.SHOPIFY_API_KEY;
-
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const SHOPIFY_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
+const STOREFRONT_ACCESS_TOKEN = process.env.SHOPIFY_API_KEY;
 
-app.get('/', (req, res) => res.send("JUN'S AI Chatbot Server is Live 🚀"));
+// 🟢 Test server route
+app.get("/", (req, res) => {
+  res.send("JUN'S AI Chatbot Server is Live 🚀");
+});
 
-app.post('/recommend', async (req, res) => {
+// 🟢 Product recommendation route
+app.post("/recommendation", async (req, res) => {
   const { theme } = req.body;
-
-  const query = {
-    query: `
+  try {
+    const response = await axios.post(
+      `https://${SHOPIFY_DOMAIN}/api/2023-04/graphql.json`,
       {
-        products(first: 4, query: "tag:${theme}") {
-          edges {
-            node {
-              title
-              handle
-              images(first: 1) { edges { node { url } } }
+        query: `
+        {
+          products(first: 3, query: "${theme}") {
+            edges {
+              node {
+                id
+                title
+                description
+                onlineStoreUrl
+                featuredImage {
+                  url
+                }
+              }
             }
           }
         }
+        `,
+      },
+      {
+        headers: {
+          "X-Shopify-Storefront-Access-Token": STOREFRONT_ACCESS_TOKEN,
+          "Content-Type": "application/json",
+        },
       }
-    `
-  };
-
-  const response = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/api/2023-07/graphql.json`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Storefront-Access-Token': SHOPIFY_TOKEN,
-    },
-    body: JSON.stringify(query)
-  });
-
-  const json = await response.json();
-  const products = json.data.products.edges.map(edge => edge.node);
-  res.json(products);
+    );
+    const products = response.data.data.products.edges.map((edge) => edge.node);
+    res.json({ products });
+  } catch (error) {
+    console.error("Product Recommendation Error:", error.message);
+    res.status(500).json({ error: "Failed to fetch products" });
+  }
 });
 
-app.post('/track', async (req, res) => {
+// 🟢 Order tracking route
+app.post("/track-order", async (req, res) => {
   const { email } = req.body;
-  // Integrate with Shopify Order API or Klaviyo/Lifetimely if using.
-  res.json({ status: "success", message: `Tracking info for ${email} will be sent via email.` });
+  try {
+    const response = await axios.get(
+      `https://${SHOPIFY_DOMAIN}/admin/api/2023-04/orders.json?email=${email}`,
+      {
+        headers: {
+          "X-Shopify-Access-Token": process.env.SHOPIFY_ADMIN_API_KEY,
+        },
+      }
+    );
+    const orders = response.data.orders;
+    res.json({ orders });
+  } catch (error) {
+    console.error("Order Tracking Error:", error.message);
+    res.status(500).json({ error: "Failed to fetch order" });
+  }
 });
 
-app.listen(process.env.PORT || 8080, () => {
-  console.log("✅ JUN'S AI Chatbot is live");
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
+  console.log(`🚀 JUN'S AI is live at http://localhost:${PORT}`);
 });
