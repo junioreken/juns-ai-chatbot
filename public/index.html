@@ -1,21 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>JUN’S AI</title>
-  <link rel="stylesheet" href="/chatbot-style.css">
+  <meta charset="UTF-8">
+  <title>JUN'S AI</title>
+  <link rel="stylesheet" href="chatbot-style.css">
 </head>
 <body>
-  <div id="chatbox">
-    <div id="chatlog"></div>
-    <div id="typing-indicator">JUN’S AI is typing...</div>
-    <form id="chat-form">
-      <input id="chat-input" type="text" placeholder="Type your message..." autocomplete="off"/>
-      <button type="submit">Send</button>
-    </form>
+  <div id="chatbot-root">
+    <!-- Chat UI is injected here -->
   </div>
-
-  <script src="/chatbot-script.js"></script>
+  <script src="chatbot-script.js"></script>
 </body>
 </html>
