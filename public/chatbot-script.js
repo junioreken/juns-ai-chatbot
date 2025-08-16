@@ -1,5 +1,6 @@
 (() => {
-  const BOT_ENDPOINT = "https://juns-ai-chatbot-production.up.railway.app/api/chat";
+ const API_URL = "https://juns-ai-chatbot-production.up.railway.app/chat";
+
 
   let theme = 'wedding';
   let language = '';
