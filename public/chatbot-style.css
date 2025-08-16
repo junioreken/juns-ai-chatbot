@@ -1,11 +1,11 @@
-/* === POPUP THEME INPUT BAR === */
+/* === SIRI-STYLE THEME INPUT BAR === */
 #theme-popup {
   position: fixed;
   top: 20px;
   left: 20px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   background: linear-gradient(to right, #f6dcdc, #fbeeee);
   padding: 10px 16px;
   border-radius: 25px;
@@ -13,7 +13,7 @@
   z-index: 9999;
 }
 
-#theme-input {
+#theme-popup input {
   border: none;
   outline: none;
   background: transparent;
@@ -22,7 +22,14 @@
   width: 200px;
 }
 
-/* === CHAT BUBBLE BUTTON === */
+#theme-popup button {
+  border: none;
+  background: none;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* === CHATBOT BUBBLE (BOTTOM RIGHT) === */
 #chatbot-bubble {
   position: fixed;
   bottom: 25px;
@@ -40,9 +47,10 @@
   display: flex;
   z-index: 9999;
   cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
-/* === CHAT WINDOW === */
+/* === CHATBOT WINDOW === */
 #chatbot-window {
   position: fixed;
   bottom: 120px;
@@ -57,8 +65,11 @@
   flex-direction: column;
   z-index: 9998;
   box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  display: flex;
+  flex-direction: column;
 }
 
+/* === HEADER === */
 #chat-header {
   background-color: black;
   color: white;
@@ -69,6 +80,16 @@
   border-top-right-radius: 20px;
 }
 
+/* === CHAT MESSAGES === */
+#chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* === MESSAGE STYLES === */
 .chat-message {
   padding: 10px 14px;
   margin: 6px 10px;
@@ -93,11 +114,14 @@
   border-bottom-left-radius: 5px;
 }
 
+/* === INPUT CONTAINER === */
 #chat-input-container {
   display: flex;
   padding: 10px;
   background: white;
   border-top: 1px solid #ccc;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
 }
 
 #chat-input {
@@ -117,4 +141,35 @@
   padding: 10px 14px;
   font-weight: bold;
   cursor: pointer;
+}
+
+/* === MOBILE FRIENDLY === */
+@media (max-width: 480px) {
+  #theme-popup {
+    top: 15px;
+    left: 10px;
+    right: 10px;
+    width: calc(100% - 20px);
+    flex-wrap: nowrap;
+  }
+
+  #theme-popup input {
+    width: 100%;
+  }
+
+  #chatbot-window {
+    bottom: 100px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    height: 80%;
+  }
+
+  #chatbot-bubble {
+    bottom: 15px;
+    right: 15px;
+    width: 70px;
+    height: 70px;
+    font-size: 12px;
+  }
 }
