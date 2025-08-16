@@ -1,34 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>JUN'S AI</title>
-  <link rel="stylesheet" href="chatbot-style.css" />
+  <meta charset="UTF-8">
+  <title>JUN’S AI</title>
+  <link rel="stylesheet" href="/chatbot-style.css" />
 </head>
 <body>
-  <div id="chatbot-container">
-    <div id="chat-popup" class="popup">
-      <p>👋 Welcome! Choose your language:</p>
-      <button onclick="chooseLanguage('en')">English</button>
-      <button onclick="chooseLanguage('fr')">Français</button>
+  <div id="juns-chatbox">
+    <div class="chat-messages" id="chat">
+      <div class="message ai">Hi! Choose a language / Choisissez une langue: 🇬🇧 English | 🇫🇷 Français</div>
     </div>
-
-    <div id="chat-icon">
-      <div class="chat-icon-text">JUN’S<br><span class="ai-bubble-text">AI</span></div>
-    </div>
-
-    <div id="chatbox" class="hidden">
-      <div id="chat-header">JUN’S AI</div>
-      <div id="chat-messages"></div>
-      <div id="typing-indicator" class="hidden">JUN’S AI is typing...</div>
-      <div id="chat-input-area">
-        <input id="chat-input" type="text" placeholder="Type your message..." />
-        <button onclick="sendMessage()">Send</button>
-      </div>
+    <div id="typing"></div>
+    <div id="chat-input">
+      <input id="msgInput" placeholder="Type your message..." />
+      <button onclick="sendMessage()">Send</button>
     </div>
   </div>
 
-  <script src="chatbot-script.js"></script>
+  <script>
+    let lang = '';
+    let name = '';
+    let email = '';
+
+    function addMessage(content, sender = 'user') {
+      const div = document.createElement('div');
+      div.className = 'message ' + sender;
+      div.innerText = content;
+      document.getElementById('chat').appendChild(div);
+      document.getElementById('chat').scrollTop = 99999;
+    }
+
+    async function sendMessage() {
+      const msg = document.getElementById('msgInput').value;
+      if (!msg) return;
+      addMessage(msg, 'user');
+      document.getElementById('msgInput').value = '';
+      document.getElementById('typing').innerText = "JUN’S AI is typing...";
+
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg, lang, name, email })
+      });
+      const data = await res.json();
+      addMessage(data.reply, 'ai');
+      document.getElementById('typing').innerText = "";
+
+      if (!lang && msg.toLowerCase().includes('fr')) lang = 'fr';
+      if (!lang && msg.toLowerCase().includes('en')) lang = 'en';
+
+      if (!name && lang) {
+        setTimeout(() => {
+          addMessage(lang === 'fr' ? "Quel est votre prénom ?" : "What's your name?", 'ai');
+        }, 1000);
+      }
+
+      if (!email && name) {
+        setTimeout(() => {
+          addMessage(lang === 'fr' ? "Quel est votre email ?" : "What's your email?", 'ai');
+        }, 1000);
+      }
+    }
+  </script>
 </body>
 </html>
