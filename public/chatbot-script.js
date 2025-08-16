@@ -1,77 +1,23 @@
-const chatForm = document.getElementById('chat-form');
-const chatInput = document.getElementById('chat-input');
-const chatlog = document.getElementById('chatlog');
-const typingIndicator = document.getElementById('typing-indicator');
+const frame = document.createElement('iframe');
+frame.src = '/chatbot-widget.html';
+frame.id = 'juns-chat-frame';
+frame.style.cssText = 'position:fixed;bottom:90px;right:24px;width:380px;height:560px;border:none;border-radius:12px;z-index:99999;display:none;';
+document.body.appendChild(frame);
 
-let userLang = '';
-let userName = '';
-let userEmail = '';
+const button = document.createElement('div');
+button.id = 'juns-ai-button';
+button.style.cssText = `
+  position:fixed;bottom:24px;right:24px;
+  background:black;color:white;
+  border-radius:50px;width:56px;height:56px;
+  font-weight:bold;z-index:9999;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-family:-apple-system;
+  flex-direction:column;cursor:pointer;
+`;
+button.innerHTML = `<div>JUN’S</div><div style="font-size:11px;">AI</div>`;
+document.body.appendChild(button);
 
-function addMessage(text, sender = 'ai') {
-  const msg = document.createElement('div');
-  msg.className = sender === 'user' ? 'msg user' : 'msg ai';
-  msg.innerText = text;
-  chatlog.appendChild(msg);
-  chatlog.scrollTop = chatlog.scrollHeight;
-}
-
-function askInitialQuestions() {
-  addMessage("Welcome! 👋 Would you like to continue in English or French?", 'ai');
-}
-
-async function sendMessage(message) {
-  addMessage(message, 'user');
-  typingIndicator.style.display = 'block';
-
-  const res = await fetch('/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      message,
-      name: userName,
-      email: userEmail,
-      lang: userLang
-    })
-  });
-
-  const data = await res.json();
-  typingIndicator.style.display = 'none';
-  addMessage(data.reply, 'ai');
-}
-
-chatForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const message = chatInput.value.trim();
-  if (!message) return;
-  chatInput.value = '';
-
-  // Handle onboarding
-  if (!userLang) {
-    if (/fr/i.test(message)) {
-      userLang = 'fr';
-      addMessage("Bienvenue chez JUN’S AI 👗", 'ai');
-      addMessage("Souhaitez-vous :\n- Recommandation de robe ?\n- Suivre une commande ?\n- Changer le thème ?", 'ai');
-    } else {
-      userLang = 'en';
-      addMessage("Welcome to JUN’S AI 👗", 'ai');
-      addMessage("Would you like to:\n- Get a dress recommendation?\n- Track an order?\n- Change your dress theme?", 'ai');
-    }
-    return;
-  }
-
-  // Ask name/email after first message
-  if (!userName) {
-    userName = message;
-    addMessage(userLang === 'fr' ? "Merci ! Et votre e-mail ?" : "Thanks! And your email?");
-    return;
-  }
-  if (!userEmail && userName) {
-    userEmail = message;
-    addMessage(userLang === 'fr' ? "Merci ! Que puis-je faire pour vous aujourd'hui ?" : "Thanks! What can I help you with today?");
-    return;
-  }
-
-  sendMessage(message);
+button.addEventListener('click', () => {
+  frame.style.display = frame.style.display === 'block' ? 'none' : 'block';
 });
-
-askInitialQuestions();
