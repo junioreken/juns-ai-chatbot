@@ -13,12 +13,18 @@ const SHOP_DOMAIN = process.env.SHOP_DOMAIN;
 const STOREFRONT_TOKEN = process.env.STOREFRONT_TOKEN;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
+// Home page route (fixes "Cannot GET /")
+app.get("/", (req, res) => {
+  res.send("🧠 JUN'S AI Backend is running! Use POST /chat to communicate.");
+});
+
+// Chat endpoint
 app.post("/chat", async (req, res) => {
   try {
     const userMessage = req.body.message;
     const language = req.body.language || "english";
 
-    // Shopify product data fetching
+    // Fetch products from Shopify
     const shopifyRes = await fetch(`https://${SHOP_DOMAIN}/admin/api/2023-04/products.json`, {
       method: "GET",
       headers: {
@@ -28,11 +34,11 @@ app.post("/chat", async (req, res) => {
     });
 
     const productData = await shopifyRes.json();
+
     const productsText = productData.products
       ?.map((p) => `${p.title}: ${p.body_html?.replace(/<[^>]*>/g, "").slice(0, 200)}`)
       .join("\n") || "No products found.";
 
-    // GPT prompt creation
     const prompt = `
 You are JUN'S AI Assistant. You help customers find dresses and answer any questions about the store.
 Language: ${language}
