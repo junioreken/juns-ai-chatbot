@@ -1,191 +1,151 @@
-/* --- Bubble Messages --- */
+/* ----- CHATBOX STYLE FIX ----- */
+#juns-ai-chatbox {
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  width: 100%;
+  max-width: 360px;
+  max-height: 500px;
+  background: #f2f2f2;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  display: none;
+  z-index: 99999;
+  flex-direction: column;
+}
+
+.chat-header {
+  background: #000;
+  color: #fff;
+  padding: 12px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 16px;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+}
+
+.chat-messages {
+  padding: 10px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  scrollbar-width: thin;
+}
+
+/* Message bubbles */
 .bubble {
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-radius: 20px;
   max-width: 80%;
   font-size: 15px;
-  line-height: 1.5;
-  word-break: break-word;
+  line-height: 1.4;
+  word-wrap: break-word;
   white-space: pre-wrap;
-  display: inline-block;
-  position: relative;
+  overflow-wrap: break-word;
 }
 
 .bubble.ai {
   background: #e5e5ea;
   color: #000;
   align-self: flex-start;
-  border-bottom-left-radius: 0;
+  border-bottom-left-radius: 5px;
 }
 
 .bubble.user {
   background: #007aff;
   color: #fff;
   align-self: flex-end;
-  border-bottom-right-radius: 0;
+  border-bottom-right-radius: 5px;
 }
 
-/* --- Scrollable Chat --- */
-.chat-messages {
-  padding: 12px;
-  overflow-y: auto;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  scroll-behavior: smooth;
-  max-height: 400px;
+/* Scrollbar for messages */
+.chat-messages::-webkit-scrollbar {
+  width: 4px;
+}
+.chat-messages::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 2px;
 }
 
-/* --- Input Bar (Siri Style) --- */
+/* Input area Siri-style */
 .chat-input-container {
   display: flex;
+  padding: 8px;
+  background: #fff;
   border-top: 1px solid #ccc;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(8px);
-  border-radius: 999px;
-  margin: 10px;
 }
 
 .chat-input-container input {
   flex: 1;
+  padding: 10px 14px;
   border: none;
-  padding: 10px 15px;
   font-size: 15px;
-  border-radius: 999px;
-  background: linear-gradient(to right, #f8f8f8, #fceef0);
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+  border-radius: 30px;
+  background: linear-gradient(90deg, #f7f2f4, #e8eef2);
+  color: #555;
   outline: none;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.08) inset;
 }
 
 .chat-input-container button {
-  background: none;
-  border: none;
-  margin-left: 8px;
-  font-size: 18px;
-  color: #007aff;
-  cursor: pointer;
-}
-
-/* --- Popup Bar --- */
-#juns-ai-popup {
-  display: none;
-  position: fixed;
-  top: 80px;
-  left: 20px;
-  z-index: 9999;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border: 2px solid #000;
-  border-radius: 20px;
-  padding: 12px 20px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
-  max-width: 95%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-#juns-ai-popup input {
-  flex: 1;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 20px;
-  font-size: 14px;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-  background: linear-gradient(to right, #f8f8f8, #fceef0);
-}
-
-#juns-ai-popup button {
-  padding: 8px 14px;
-  border: none;
-  border-radius: 20px;
-  background: #000;
-  color: white;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-/* --- Chatbox Main Wrapper --- */
-#juns-ai-chatbox {
-  position: fixed;
-  bottom: 100px;
-  right: 20px;
-  width: 340px;
-  max-height: 480px;
-  background: #fdfdfd;
-  border-radius: 20px;
-  box-shadow: 0 0 12px rgba(0,0,0,0.15);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-  display: none;
-  z-index: 99999;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* --- Chat Header --- */
-.chat-header {
+  margin-left: 10px;
   background: #000;
   color: #fff;
-  padding: 14px;
-  text-align: center;
-  font-weight: 600;
-  font-size: 16px;
+  border: none;
+  border-radius: 30px;
+  padding: 0 16px;
+  cursor: pointer;
 }
 
-/* --- Chat Button --- */
-#chat-circle {
+/* ----- BOTTOM CHAT BUTTON ----- */
+#juns-ai-button {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  background: black;
-  color: white;
-  border-radius: 50%;
-  width: 64px;
-  height: 64px;
-  text-align: center;
-  line-height: 64px;
-  font-weight: bold;
-  font-size: 14px;
-  z-index: 999999;
-  cursor: pointer;
-  font-family: 'Arial Rounded MT Bold', sans-serif;
-  flex-direction: column;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* --- Responsive Mobile --- */
+/* Bubble button with image or styled like Siri */
+#chat-circle {
+  background-color: #000;
+  color: #fff;
+  border-radius: 50%;
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+  line-height: 1.2;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+/* ----- MOBILE RESPONSIVENESS ----- */
 @media screen and (max-width: 600px) {
   #juns-ai-chatbox {
     width: 95%;
     right: 2.5%;
     bottom: 100px;
+    max-height: 85vh;
   }
 
   #chat-circle {
-    padding: 10px;
-    font-size: 13px;
-    width: 54px;
-    height: 54px;
-    line-height: 54px;
-  }
-
-  #juns-ai-popup {
-    top: 40px;
-    left: 10px;
-    max-width: 95%;
-    padding: 10px 14px;
-  }
-
-  .bubble {
-    max-width: 90%;
-    font-size: 14px;
+    padding: 12px;
+    font-size: 12px;
   }
 
   .chat-input-container input {
+    font-size: 14px;
+  }
+
+  .bubble {
     font-size: 14px;
   }
 }
