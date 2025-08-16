@@ -1,164 +1,159 @@
-(() => {
- const API_URL = "https://juns-ai-chatbot-production.up.railway.app/chat";
+const API_URL = "https://juns-ai-chatbot-production.up.railway.app/chat";
 
+const pagesWithPopup = ["/", "/products", "/pages/event-dress-recommendations"];
 
-  let theme = 'wedding';
-  let language = '';
-  let userEmail = '';
+function isPopupPage() {
+  const path = window.location.pathname;
+  return pagesWithPopup.some(p => path.startsWith(p));
+}
 
-  const createChatUI = () => {
-    const style = document.createElement('style');
-    style.innerHTML = `
-      #juns-chatbot {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 320px;
-        height: 480px;
-        background: white;
-        border-radius: 20px;
-        border: 1px solid #ccc;
-        z-index: 9999;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      }
-      #juns-header {
-        background: black;
-        color: white;
-        text-align: center;
-        padding: 10px;
-        font-weight: bold;
-      }
-      #juns-messages {
-        flex: 1;
-        padding: 10px;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-      }
-      .msg-user, .msg-bot {
-        max-width: 80%;
-        padding: 8px 12px;
-        border-radius: 20px;
-        line-height: 1.3;
-      }
-      .msg-user {
-        align-self: flex-end;
-        background: #0b93f6;
-        color: white;
-      }
-      .msg-bot {
-        align-self: flex-start;
-        background: #e5e5ea;
-        color: black;
-      }
-      #juns-input-area {
-        display: flex;
-        border-top: 1px solid #ddd;
-      }
-      #juns-input {
-        flex: 1;
-        border: none;
-        padding: 10px;
-        font-size: 14px;
-        outline: none;
-      }
-      #juns-send {
-        background: black;
-        color: white;
-        border: none;
-        padding: 10px 14px;
-        cursor: pointer;
-      }
-    `;
-    document.head.appendChild(style);
+function createPopup() {
+  if (!isPopupPage()) return;
+  const popup = document.createElement("div");
+  popup.id = "juns-ai-popup";
+  popup.innerHTML = `
+    <div class="popup-inner">
+      <strong>JUN'S AI</strong>
+      <input type="text" id="themeInput" placeholder="Your dress theme? (e.g. wedding)" />
+      <button id="sendTheme">🎯</button>
+      <button id="closePopup">❌</button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  setTimeout(() => popup.style.display = 'flex', 4000);
 
-    const container = document.createElement('div');
-    container.id = 'juns-chatbot';
-    container.innerHTML = `
-      <div id="juns-header">JUN’S AI</div>
-      <div id="juns-messages">
-        <div class="msg-bot">👋 Bonjour! English or French?</div>
-      </div>
-      <div id="juns-input-area">
-        <input id="juns-input" placeholder="Type your message..." />
-        <button id="juns-send">Send</button>
-      </div>
-    `;
-    document.body.appendChild(container);
-
-    document.getElementById('juns-send').onclick = async () => {
-      const input = document.getElementById('juns-input');
-      const text = input.value.trim();
-      if (!text) return;
-
-      addMessage(text, 'user');
-      input.value = '';
-      const reply = await sendToBot(text);
-      addMessage(reply, 'bot');
-    };
-  };
-
-  const addMessage = (text, sender) => {
-    const msgDiv = document.createElement('div');
-    msgDiv.className = sender === 'user' ? 'msg-user' : 'msg-bot';
-    msgDiv.textContent = text;
-    document.getElementById('juns-messages').appendChild(msgDiv);
-    document.getElementById('juns-messages').scrollTop = 9999;
-  };
-
-  const sendToBot = async (msg) => {
-    // Detect language choice
-    if (!language && msg.toLowerCase().includes('french')) {
-      language = 'fr';
-      return "Enchanté ! Que puis-je faire pour vous aujourd'hui ?";
-    }
-    if (!language && msg.toLowerCase().includes('english')) {
-      language = 'en';
-      return "Nice to meet you! What can I help you with today?";
-    }
-
-    // Detect theme redirect
-    if (msg.toLowerCase().includes('change theme')) {
-      window.location.href = "/pages/theme-selector";
-      return "Redirecting to theme selection...";
-    }
-
-    // Detect order tracking
-    if (msg.toLowerCase().includes('track order')) {
-      return "Please enter your email so I can look it up.";
-    }
-
-    if (msg.includes('@') && !userEmail) {
-      userEmail = msg;
-      return `Thank you! Checking order status for ${userEmail}...`;
-    }
-
-    // Send to GPT bot
-    try {
-      const res = await fetch(BOT_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: msg,
-          theme,
-          language
-        })
-      });
-      const data = await res.json();
-      return data.reply || "Sorry, I didn’t understand that.";
-    } catch (e) {
-      return "Oops, server error!";
+  document.getElementById('sendTheme').onclick = () => {
+    const theme = document.getElementById('themeInput').value.trim();
+    if (theme) {
+      const encoded = encodeURIComponent(theme);
+      window.location.href = `/pages/event-dress-recommendations?theme=${encoded}`;
     }
   };
 
-  window.addEventListener('load', () => {
-    setTimeout(() => {
-      createChatUI();
-    }, 5000);
+  document.getElementById('closePopup').onclick = () => {
+    popup.style.display = 'none';
+    document.getElementById("juns-ai-button").style.display = "flex";
+  };
+}
+
+function createChatButton() {
+  const button = document.createElement("div");
+  button.id = "juns-ai-button";
+  button.innerHTML = `<div id="chat-circle">JUN’S<br>AI</div>`;
+  document.body.appendChild(button);
+
+  button.addEventListener("click", () => {
+    const chatBox = document.getElementById("juns-ai-chatbox");
+    chatBox.style.display = (chatBox.style.display === "none") ? "block" : "none";
   });
-})();
+}
+
+function createChatbox() {
+  const box = document.createElement("div");
+  box.id = "juns-ai-chatbox";
+  box.style.display = "none";
+  box.innerHTML = `
+    <div class="chat-header">JUN’S AI</div>
+    <div id="juns-ai-messages" class="chat-messages"></div>
+    <div class="chat-input-container">
+      <input type="text" id="juns-user-input" placeholder="Type your message..." />
+      <button id="juns-send-btn">➤</button>
+    </div>
+  `;
+  document.body.appendChild(box);
+}
+
+function addMessage(content, from) {
+  const msgBox = document.createElement("div");
+  msgBox.className = `bubble ${from}`;
+  msgBox.textContent = content;
+  document.getElementById("juns-ai-messages").appendChild(msgBox);
+  document.getElementById("juns-ai-messages").scrollTop = 9999;
+}
+
+function sendToAI(message, name, email, lang) {
+  addMessage("JUN’S AI is typing...", "ai loading");
+
+  fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, name, email, lang })
+  })
+    .then(res => res.json())
+    .then(data => {
+      const loading = document.querySelector(".bubble.loading");
+      if (loading) loading.remove();
+      addMessage(data.reply, "ai");
+    })
+    .catch(() => {
+      const loading = document.querySelector(".bubble.loading");
+      if (loading) loading.remove();
+      addMessage("Oops! Something went wrong. Please try again.", "ai");
+    });
+}
+
+function initChatbot() {
+  createPopup();
+  createChatButton();
+  createChatbox();
+
+  let userLang = null;
+  let userName = "";
+  let userEmail = "";
+
+  const sendBtn = document.getElementById("juns-send-btn");
+  const userInput = document.getElementById("juns-user-input");
+
+  const askLanguage = () => {
+    addMessage("👋 Welcome! Please select your language:\nEnglish 🇬🇧 or Français 🇫🇷", "ai");
+  };
+
+  const askDetails = () => {
+    const langMsg = userLang === 'fr'
+      ? "Quel est votre prénom ?"
+      : "What is your name?";
+    addMessage(langMsg, "ai");
+  };
+
+  const showSuggestions = () => {
+    const suggestions = userLang === 'fr'
+      ? "Voici ce que je peux faire pour vous:\n- Recommander une robe 👗\n- Suivre votre commande 📦\n- Changer de thème 🎯\n- Contacter le support 💬"
+      : "Here’s what I can help with:\n- Recommend a dress 👗\n- Track your order 📦\n- Change theme 🎯\n- Speak to support 💬";
+    addMessage(suggestions, "ai");
+  };
+
+  askLanguage();
+
+  sendBtn.addEventListener("click", () => {
+    const msg = userInput.value.trim();
+    if (!msg) return;
+    userInput.value = "";
+    addMessage(msg, "user");
+
+    if (!userLang) {
+      const langGuess = msg.toLowerCase();
+      if (langGuess.includes("fr")) userLang = "fr";
+      else userLang = "en";
+      const greet = userLang === "fr"
+        ? "Bienvenue chez JUN’S AI ✨"
+        : "Welcome to JUN’S AI ✨";
+      addMessage(greet, "ai");
+      return askDetails();
+    }
+
+    if (!userName) {
+      userName = msg;
+      return addMessage(userLang === "fr" ? "Quel est votre email ?" : "What is your email?", "ai");
+    }
+
+    if (!userEmail) {
+      userEmail = msg;
+      showSuggestions();
+      return;
+    }
+
+    sendToAI(msg, userName, userEmail, userLang);
+  });
+}
+
+window.addEventListener("DOMContentLoaded", initChatbot);
