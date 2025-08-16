@@ -1,31 +1,38 @@
 const express = require('express');
+const path = require('path');
 const bodyParser = require('body-parser');
+const { OpenAI } = require('openai');
 const axios = require('axios');
 const cors = require('cors');
-require('dotenv').config();
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-const { OPENAI_API_KEY, SHOPIFY_API_KEY, SHOPIFY_STORE_DOMAIN } = process.env;
+// Initialize OpenAI
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-app.post('/api/ask', async (req, res) => {
-  const { message, context } = req.body;
-
+// Get products from Shopify
+async function fetchProducts() {
   try {
-    // Shopify product fetch (optional: enhance with search/filter)
-    const productRes = await axios.post(
-      `https://${SHOPIFY_STORE_DOMAIN}/api/2023-07/graphql.json`,
+    const response = await axios.post(
+      'https://j1ncvb-1b.myshopify.com/admin/api/2023-10/graphql.json',
       {
         query: `
           {
             products(first: 10) {
               edges {
                 node {
+                  id
                   title
+                  descriptionHtml
                   handle
-                  description
+                  featuredImage {
+                    url
+                  }
                 }
               }
             }
@@ -34,55 +41,52 @@ app.post('/api/ask', async (req, res) => {
       },
       {
         headers: {
-          'Content-Type': 'application/json',
-          'X-Shopify-Storefront-Access-Token': SHOPIFY_API_KEY,
-        },
+          'X-Shopify-Access-Token': process.env.SHOPIFY_API_KEY,
+          'Content-Type': 'application/json'
+        }
       }
     );
 
-    const products = productRes.data.data.products.edges.map(e => e.node);
-
-    const chatPrompt = `
-You are JUN’S AI Assistant on a Shopify fashion store.
-Current message: "${message}"
-Store products: ${products.map(p => `${p.title}: ${p.description}`).join('\n')}
-Respond in a helpful, iMessage-style, elegant tone. If the user asks for a product or theme, suggest one of the real products by title, and provide a link to: https://${SHOPIFY_STORE_DOMAIN}/products/{product-handle}.
-`;
-
-    const aiRes = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        model: 'gpt-4',
-        messages: [{ role: 'user', content: chatPrompt }],
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    res.json({ reply: aiRes.data.choices[0].message.content });
-  } catch (error) {
-    console.error(error);
-    res.status(500).send('AI or Shopify error');
-  }
-});
-
-app.post('/api/save-user', async (req, res) => {
-  const { name, email } = req.body;
-  try {
-    await axios.post('https://your-webhook-url.com', { name, email });
-    res.sendStatus(200);
+    return response.data.data.products.edges.map(e => e.node);
   } catch (err) {
-    res.sendStatus(500);
+    console.error('Shopify fetch error:', err.message);
+    return [];
+  }
+}
+
+// POST /chat endpoint
+app.post('/chat', async (req, res) => {
+  const { message, name, email, lang } = req.body;
+  if (!message) return res.status(400).json({ error: 'Missing message' });
+
+  const intro = lang === 'fr'
+    ? "Tu es JUN’S AI – un assistant mode qui répond aux questions sur les produits, robes, commandes et thèmes d'événements."
+    : "You are JUN’S AI – a fashion-savvy assistant that helps with products, dresses, themes, and order questions.";
+
+  const products = await fetchProducts();
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: `${intro} Here are some products:\n${products.map(p => `• ${p.title}: ${p.descriptionHtml.replace(/<[^>]*>/g, '')}`).join('\n')}` },
+        { role: 'user', content: message }
+      ]
+    });
+
+    const reply = completion.choices[0]?.message?.content || "Sorry, I don't know how to respond.";
+    console.log(`🧾 From: ${name || 'anonymous'} (${email || 'no email'})`);
+
+    res.json({ reply });
+  } catch (e) {
+    console.error('❌ OpenAI Error:', e.message);
+    res.status(500).json({ reply: "Oops! Something went wrong." });
   }
 });
 
-app.use(express.static('public'));
-
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-  console.log(`🚀 JUN’S AI is live at http://localhost:${PORT}`);
+// Fallback to index.html
+app.get('*', (_, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+app.listen(PORT, () => console.log(`🚀 JUN’S AI is live on port ${PORT}`));
