@@ -1,4 +1,4 @@
-/* --- Chat Bubble Section --- */
+/* --- Bubble Messages --- */
 .bubble {
   padding: 12px 16px;
   border-radius: 20px;
@@ -25,6 +25,7 @@
   border-bottom-right-radius: 0;
 }
 
+/* --- Scrollable Chat --- */
 .chat-messages {
   padding: 12px;
   overflow-y: auto;
@@ -33,9 +34,10 @@
   flex-direction: column;
   gap: 12px;
   scroll-behavior: smooth;
+  max-height: 400px;
 }
 
-/* --- Input Bar Siri Style --- */
+/* --- Input Bar (Siri Style) --- */
 .chat-input-container {
   display: flex;
   border-top: 1px solid #ccc;
@@ -66,24 +68,30 @@
   cursor: pointer;
 }
 
-/* --- Popup Style Similar to Siri Suggestion Box --- */
+/* --- Popup Bar --- */
 #juns-ai-popup {
   display: none;
   position: fixed;
   top: 80px;
   left: 20px;
   z-index: 9999;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
   border: 2px solid #000;
   border-radius: 20px;
-  padding: 16px;
+  padding: 12px 20px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.2);
-  width: 280px;
-  max-width: 90%;
+  max-width: 95%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 #juns-ai-popup input {
+  flex: 1;
   padding: 8px 12px;
   border: none;
   border-radius: 20px;
@@ -93,8 +101,7 @@
 }
 
 #juns-ai-popup button {
-  padding: 8px 12px;
-  margin-top: 10px;
+  padding: 8px 14px;
   border: none;
   border-radius: 20px;
   background: #000;
@@ -103,10 +110,10 @@
   cursor: pointer;
 }
 
-/* --- Chatbox Wrapper --- */
+/* --- Chatbox Main Wrapper --- */
 #juns-ai-chatbox {
   position: fixed;
-  bottom: 80px;
+  bottom: 100px;
   right: 20px;
   width: 340px;
   max-height: 480px;
@@ -130,7 +137,27 @@
   font-size: 16px;
 }
 
-/* --- Mobile Responsive --- */
+/* --- Chat Button --- */
+#chat-circle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: black;
+  color: white;
+  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  text-align: center;
+  line-height: 64px;
+  font-weight: bold;
+  font-size: 14px;
+  z-index: 999999;
+  cursor: pointer;
+  font-family: 'Arial Rounded MT Bold', sans-serif;
+  flex-direction: column;
+}
+
+/* --- Responsive Mobile --- */
 @media screen and (max-width: 600px) {
   #juns-ai-chatbox {
     width: 95%;
@@ -141,15 +168,24 @@
   #chat-circle {
     padding: 10px;
     font-size: 13px;
+    width: 54px;
+    height: 54px;
+    line-height: 54px;
   }
 
   #juns-ai-popup {
     top: 40px;
     left: 10px;
-    max-width: 90%;
+    max-width: 95%;
+    padding: 10px 14px;
   }
 
   .bubble {
     max-width: 90%;
+    font-size: 14px;
+  }
+
+  .chat-input-container input {
+    font-size: 14px;
   }
 }
