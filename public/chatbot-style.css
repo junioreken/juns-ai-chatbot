@@ -1,175 +1,133 @@
-/* === POPUP BAR === */
-#juns-ai-popup {
-  position: fixed;
-  top: 15px;
-  left: 15px;
-  background: linear-gradient(to right, #f6dcdc, #fbeeee);
-  padding: 10px 16px;
-  border-radius: 24px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  display: none;
-  align-items: center;
-  gap: 10px;
-  z-index: 99999;
-  max-width: calc(100% - 30px);
-  flex-wrap: nowrap;
-}
-
-#juns-ai-popup input {
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 15px;
-  color: #333;
-  flex: 1;
-  min-width: 180px;
-}
-
-#juns-ai-popup button {
-  background: none;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-}
-
-/* === CHAT BUBBLE BUTTON === */
-#juns-ai-button {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background-color: black;
-  color: white;
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  display: flex;
-  font-weight: bold;
-  font-size: 13px;
-  text-align: center;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-  z-index: 99999;
-}
-
-/* === CHATBOX CONTAINER === */
-#juns-ai-chatbox {
+/* Main Chat Container */
+#chatbot-container {
   position: fixed;
   bottom: 100px;
-  right: 20px;
-  width: 100%;
-  max-width: 400px;
-  height: 500px;
-  background: white;
+  right: 30px;
+  width: 360px;
+  max-height: 500px;
   border-radius: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  background: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  z-index: 99998;
+  z-index: 9999;
 }
 
-/* === HEADER === */
-.chat-header {
-  background-color: black;
+/* Header */
+#chatbot-header {
+  background: black;
   color: white;
-  padding: 12px;
-  font-weight: bold;
   text-align: center;
+  padding: 12px;
+  font-size: 18px;
+  font-weight: bold;
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
 }
 
-/* === MESSAGES AREA === */
-.chat-messages {
+/* Chat Messages Area */
+#chatbot-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background-color: #f5f5f7;
+  padding: 16px;
+  background: #f9f9f9;
 }
 
-/* === BUBBLE STYLE === */
-.bubble {
-  padding: 10px 14px;
-  border-radius: 20px;
-  max-width: 85%;
-  font-size: 14px;
+/* Scroll */
+#chatbot-messages::-webkit-scrollbar {
+  width: 6px;
+}
+#chatbot-messages::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 10px;
+}
+
+/* Message Bubble Styles */
+.chatbot-message {
+  max-width: 75%;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+  border-radius: 25px;
   line-height: 1.4;
   word-wrap: break-word;
-  white-space: pre-line;
+  display: inline-block;
 }
 
-.bubble.user {
-  background-color: #007aff;
-  color: white;
-  align-self: flex-end;
-  border-bottom-right-radius: 5px;
-}
-
-.bubble.ai {
-  background-color: #e5e5ea;
+.chatbot-message.bot {
+  background: #e5e5ea;
   color: black;
+  border-top-left-radius: 0;
   align-self: flex-start;
-  border-bottom-left-radius: 5px;
 }
 
-/* === INPUT === */
-.chat-input-container {
+.chatbot-message.user {
+  background: #007aff;
+  color: white;
+  border-top-right-radius: 0;
+  align-self: flex-end;
+}
+
+/* Input Area */
+#chatbot-input-area {
   display: flex;
   padding: 12px;
-  background: white;
-  border-top: 1px solid #ccc;
+  background: #fff;
+  border-top: 1px solid #ddd;
 }
 
-#juns-user-input {
+#chatbot-input {
   flex: 1;
-  padding: 10px;
-  border-radius: 15px;
+  padding: 10px 14px;
+  border-radius: 25px;
   border: 1px solid #ccc;
-  font-size: 15px;
-  outline: none;
+  font-size: 14px;
 }
 
-#juns-send-btn {
-  margin-left: 10px;
-  background-color: #007aff;
+#chatbot-send {
+  background: #007aff;
   color: white;
   border: none;
   padding: 0 18px;
-  border-radius: 15px;
-  font-weight: bold;
+  margin-left: 8px;
+  border-radius: 25px;
+  font-size: 18px;
   cursor: pointer;
 }
 
-/* === RESPONSIVE === */
-@media (max-width: 480px) {
-  #juns-ai-chatbox {
-    bottom: 90px;
-    right: 10px;
-    left: 10px;
-    width: auto;
-    height: 85%;
-  }
+/* Floating Chat Button */
+#chatbot-toggle-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 70px;
+  height: 70px;
+  background: black;
+  color: white;
+  border-radius: 50%;
+  font-weight: bold;
+  text-align: center;
+  line-height: 70px;
+  font-size: 16px;
+  cursor: pointer;
+  z-index: 9999;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
 
-  #juns-ai-button {
+/* Mobile Responsive */
+@media screen and (max-width: 500px) {
+  #chatbot-container {
+    width: 90%;
+    bottom: 90px;
+    right: 5%;
+    max-height: 80%;
+  }
+  #chatbot-toggle-btn {
+    right: 20px;
+    bottom: 20px;
     width: 60px;
     height: 60px;
-    font-size: 12px;
-  }
-
-  #juns-ai-popup {
-    top: 10px;
-    left: 10px;
-    right: 10px;
-    max-width: calc(100% - 20px);
-    flex-wrap: nowrap;
-  }
-
-  #juns-ai-popup input {
-    font-size: 14px;
+    line-height: 60px;
   }
 }
