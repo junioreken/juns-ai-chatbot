@@ -1,13 +1,12 @@
-// JUN'S AI Enhanced Chatbot Script v2.0
-// Served directly from Railway app
-// This script includes all enhanced features: sessions, caching, analytics, and escalation
+// JUN'S AI Chatbot - Enhanced Shopify Integration Script v2.0
+// This script includes all the new features: sessions, caching, analytics, and escalation
 
 (function() {
   'use strict';
   
   // Configuration
   const CHATBOT_CONFIG = {
-    apiUrl: 'https://juns-ai-chatbot-production.up.railway.app/api/enhanced-chat',
+    apiUrl: 'https://juns-ai-chatbot-production.up.railway.app/api/enhanced-chat', // Enhanced endpoint
     analyticsUrl: 'https://juns-ai-chatbot-production.up.railway.app/api/analytics',
     healthUrl: 'https://juns-ai-chatbot-production.up.railway.app/health',
     position: 'bottom-right',
