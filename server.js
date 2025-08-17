@@ -5,6 +5,13 @@ const bodyParser = require('body-parser');
 const { OpenAI } = require('openai');
 const axios = require('axios');
 
+// Import enhanced services
+const cache = require('./services/cache');
+const session = require('./services/session');
+const intentClassifier = require('./services/intentClassifier');
+const escalation = require('./services/escalation');
+const analytics = require('./services/analytics');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -20,10 +27,17 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
+// Import enhanced routes
+const enhancedChatRouter = require('./routes/enhanced-chat');
+
+// Mount enhanced routes
+app.use('/api', enhancedChatRouter);
+
 app.get('/', (req, res) => {
-  res.send("✅ JUN'S AI Chatbot Server is Running");
+  res.send("✅ JUN'S AI Chatbot Server is Running with Enhanced Features!");
 });
 
+// Legacy chat endpoint (maintained for backward compatibility)
 app.post('/chat', async (req, res) => {
   const { message, name, email, lang, storeUrl } = req.body;
 
@@ -128,17 +142,133 @@ app.get('/store-info', async (req, res) => {
   }
 });
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
-    timestamp: new Date().toISOString(),
-    shopify_configured: !!(SHOPIFY_DOMAIN && SHOPIFY_API_TOKEN)
-  });
+// Enhanced health check endpoint
+app.get('/health', async (req, res) => {
+  try {
+    const healthData = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      services: {
+        cache: cache.isConnected,
+        session: true,
+        intentClassifier: true,
+        escalation: true,
+        analytics: true
+      },
+      shopify_configured: !!(SHOPIFY_DOMAIN && SHOPIFY_API_TOKEN),
+      openai_configured: !!process.env.OPENAI_API_KEY,
+      redis_configured: cache.isConnected
+    };
+
+    // Get basic metrics if available
+    try {
+      const conversationMetrics = await analytics.getConversationMetrics();
+      healthData.metrics = conversationMetrics;
+    } catch (error) {
+      healthData.metrics = { error: 'Metrics unavailable' };
+    }
+
+    res.json(healthData);
+  } catch (error) {
+    res.status(500).json({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Cache management endpoints
+app.get('/cache/status', async (req, res) => {
+  try {
+    const status = {
+      connected: cache.isConnected,
+      redis_url: process.env.REDIS_URL || 'redis://localhost:6379',
+      timestamp: new Date().toISOString()
+    };
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get cache status' });
+  }
+});
+
+app.post('/cache/clear', async (req, res) => {
+  try {
+    const result = await cache.flush();
+    res.json({ success: result, message: 'Cache cleared successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to clear cache' });
+  }
+});
+
+// Intent classification test endpoint
+app.post('/test-intent', async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    const intent = await intentClassifier.classifyIntent(message);
+    res.json(intent);
+  } catch (error) {
+    res.status(500).json({ error: 'Intent classification failed' });
+  }
+});
+
+// Escalation test endpoint
+app.post('/test-escalation', async (req, res) => {
+  try {
+    const { message, intent, confidence, sessionId } = req.body;
+    
+    const escalationCheck = await escalation.shouldEscalate(message, intent, confidence, sessionId);
+    res.json(escalationCheck);
+  } catch (error) {
+    res.status(500).json({ error: 'Escalation check failed' });
+  }
+});
+
+// Analytics dashboard endpoint
+app.get('/dashboard', async (req, res) => {
+  try {
+    const report = await analytics.getAnalyticsReport('24h');
+    res.json(report);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate dashboard report' });
+  }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('🔄 SIGTERM received, shutting down gracefully...');
+  
+  try {
+    // Close Redis connection
+    if (cache.client) {
+      await cache.client.quit();
+      console.log('✅ Redis connection closed');
+    }
+    
+    console.log('✅ Graceful shutdown completed');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Error during shutdown:', error);
+    process.exit(1);
+  }
 });
 
 app.listen(PORT, () => {
   console.log(`🎉 JUN'S AI Chatbot Server is live on http://localhost:${PORT}`);
   console.log(`🏪 Shopify Domain: ${SHOPIFY_DOMAIN || 'Not configured'}`);
   console.log(`🔑 OpenAI: ${process.env.OPENAI_API_KEY ? 'Configured' : 'Not configured'}`);
+  console.log(`📊 Redis: ${cache.isConnected ? 'Connected' : 'Not connected'}`);
+  console.log(`🚀 Enhanced Features: Caching, Sessions, Intent Classification, Escalation, Analytics`);
+  console.log(`📈 New Endpoints:`);
+  console.log(`   - POST /api/enhanced-chat - Enhanced chat with all optimizations`);
+  console.log(`   - GET /api/analytics - Analytics dashboard`);
+  console.log(`   - GET /dashboard - Quick dashboard view`);
+  console.log(`   - GET /cache/status - Cache health check`);
+  console.log(`   - POST /cache/clear - Clear cache`);
+  console.log(`   - POST /test-intent - Test intent classification`);
+  console.log(`   - POST /test-escalation - Test escalation logic`);
 });
