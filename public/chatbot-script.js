@@ -1,10 +1,8 @@
 const API_URL = "https://juns-ai-chatbot-production.up.railway.app/chat";
-
 const pagesWithPopup = ["/", "/products", "/pages/event-dress-recommendations"];
 
 function isPopupPage() {
-  const path = window.location.pathname;
-  return pagesWithPopup.some(p => path.startsWith(p));
+  return pagesWithPopup.some(p => window.location.pathname.startsWith(p));
 }
 
 function createPopup() {
@@ -23,8 +21,7 @@ function createPopup() {
   document.getElementById('sendTheme').onclick = () => {
     const theme = document.getElementById('themeInput').value.trim();
     if (theme) {
-      const encoded = encodeURIComponent(theme);
-      window.location.href = `/pages/event-dress-recommendations?theme=${encoded}`;
+      window.location.href = `/pages/event-dress-recommendations?theme=${encodeURIComponent(theme)}`;
     }
   };
 
@@ -42,7 +39,7 @@ function createChatButton() {
 
   button.addEventListener("click", () => {
     const chatBox = document.getElementById("juns-ai-chatbox");
-    chatBox.style.display = (chatBox.style.display === "none") ? "block" : "none";
+    chatBox.style.display = chatBox.style.display === "none" ? "block" : "none";
   });
 }
 
@@ -107,10 +104,7 @@ function initChatbot() {
   };
 
   const askDetails = () => {
-    const langMsg = userLang === 'fr'
-      ? "Quel est votre prénom ?"
-      : "What is your name?";
-    addMessage(langMsg, "ai");
+    addMessage(userLang === 'fr' ? "Quel est votre prénom ?" : "What is your name?", "ai");
   };
 
   const showSuggestions = () => {
@@ -130,12 +124,8 @@ function initChatbot() {
 
     if (!userLang) {
       const langGuess = msg.toLowerCase();
-      if (langGuess.includes("fr")) userLang = "fr";
-      else userLang = "en";
-      const greet = userLang === "fr"
-        ? "Bienvenue chez JUN’S AI ✨"
-        : "Welcome to JUN’S AI ✨";
-      addMessage(greet, "ai");
+      userLang = langGuess.includes("fr") ? "fr" : "en";
+      addMessage(userLang === "fr" ? "Bienvenue chez JUN’S AI ✨" : "Welcome to JUN’S AI ✨", "ai");
       return askDetails();
     }
 
