@@ -1,18 +1,42 @@
 // Resolve API base from the script's own src so it works cross-origin when embedded in Shopify
-function getApiUrl() {
+function getAssetInfo() {
   try {
     const thisScript = document.currentScript || (function() {
       const scripts = document.getElementsByTagName('script');
       return scripts[scripts.length - 1];
     })();
     const scriptUrl = new URL(thisScript.src);
-    return `${scriptUrl.origin}/api/enhanced-chat`;
+    return {
+      api: `${scriptUrl.origin}/api/enhanced-chat`,
+      origin: scriptUrl.origin
+    };
   } catch (e) {
-    return "/api/enhanced-chat"; // fallback to relative
+    return { api: "/api/enhanced-chat", origin: "" };
   }
 }
 
-const API_URL = getApiUrl();
+const { api: API_URL, origin: ASSET_ORIGIN } = getAssetInfo();
+
+let JUNS_SHADOW = null; // ShadowRoot
+let JUNS_ROOT = null; // Host element
+
+function ensureShadowRoot() {
+  if (JUNS_SHADOW) return JUNS_SHADOW;
+  JUNS_ROOT = document.getElementById('juns-ai-root');
+  if (!JUNS_ROOT) {
+    JUNS_ROOT = document.createElement('div');
+    JUNS_ROOT.id = 'juns-ai-root';
+    document.body.appendChild(JUNS_ROOT);
+  }
+  JUNS_SHADOW = JUNS_ROOT.attachShadow({ mode: 'open' });
+  if (ASSET_ORIGIN) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `${ASSET_ORIGIN}/chatbot-style.css`;
+    JUNS_SHADOW.appendChild(link);
+  }
+  return JUNS_SHADOW;
+}
 
 function createMessage(content, isUser = false) {
   const message = document.createElement("div");
@@ -27,7 +51,8 @@ function createMessage(content, isUser = false) {
 }
 
 function initChat() {
-  let chatContainer = document.getElementById("juns-ai-chatbox");
+  const root = ensureShadowRoot();
+  let chatContainer = root.getElementById && root.getElementById("juns-ai-chatbox");
   if (!chatContainer) {
     chatContainer = document.createElement("div");
     chatContainer.id = "juns-ai-chatbox";
@@ -42,11 +67,11 @@ function initChat() {
         <input type="text" id="chatInput" placeholder="Type your message..." />
       </div>
     `;
-    document.body.appendChild(chatContainer);
+    root.appendChild(chatContainer);
   }
 
-  const input = document.getElementById("chatInput");
-  const messages = document.getElementById("chatMessages");
+  const input = root.getElementById("chatInput");
+  const messages = root.getElementById("chatMessages");
 
   input.addEventListener("keydown", async (e) => {
     if (e.key === "Enter" && input.value.trim()) {
@@ -90,16 +115,17 @@ function initChat() {
 
 function createLauncher() {
   // Bubble launcher
-  if (document.getElementById("juns-ai-button")) return;
+  const root = ensureShadowRoot();
+  if (root.getElementById && root.getElementById("juns-ai-button")) return;
   const btn = document.createElement("div");
   btn.id = "juns-ai-button";
   btn.innerHTML = `<div id="chat-circle">Chat</div>`;
-  document.body.appendChild(btn);
+  root.appendChild(btn);
 
   btn.addEventListener("click", () => {
     initChat();
-    const box = document.getElementById("juns-ai-chatbox");
-    const closeBtn = document.getElementById("juns-close");
+    const box = root.getElementById("juns-ai-chatbox");
+    const closeBtn = root.getElementById("juns-close");
     if (box.style.display === "none") {
       box.style.display = "flex";
     } else {
