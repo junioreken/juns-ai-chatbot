@@ -259,7 +259,7 @@ process.on('SIGTERM', async () => {
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🎉 JUN'S AI Chatbot Server is live on http://localhost:${PORT}`);
   console.log(`🏪 Shopify Domain: ${shopBaseUrl || 'Not configured'}`);
   console.log(`🔑 OpenAI: ${process.env.OPENAI_API_KEY ? 'Configured' : 'Not configured'}`);
