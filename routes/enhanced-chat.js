@@ -382,9 +382,9 @@ function buildPoliciesReply(storeData, lang, lowerMsg = '') {
     parts.push(`${label}: ${clean.slice(0, len)}...`);
   };
 
-  const wantShipping = /shipping|delivery/.test(lowerMsg);
-  const wantReturns = /refund|return|exchange/.test(lowerMsg);
-  const wantPrivacy = /privacy/.test(lowerMsg);
+  const wantShipping = /\b(shipping|delivery)\b/.test(lowerMsg);
+  const wantReturns = /\b(refund|return|exchange)\b/.test(lowerMsg);
+  const wantPrivacy = /\bprivacy\b/.test(lowerMsg);
 
   // Prioritize specific request
   if (wantShipping && p.shipping_policy?.body) return (lang==='fr'? 'Politique de livraison:\n' : 'Shipping policy:\n') + basicSanitize(p.shipping_policy.body).slice(0, 600);
@@ -444,8 +444,13 @@ async function fetchPolicyFromPublicUrl(kind) {
       kind === 'returns' ? process.env.RETURNS_POLICY_URL :
       kind === 'privacy' ? process.env.PRIVACY_POLICY_URL : '';
     if (!url) return '';
-    const { data } = await axios.get(url, { timeout: 8000 });
-    return basicSanitize(data).slice(0, 900);
+    const { data } = await axios.get(url, { timeout: 8000, headers: { 'User-Agent': 'JunsAI/1.0' }});
+    // If entire HTML page, isolate main content within <main> or policy container
+    let html = String(data);
+    const mainMatch = html.match(/<main[\s\S]*?>([\s\S]*?)<\/main>/i);
+    if (mainMatch) html = mainMatch[1];
+    // Shopify policy pages often include an h1 and policy text; basicSanitize removes tags
+    return basicSanitize(html).slice(0, 900);
   } catch (e) {
     return '';
   }
