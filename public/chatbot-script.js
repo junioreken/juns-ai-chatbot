@@ -27,16 +27,23 @@ function createMessage(content, isUser = false) {
 }
 
 function initChat() {
-  const chatContainer = document.createElement("div");
-  chatContainer.id = "juns-ai-chatbox";
-  chatContainer.innerHTML = `
-    <div class="chat-header">JUN’S AI</div>
-    <div class="chat-messages" id="chatMessages"></div>
-    <div class="chat-input">
-      <input type="text" id="chatInput" placeholder="Type your message..." />
-    </div>
-  `;
-  document.body.appendChild(chatContainer);
+  let chatContainer = document.getElementById("juns-ai-chatbox");
+  if (!chatContainer) {
+    chatContainer = document.createElement("div");
+    chatContainer.id = "juns-ai-chatbox";
+    chatContainer.style.display = "none"; // start hidden, toggled by launcher
+    chatContainer.innerHTML = `
+      <div class="chat-header">
+        JUN’S AI
+        <button id="juns-close" aria-label="Close">×</button>
+      </div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input">
+        <input type="text" id="chatInput" placeholder="Type your message..." />
+      </div>
+    `;
+    document.body.appendChild(chatContainer);
+  }
 
   const input = document.getElementById("chatInput");
   const messages = document.getElementById("chatMessages");
@@ -81,12 +88,30 @@ function initChat() {
   });
 }
 
-// Show popup after 5s only on homepage/products/recommendation
-const allowedPages = ["/", "/products", "/pages/event-dress-recommendations"];
-if (allowedPages.includes(window.location.pathname)) {
-  window.addEventListener("load", () => {
-    setTimeout(() => {
-      initChat();
-    }, 5000);
+function createLauncher() {
+  // Bubble launcher
+  if (document.getElementById("juns-ai-button")) return;
+  const btn = document.createElement("div");
+  btn.id = "juns-ai-button";
+  btn.innerHTML = `<div id="chat-circle">Chat</div>`;
+  document.body.appendChild(btn);
+
+  btn.addEventListener("click", () => {
+    initChat();
+    const box = document.getElementById("juns-ai-chatbox");
+    const closeBtn = document.getElementById("juns-close");
+    if (box.style.display === "none") {
+      box.style.display = "flex";
+    } else {
+      box.style.display = "none";
+    }
+    if (closeBtn) {
+      closeBtn.onclick = () => { box.style.display = "none"; };
+    }
   });
 }
+
+// Always render launcher bubble (lightweight); chat opens on click
+window.addEventListener("load", () => {
+  createLauncher();
+});
