@@ -32,11 +32,24 @@ class EscalationService {
   // Determine if escalation is needed
   async shouldEscalate(message, intent, confidence, sessionId) {
     try {
+      const trimmed = (message || '').trim();
+      const isGreeting = /^(hi|hello|hey|yo|sup|bonjour|salut|coucou)\b/i.test(trimmed);
+      const shortMessage = trimmed.length < 50 || trimmed.split(/\s+/).length <= 5;
+
+      // Do not escalate greetings or very short general help queries
+      if (isGreeting || (intent === 'general_help' && shortMessage)) {
+        return { shouldEscalate: false };
+      }
+
+      const failedAttempts = await this.getFailedAttempts(sessionId);
+
       const escalationFactors = {
-        confidence: confidence < this.escalationThresholds.confidence,
-        complexity: this.calculateComplexity(message) > this.escalationThresholds.complexity,
-        attempts: await this.getFailedAttempts(sessionId) >= this.escalationThresholds.attempts,
-        sentiment: this.analyzeSentiment(message) < this.escalationThresholds.sentiment
+        // Require at least one previous failed attempt before escalating for low confidence
+        confidence: (confidence < this.escalationThresholds.confidence) && failedAttempts >= 1,
+        // Ignore complexity for very short messages
+        complexity: !shortMessage && (this.calculateComplexity(trimmed) > this.escalationThresholds.complexity),
+        attempts: failedAttempts >= this.escalationThresholds.attempts,
+        sentiment: this.analyzeSentiment(trimmed) < this.escalationThresholds.sentiment
       };
 
       const shouldEscalate = Object.values(escalationFactors).some(factor => factor);
