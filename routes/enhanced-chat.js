@@ -401,19 +401,38 @@ function buildPoliciesReply(storeData, lang, lowerMsg = '') {
 
 // Async wrapper: if requested policy missing, fetch from explicit public URLs
 async function buildPoliciesReplyAsync(storeData, lang, lowerMsg = '') {
-  const wantShipping = /shipping|delivery/.test(lowerMsg);
-  const wantReturns = /refund|return|exchange/.test(lowerMsg);
-  const wantPrivacy = /privacy/.test(lowerMsg);
+  const wantShipping = /\b(shipping|delivery)\b/.test(lowerMsg);
+  const wantReturns = /\b(refund|return|exchange)\b/.test(lowerMsg);
+  const wantPrivacy = /\bprivacy\b/.test(lowerMsg);
 
   const hasShipping = Boolean(storeData?.policies?.shipping_policy?.body);
   const hasReturns = Boolean(storeData?.policies?.refund_policy?.body);
   const hasPrivacy = Boolean(storeData?.policies?.privacy_policy?.body);
 
+  if (wantShipping && process.env.SHIPPING_POLICY_URL) {
+    const body = await fetchPolicyFromPublicUrl('shipping');
+    if (body) return (lang==='fr'? 'Politique de livraison:\n' : 'Shipping policy:\n') + body;
+  }
+  if (wantReturns && process.env.RETURNS_POLICY_URL) {
+    const body = await fetchPolicyFromPublicUrl('returns');
+    if (body) return (lang==='fr'? 'Politique de retour:\n' : 'Return policy:\n') + body;
+  }
+  if (wantPrivacy && process.env.PRIVACY_POLICY_URL) {
+    const body = await fetchPolicyFromPublicUrl('privacy');
+    if (body) return (lang==='fr'? 'Politique de confidentialité:\n' : 'Privacy policy:\n') + body;
+  }
+
   if (wantShipping && hasShipping) {
     return (lang==='fr'? 'Politique de livraison:\n' : 'Shipping policy:\n') + basicSanitize(storeData.policies.shipping_policy.body).slice(0, 600);
   }
   if (wantReturns && hasReturns) {
-    return (lang==='fr'? 'Politique de retour:\n' : 'Return policy:\n') + basicSanitize(storeData.policies.refund_policy.body).slice(0, 600);
+    const text = basicSanitize(storeData.policies.refund_policy.body).slice(0, 600);
+    const m = text.match(/(\d{1,2})\s*-?\s*day(s)?/i);
+    if (m) {
+      const days = m[1];
+      return (lang==='fr'? `Politique de retour: vous disposez de ${days} jours pour retourner un article.` : `Return policy: you have ${days} days to return an item.`) + `\n\n` + text;
+    }
+    return (lang==='fr'? 'Politique de retour:\n' : 'Return policy:\n') + text;
   }
   if (wantPrivacy && hasPrivacy) {
     return (lang==='fr'? 'Politique de confidentialité:\n' : 'Privacy policy:\n') + basicSanitize(storeData.policies.privacy_policy.body).slice(0, 600);
