@@ -411,15 +411,15 @@ async function buildPoliciesReplyAsync(storeData, lang, lowerMsg = '') {
 
   if (wantShipping && process.env.SHIPPING_POLICY_URL) {
     const body = await fetchPolicyFromPublicUrl('shipping');
-    if (body) return (lang==='fr'? 'Politique de livraison:\n' : 'Shipping policy:\n') + body;
+    if (body) return (lang==='fr'? 'Politique de livraison:' : 'Shipping policy:') + '\n' + summarizePolicy(body, lang);
   }
   if (wantReturns && process.env.RETURNS_POLICY_URL) {
     const body = await fetchPolicyFromPublicUrl('returns');
-    if (body) return (lang==='fr'? 'Politique de retour:\n' : 'Return policy:\n') + body;
+    if (body) return (lang==='fr'? 'Politique de retour:' : 'Return policy:') + '\n' + summarizePolicy(body, lang);
   }
   if (wantPrivacy && process.env.PRIVACY_POLICY_URL) {
     const body = await fetchPolicyFromPublicUrl('privacy');
-    if (body) return (lang==='fr'? 'Politique de confidentialité:\n' : 'Privacy policy:\n') + body;
+    if (body) return (lang==='fr'? 'Politique de confidentialité:' : 'Privacy policy:') + '\n' + summarizePolicy(body, lang);
   }
 
   if (wantShipping && hasShipping) {
@@ -430,9 +430,9 @@ async function buildPoliciesReplyAsync(storeData, lang, lowerMsg = '') {
     const m = text.match(/(\d{1,2})\s*-?\s*day(s)?/i);
     if (m) {
       const days = m[1];
-      return (lang==='fr'? `Politique de retour: vous disposez de ${days} jours pour retourner un article.` : `Return policy: you have ${days} days to return an item.`) + `\n\n` + text;
+      return (lang==='fr'? `Politique de retour: vous disposez de ${days} jours pour retourner un article.` : `Return policy: you have ${days} days to return an item.`) + `\n` + summarizePolicy(text, lang);
     }
-    return (lang==='fr'? 'Politique de retour:\n' : 'Return policy:\n') + text;
+    return (lang==='fr'? 'Politique de retour:' : 'Return policy:') + '\n' + summarizePolicy(text, lang);
   }
   if (wantPrivacy && hasPrivacy) {
     return (lang==='fr'? 'Politique de confidentialité:\n' : 'Privacy policy:\n') + basicSanitize(storeData.policies.privacy_policy.body).slice(0, 600);
@@ -473,6 +473,23 @@ async function fetchPolicyFromPublicUrl(kind) {
   } catch (e) {
     return '';
   }
+}
+
+// Produce a concise 2-4 bullet summary from a long policy text
+function summarizePolicy(text, lang) {
+  const t = String(text).replace(/\s+/g, ' ').trim();
+  const bullets = [];
+  const daysMatch = t.match(/(\d{1,2})\s*-?\s*day(s)?/i);
+  if (daysMatch) bullets.push(lang==='fr' ? `${daysMatch[1]} jours pour les retours` : `${daysMatch[1]} days to return`);
+  if (/free shipping|free\s+delivery/i.test(t)) bullets.push(lang==='fr' ? `Livraison gratuite disponible` : `Free shipping available`);
+  if (/tracking/i.test(t)) bullets.push(lang==='fr' ? `Suivi fourni après expédition` : `Tracking provided after shipment`);
+  const contact = t.match(/[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}/);
+  if (contact) bullets.push((lang==='fr' ? `Assistance: ` : `Support: `) + contact[0]);
+  if (bullets.length < 2) {
+    const first = t.split(/\.(\s|$)/).filter(Boolean).slice(0, 2).join('. ').trim();
+    if (first) bullets.push(first);
+  }
+  return bullets.slice(0, 4).map(b => `• ${b}`).join('\n');
 }
 
 // Naive size advice generator from message and typical size charts
