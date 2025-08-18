@@ -92,10 +92,44 @@ router.post('/enhanced-chat', async (req, res) => {
     // 7. Get conversation context for AI
     const conversationContext = await session.getConversationContext(currentSessionId, 5);
 
-    // 8. Build AI prompt with context
+    // 8. Shortcut handlers for well-known intents before LLM
+    const lower = message.toLowerCase();
+    // 8a. Order tracking by email or order number pattern
+    if (/track|status/.test(lower) && (/[#A-Z0-9]{6,}/i.test(lower) || /@/.test(lower))) {
+      try {
+        const track = await trackOrderFromMessage(lower);
+        if (track) {
+          await session.addMessage(currentSessionId, track.reply, false);
+          await analytics.trackMessage(currentSessionId, track.reply, false);
+          return res.json({ reply: track.reply, intent: 'order_tracking', confidence: 0.95, sessionId: currentSessionId, escalation: { required: false } });
+        }
+      } catch (_) {}
+    }
+
+    // 8b. Policies summary
+    if (/refund|return|exchange|policy|shipping|delivery/i.test(lower)) {
+      const policiesReply = buildPoliciesReply(storeData, lang);
+      if (policiesReply) {
+        await session.addMessage(currentSessionId, policiesReply, false);
+        await analytics.trackMessage(currentSessionId, policiesReply, false);
+        return res.json({ reply: policiesReply, intent: 'return_exchange', confidence: 0.9, sessionId: currentSessionId, escalation: { required: false } });
+      }
+    }
+
+    // 8c. Size advice
+    if (/size|fit|measurement|measure|waist|hip|bust|height|weight/i.test(lower)) {
+      const sizeAdvice = buildSizeAdviceReply(storeData, message, lang);
+      if (sizeAdvice) {
+        await session.addMessage(currentSessionId, sizeAdvice, false);
+        await analytics.trackMessage(currentSessionId, sizeAdvice, false);
+        return res.json({ reply: sizeAdvice, intent: 'size_help', confidence: 0.85, sessionId: currentSessionId, escalation: { required: false } });
+      }
+    }
+
+    // 9. Build AI prompt with context
     const systemPrompt = buildSystemPrompt(lang, storeData, conversationContext, intentResult);
 
-    // 9. Generate AI response
+    // 10. Generate AI response
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -119,15 +153,15 @@ router.post('/enhanced-chat', async (req, res) => {
       reply += reinforcement;
     }
 
-    // 10. Track bot response
+    // 11. Track bot response
     await session.addMessage(currentSessionId, reply, false);
     await analytics.trackMessage(currentSessionId, reply, false);
 
-    // 11. Track intent and performance
+    // 12. Track intent and performance
     const responseTime = Date.now() - startTime;
     await analytics.trackIntent(currentSessionId, intentResult.intent, intentResult.confidence, responseTime);
 
-    // 12. Update session context
+    // 13. Update session context
     await session.updateContext(currentSessionId, {
       currentIntent: intentResult.intent,
       lastResponseTime: responseTime,
@@ -280,6 +314,88 @@ function buildSystemPrompt(lang, storeData, conversationContext, intentResult) {
     : `\n\nInstructions:\n- Respond professionally and warmly\n- Use conversation context if relevant\n- Suggest specific products strictly from the list above\n- Mention available discounts if applicable\n- If the requested info is not available, state that clearly and offer general alternatives`;
 
   return prompt;
+}
+
+// Build policies reply from fetched store data
+function buildPoliciesReply(storeData, lang) {
+  const p = storeData.policies || {};
+  const parts = [];
+  if (p.refund_policy?.body) parts.push((lang==='fr'? 'Retour': 'Returns') + ': ' + p.refund_policy.body.replace(/<[^>]+>/g, '').slice(0, 280) + '...');
+  if (p.shipping_policy?.body) parts.push((lang==='fr'? 'Livraison': 'Shipping') + ': ' + p.shipping_policy.body.replace(/<[^>]+>/g, '').slice(0, 280) + '...');
+  if (p.privacy_policy?.body) parts.push((lang==='fr'? 'Confidentialité': 'Privacy') + ': ' + p.privacy_policy.body.replace(/<[^>]+>/g, '').slice(0, 200) + '...');
+  if (parts.length === 0) return '';
+  return (lang==='fr'? 'Voici nos politiques principales:\n' : 'Here are our main store policies:\n') + parts.join('\n');
+}
+
+// Naive size advice generator from message and typical size charts
+function buildSizeAdviceReply(storeData, message, lang) {
+  const m = message.toLowerCase();
+  const num = (label) => {
+    const rx = new RegExp(`${label}\\s*(?:is|=|:)?\\s*(\\d{2,3})`, 'i');
+    const match = message.match(rx);
+    return match ? parseInt(match[1], 10) : null;
+  };
+  const height = num('height|tall|cm');
+  const weight = num('weight|kg|lbs');
+  const bust = num('bust|chest');
+  const waist = num('waist');
+  const hip = num('hip|hips');
+
+  // simple heuristic
+  let suggested = '';
+  if (bust && waist && hip) {
+    if (bust < 86 && waist < 66 && hip < 90) suggested = 'XS';
+    else if (bust < 92 && waist < 72 && hip < 96) suggested = 'S';
+    else if (bust < 98 && waist < 78 && hip < 102) suggested = 'M';
+    else if (bust < 104 && waist < 84 && hip < 108) suggested = 'L';
+    else suggested = 'XL or above';
+  } else if (height && weight) {
+    if (height < 162 && weight < 55) suggested = 'S';
+    else if (height < 170 && weight < 68) suggested = 'M';
+    else suggested = 'L';
+  }
+
+  if (!suggested) return '';
+  const note = lang==='fr'
+    ? `En fonction des mesures fournies, nous recommandons la taille ${suggested}. Veuillez vérifier également le guide des tailles du produit spécifique pour confirmer.`
+    : `Based on your measurements, we recommend size ${suggested}. Please also review the specific product's size guide to confirm.`;
+  return note;
+}
+
+// Parse order tracking from message (email or order number)
+async function trackOrderFromMessage(lower) {
+  try {
+    const axios = require('axios');
+    const shopifyDomain = process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOPIFY_DOMAIN;
+    const token = process.env.SHOPIFY_ADMIN_TOKEN || process.env.SHOPIFY_API_TOKEN || process.env.SHOPIFY_ADMIN_API;
+    if (!shopifyDomain || !token) return null;
+
+    // order number like #1234 or 12345
+    const numMatch = lower.match(/#?(\d{4,})/);
+    if (numMatch) {
+      const url = `https://${shopifyDomain}/admin/api/2024-01/orders.json?name=${encodeURIComponent('#'+numMatch[1])}&status=any`;
+      const { data } = await axios.get(url, { headers: { 'X-Shopify-Access-Token': token }});
+      const ord = data.orders?.[0];
+      if (ord) {
+        const status = ord.fulfillment_status || ord.financial_status || 'processing';
+        return { reply: `Order ${ord.name}: current status is ${status}. Last update: ${ord.updated_at}.` };
+      }
+    }
+
+    const emailMatch = lower.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/);
+    if (emailMatch) {
+      const url = `https://${shopifyDomain}/admin/api/2024-01/orders.json?email=${encodeURIComponent(emailMatch[0])}&status=any&limit=1`;
+      const { data } = await axios.get(url, { headers: { 'X-Shopify-Access-Token': token }});
+      const ord = data.orders?.[0];
+      if (ord) {
+        const status = ord.fulfillment_status || ord.financial_status || 'processing';
+        return { reply: `Latest order ${ord.name}: current status is ${status}. Last update: ${ord.updated_at}.` };
+      }
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
 }
 
 // Analytics endpoint

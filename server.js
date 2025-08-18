@@ -30,9 +30,13 @@ const shopBaseUrl = SHOPIFY_STORE_DOMAIN
 
 // Import enhanced routes
 const enhancedChatRouter = require('./routes/enhanced-chat');
+const ordersRouter = require('./routes/orders');
+const recommendRouter = require('./routes/recommend');
 
 // Mount enhanced routes
 app.use('/api', enhancedChatRouter);
+app.use('/api/orders', ordersRouter);
+app.use('/api/recommend', recommendRouter);
 
 app.get('/', (req, res) => {
   res.send("✅ JUN'S AI Chatbot Server is Running with Enhanced Features!");
