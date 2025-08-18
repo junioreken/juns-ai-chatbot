@@ -401,25 +401,39 @@ function buildPoliciesReply(storeData, lang, lowerMsg = '') {
 
 // Async wrapper: if requested policy missing, fetch from explicit public URLs
 async function buildPoliciesReplyAsync(storeData, lang, lowerMsg = '') {
-  let reply = buildPoliciesReply(storeData, lang, lowerMsg);
-  if (reply) return reply;
-
   const wantShipping = /shipping|delivery/.test(lowerMsg);
   const wantReturns = /refund|return|exchange/.test(lowerMsg);
   const wantPrivacy = /privacy/.test(lowerMsg);
 
-  if (wantShipping) {
+  const hasShipping = Boolean(storeData?.policies?.shipping_policy?.body);
+  const hasReturns = Boolean(storeData?.policies?.refund_policy?.body);
+  const hasPrivacy = Boolean(storeData?.policies?.privacy_policy?.body);
+
+  if (wantShipping && hasShipping) {
+    return (lang==='fr'? 'Politique de livraison:\n' : 'Shipping policy:\n') + basicSanitize(storeData.policies.shipping_policy.body).slice(0, 600);
+  }
+  if (wantReturns && hasReturns) {
+    return (lang==='fr'? 'Politique de retour:\n' : 'Return policy:\n') + basicSanitize(storeData.policies.refund_policy.body).slice(0, 600);
+  }
+  if (wantPrivacy && hasPrivacy) {
+    return (lang==='fr'? 'Politique de confidentialité:\n' : 'Privacy policy:\n') + basicSanitize(storeData.policies.privacy_policy.body).slice(0, 600);
+  }
+
+  if (wantShipping && !hasShipping) {
     const body = await fetchPolicyFromPublicUrl('shipping');
     if (body) return (lang==='fr'? 'Politique de livraison:\n' : 'Shipping policy:\n') + body;
   }
-  if (wantReturns) {
+  if (wantReturns && !hasReturns) {
     const body = await fetchPolicyFromPublicUrl('returns');
     if (body) return (lang==='fr'? 'Politique de retour:\n' : 'Return policy:\n') + body;
   }
-  if (wantPrivacy) {
+  if (wantPrivacy && !hasPrivacy) {
     const body = await fetchPolicyFromPublicUrl('privacy');
     if (body) return (lang==='fr'? 'Politique de confidentialité:\n' : 'Privacy policy:\n') + body;
   }
+
+  const reply = buildPoliciesReply(storeData, lang, lowerMsg);
+  if (reply) return reply;
   return '';
 }
 
