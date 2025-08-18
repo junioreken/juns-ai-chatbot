@@ -95,7 +95,16 @@ router.post('/enhanced-chat', async (req, res) => {
     // 8. Shortcut handlers for well-known intents before LLM
     const lower = message.toLowerCase();
     // 8a. Order tracking by email or order number pattern
-    if (/track|status/.test(lower) && (/[#A-Z0-9]{6,}/i.test(lower) || /@/.test(lower))) {
+    if (/\b(track|status)\b/.test(lower)) {
+      const hasId = /#?\d{4,}/.test(lower) || /@/.test(lower);
+      if (!hasId) {
+        const ask = lang==='fr'
+          ? "Pour suivre votre commande, pourriez-vous me donner votre numéro de commande (ex: #12345) ou l'email utilisé pour l'achat ?"
+          : "To track your order, please share your order number (e.g., #12345) or the email used at checkout.";
+        await session.addMessage(currentSessionId, ask, false);
+        await analytics.trackMessage(currentSessionId, ask, false);
+        return res.json({ reply: ask, intent: 'order_tracking', confidence: 0.7, sessionId: currentSessionId, escalation: { required: false } });
+      }
       try {
         const track = await trackOrderFromMessage(lower);
         if (track) {
@@ -217,9 +226,10 @@ async function getStoreDataWithCache(storeUrl) {
       fetchShopifyData('price_rules.json', domain)
     ]);
 
+    const normalizedPolicies = normalizePolicies(policies);
     const storeData = {
       products: products.products || [],
-      policies: policies || {},
+      policies: normalizedPolicies,
       pages: pages.pages || [],
       discounts: discounts.price_rules || [],
       lastUpdated: new Date().toISOString()
@@ -314,6 +324,23 @@ function buildSystemPrompt(lang, storeData, conversationContext, intentResult) {
     : `\n\nInstructions:\n- Respond professionally and warmly\n- Use conversation context if relevant\n- Suggest specific products strictly from the list above\n- Mention available discounts if applicable\n- If the requested info is not available, state that clearly and offer general alternatives`;
 
   return prompt;
+}
+
+// Normalize policies shape from Shopify API (object or array fallback via pages)
+function normalizePolicies(raw) {
+  if (raw && (raw.refund_policy || raw.shipping_policy || raw.privacy_policy)) return raw;
+  const out = {};
+  if (raw && raw.pages) {
+    const pages = raw.pages;
+    const findBy = (keys) => pages.find(pg => keys.some(k => (pg.title || '').toLowerCase().includes(k)));
+    const refund = findBy(['refund', 'return']);
+    const shipping = findBy(['shipping', 'delivery']);
+    const privacy = findBy(['privacy']);
+    if (refund) out.refund_policy = { body: refund.body_html || '' };
+    if (shipping) out.shipping_policy = { body: shipping.body_html || '' };
+    if (privacy) out.privacy_policy = { body: privacy.body_html || '' };
+  }
+  return out;
 }
 
 // Build policies reply from fetched store data
