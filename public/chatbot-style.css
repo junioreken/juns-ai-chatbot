@@ -23,6 +23,10 @@
   animation: pulse 2s infinite;
 }
 
+#chat-circle .bubble-title { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; transform: translateY(-2px); }
+#chat-circle .bubble-title .brand { font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-size: 12px; font-weight: 800; letter-spacing: 0.4px; }
+#chat-circle .bubble-title .sub { font-size: 10px; opacity: 0.95; font-weight: 700; }
+
 #chat-circle:hover {
   transform: scale(1.1);
   box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4);
@@ -38,7 +42,7 @@
   position: fixed;
   bottom: 110px;
   right: 30px;
-  width: 400px;
+  width: min(420px, 96vw);
   max-height: 600px;
   background: white;
   border-radius: 20px;
@@ -237,7 +241,7 @@
 
 /* Responsive Design */
 @media screen and (max-width: 500px) {
-  #juns-ai-chatbox { width: 96vw; right: 2vw; left: 2vw; bottom: env(safe-area-inset-bottom, 80px); max-height: 70vh; }
+  #juns-ai-chatbox { width: 96vw; right: 2vw; left: auto; bottom: env(safe-area-inset-bottom, 80px); max-height: 70vh; }
 
   #chat-circle {
     width: 56px;
