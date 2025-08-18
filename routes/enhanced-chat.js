@@ -226,8 +226,8 @@ function buildSystemPrompt(lang, storeData, conversationContext, intentResult) {
   
   // Base prompt
   let prompt = isFrench 
-    ? `Tu es JUN'S AI – un assistant mode francophone expert pour la boutique Shopify JUN'S.`
-    : `You are JUN'S AI – a fashion-savvy AI assistant for the JUN'S Shopify store.`;
+    ? `Tu es JUN'S AI – un assistant mode francophone expert pour la boutique Shopify JUN'S.\nN'utilise que les produits, réductions, pages et politiques fournis dans le contexte ci-dessous. Si l'information n'est pas présente, dis-le et propose d'aider autrement.`
+    : `You are JUN'S AI – a fashion-savvy AI assistant for the JUN'S Shopify store.\nOnly use products, discounts, pages and policies provided in the context below. If the information is not present, say so and offer alternatives.`;
 
   // Add intent context
   prompt += isFrench
@@ -267,8 +267,8 @@ function buildSystemPrompt(lang, storeData, conversationContext, intentResult) {
 
   // Add response guidelines
   prompt += isFrench
-    ? `\n\nInstructions:\n- Réponds en français de manière professionnelle et amicale\n- Utilise le contexte de la conversation si pertinent\n- Suggère des produits spécifiques si approprié\n- Mentionne les réductions disponibles si applicable\n- Si tu ne sais pas quelque chose, guide le client vers le support`
-    : `\n\nInstructions:\n- Respond professionally and warmly\n- Use conversation context if relevant\n- Suggest specific products if appropriate\n- Mention available discounts if applicable\n- If you don't know something, guide the customer to support`;
+    ? `\n\nInstructions:\n- Réponds en français de manière professionnelle et amicale\n- Utilise le contexte de la conversation si pertinent\n- Suggère des produits spécifiques provenant de la liste ci-dessus uniquement\n- Mentionne les réductions disponibles si applicable\n- Si l'information n'est pas disponible, dis-le clairement et propose d'autres options (ex: recommandations générales)`
+    : `\n\nInstructions:\n- Respond professionally and warmly\n- Use conversation context if relevant\n- Suggest specific products strictly from the list above\n- Mention available discounts if applicable\n- If the requested info is not available, state that clearly and offer general alternatives`;
 
   return prompt;
 }

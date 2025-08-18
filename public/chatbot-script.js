@@ -1,5 +1,18 @@
-// Use enhanced chat endpoint on the same host
-const API_URL = "/api/enhanced-chat";
+// Resolve API base from the script's own src so it works cross-origin when embedded in Shopify
+function getApiUrl() {
+  try {
+    const thisScript = document.currentScript || (function() {
+      const scripts = document.getElementsByTagName('script');
+      return scripts[scripts.length - 1];
+    })();
+    const scriptUrl = new URL(thisScript.src);
+    return `${scriptUrl.origin}/api/enhanced-chat`;
+  } catch (e) {
+    return "/api/enhanced-chat"; // fallback to relative
+  }
+}
+
+const API_URL = getApiUrl();
 
 function createMessage(content, isUser = false) {
   const message = document.createElement("div");
