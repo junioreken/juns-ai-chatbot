@@ -86,8 +86,8 @@ router.post('/enhanced-chat', async (req, res) => {
       });
     }
 
-    // 6. Get cached store data or fetch fresh
-    const storeData = await getStoreDataWithCache();
+    // 6. Get cached store data or fetch fresh (domain-aware)
+    const storeData = await getStoreDataWithCache(storeUrl);
 
     // 7. Get conversation context for AI
     const conversationContext = await session.getConversationContext(currentSessionId, 5);
@@ -153,10 +153,13 @@ router.post('/enhanced-chat', async (req, res) => {
 });
 
 // Get store data with caching
-async function getStoreDataWithCache() {
+async function getStoreDataWithCache(storeUrl) {
   try {
+    const domainFromUrl = (storeUrl || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const domain = process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOPIFY_DOMAIN || domainFromUrl || "";
+    const cacheKey = `store_data_complete:${domain || 'default'}`;
     // Try to get from cache first
-    const cachedData = await cache.get('store_data_complete');
+    const cachedData = await cache.get(cacheKey);
     if (cachedData) {
       console.log('📦 Using cached store data');
       return cachedData;
@@ -165,10 +168,10 @@ async function getStoreDataWithCache() {
     // Fetch fresh data if not cached
     console.log('🔄 Fetching fresh store data');
     const [products, policies, pages, discounts] = await Promise.all([
-      fetchShopifyData('products.json?limit=20'),
-      fetchShopifyData('policies.json'),
-      fetchShopifyData('pages.json'),
-      fetchShopifyData('price_rules.json')
+      fetchShopifyData('products.json?limit=20', domain),
+      fetchShopifyData('policies.json', domain),
+      fetchShopifyData('pages.json', domain),
+      fetchShopifyData('price_rules.json', domain)
     ]);
 
     const storeData = {
@@ -180,7 +183,7 @@ async function getStoreDataWithCache() {
     };
 
     // Cache for 15 minutes
-    await cache.set('store_data_complete', storeData, 900);
+    await cache.set(cacheKey, storeData, 900);
     
     return storeData;
 
@@ -191,13 +194,17 @@ async function getStoreDataWithCache() {
 }
 
 // Fetch data from Shopify using axios (compatible with Node 16+)
-async function fetchShopifyData(endpoint) {
-  const SHOP_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOPIFY_DOMAIN || "j1ncvb-1b.myshopify.com";
+async function fetchShopifyData(endpoint, domainOverride = "") {
+  const SHOP_DOMAIN = domainOverride || process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOPIFY_DOMAIN || "";
   const ADMIN_API_VERSION = "2024-01";
   const ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN || process.env.SHOPIFY_API_TOKEN || process.env.SHOPIFY_ADMIN_API;
 
   if (!ADMIN_TOKEN) {
     throw new Error('Shopify admin token is not configured');
+  }
+
+  if (!SHOP_DOMAIN) {
+    throw new Error('Shopify domain is not configured');
   }
 
   const baseUrl = SHOP_DOMAIN.startsWith('http') ? SHOP_DOMAIN : `https://${SHOP_DOMAIN}`;

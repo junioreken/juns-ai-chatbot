@@ -1,4 +1,5 @@
-const API_URL = "https://juns-ai-chatbot-production.up.railway.app/chat";
+// Use enhanced chat endpoint on the same host
+const API_URL = "/api/enhanced-chat";
 
 function createMessage(content, isUser = false) {
   const message = document.createElement("div");
@@ -33,14 +34,26 @@ function initChat() {
       messages.scrollTop = messages.scrollHeight;
 
       try {
+        // Ensure a persistent session id for better context
+        let sessionId = localStorage.getItem("juns_session_id");
+        if (!sessionId) {
+          sessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+          localStorage.setItem("juns_session_id", sessionId);
+        }
+
         const res = await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: userMessage }),
+          body: JSON.stringify({
+            message: userMessage,
+            lang: navigator.language && navigator.language.startsWith("fr") ? "fr" : "en",
+            storeUrl: window.location.origin,
+            sessionId
+          }),
         });
         const data = await res.json();
         loading.remove();
-        messages.appendChild(createMessage(data.reply));
+        messages.appendChild(createMessage(data.reply || "Sorry, I couldn't find that."));
         messages.scrollTop = messages.scrollHeight;
       } catch (err) {
         loading.remove();
