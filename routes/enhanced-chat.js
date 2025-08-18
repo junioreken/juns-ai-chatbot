@@ -486,7 +486,7 @@ function summarizePolicy(text, lang) {
     const first = t.split(/\.(\s|$)/).filter(Boolean).slice(0, 2).join('. ').trim();
     if (first) bullets.push(first);
   }
-  return bullets.slice(0, 4).map(b => `• ${b}`).join('\n');
+  return bullets.slice(0, 4).map(b => `• ${b}`).join('<br>');
 }
 
 function formatPolicyResponse(kind, text, lang) {
@@ -498,24 +498,24 @@ function formatPolicyResponse(kind, text, lang) {
   const header = titles[kind] || (lang==='fr' ? 'Voici les informations demandées' : 'Here is the requested policy');
   let bullets = summarizePolicy(text, lang);
 
-  // Append a final bullet with a direct link for full details
+  // Append a final bullet with an inline link label
   const link = getPolicyUrl(kind);
   if (link) {
     const linkSentence = lang==='fr'
       ? (kind==='shipping'
-          ? `Pour tous les détails, consultez la politique de livraison ici: ${link}`
+          ? `Pour tous les détails, consultez la <a href="${link}" target="_blank">politique de livraison</a>`
           : kind==='returns'
-            ? `Pour tous les détails, consultez la politique de retour ici: ${link}`
-            : `Pour tous les détails, consultez la politique de confidentialité ici: ${link}`)
+            ? `Pour tous les détails, consultez la <a href="${link}" target="_blank">politique de retour</a>`
+            : `Pour tous les détails, consultez la <a href="${link}" target="_blank">politique de confidentialité</a>`)
       : (kind==='shipping'
-          ? `For full details, see the shipping policy here: ${link}`
+          ? `For full details, see the <a href="${link}" target="_blank">shipping policy</a>`
           : kind==='returns'
-            ? `For full details, see the return policy here: ${link}`
-            : `For full details, see the privacy policy here: ${link}`);
-    bullets += `\n• ${linkSentence}`;
+            ? `For full details, see the <a href="${link}" target="_blank">return policy</a>`
+            : `For full details, see the <a href="${link}" target="_blank">privacy policy</a>`);
+    bullets += `<br>• ${linkSentence}`;
   }
 
-  return `${header}\n${bullets}`;
+  return `${header}<br>${bullets}`;
 }
 
 function getPolicyUrl(kind) {

@@ -17,7 +17,12 @@ const API_URL = getApiUrl();
 function createMessage(content, isUser = false) {
   const message = document.createElement("div");
   message.className = `bubble ${isUser ? "user" : "ai"}`;
-  message.textContent = content;
+  if (isUser) {
+    message.textContent = content;
+  } else {
+    // Allow basic formatting and clickable links from trusted server responses
+    message.innerHTML = String(content).replace(/\n/g, '<br>');
+  }
   return message;
 }
 
