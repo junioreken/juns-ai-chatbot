@@ -411,31 +411,28 @@ async function buildPoliciesReplyAsync(storeData, lang, lowerMsg = '') {
 
   if (wantShipping && process.env.SHIPPING_POLICY_URL) {
     const body = await fetchPolicyFromPublicUrl('shipping');
-    if (body) return (lang==='fr'? 'Politique de livraison:' : 'Shipping policy:') + '\n' + summarizePolicy(body, lang);
+    if (body) return formatPolicyResponse('shipping', body, lang);
   }
   if (wantReturns && process.env.RETURNS_POLICY_URL) {
     const body = await fetchPolicyFromPublicUrl('returns');
-    if (body) return (lang==='fr'? 'Politique de retour:' : 'Return policy:') + '\n' + summarizePolicy(body, lang);
+    if (body) return formatPolicyResponse('returns', body, lang);
   }
   if (wantPrivacy && process.env.PRIVACY_POLICY_URL) {
     const body = await fetchPolicyFromPublicUrl('privacy');
-    if (body) return (lang==='fr'? 'Politique de confidentialité:' : 'Privacy policy:') + '\n' + summarizePolicy(body, lang);
+    if (body) return formatPolicyResponse('privacy', body, lang);
   }
 
   if (wantShipping && hasShipping) {
-    return (lang==='fr'? 'Politique de livraison:\n' : 'Shipping policy:\n') + basicSanitize(storeData.policies.shipping_policy.body).slice(0, 600);
+    const text = basicSanitize(storeData.policies.shipping_policy.body).slice(0, 600);
+    return formatPolicyResponse('shipping', text, lang);
   }
   if (wantReturns && hasReturns) {
     const text = basicSanitize(storeData.policies.refund_policy.body).slice(0, 600);
-    const m = text.match(/(\d{1,2})\s*-?\s*day(s)?/i);
-    if (m) {
-      const days = m[1];
-      return (lang==='fr'? `Politique de retour: vous disposez de ${days} jours pour retourner un article.` : `Return policy: you have ${days} days to return an item.`) + `\n` + summarizePolicy(text, lang);
-    }
-    return (lang==='fr'? 'Politique de retour:' : 'Return policy:') + '\n' + summarizePolicy(text, lang);
+    return formatPolicyResponse('returns', text, lang);
   }
   if (wantPrivacy && hasPrivacy) {
-    return (lang==='fr'? 'Politique de confidentialité:\n' : 'Privacy policy:\n') + basicSanitize(storeData.policies.privacy_policy.body).slice(0, 600);
+    const text = basicSanitize(storeData.policies.privacy_policy.body).slice(0, 600);
+    return formatPolicyResponse('privacy', text, lang);
   }
 
   if (wantShipping && !hasShipping) {
@@ -490,6 +487,17 @@ function summarizePolicy(text, lang) {
     if (first) bullets.push(first);
   }
   return bullets.slice(0, 4).map(b => `• ${b}`).join('\n');
+}
+
+function formatPolicyResponse(kind, text, lang) {
+  const titles = {
+    shipping: lang==='fr' ? "Voici les informations de livraison" : "Here is our shipping policy",
+    returns: lang==='fr' ? "Voici les informations de retour" : "Here is our return policy",
+    privacy: lang==='fr' ? "Voici les informations de confidentialité" : "Here is our privacy policy"
+  };
+  const header = titles[kind] || (lang==='fr' ? 'Voici les informations demandées' : 'Here is the requested policy');
+  const bullets = summarizePolicy(text, lang);
+  return `${header}\n${bullets}`;
 }
 
 // Naive size advice generator from message and typical size charts
