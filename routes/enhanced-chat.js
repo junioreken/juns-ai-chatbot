@@ -115,7 +115,17 @@ router.post('/enhanced-chat', async (req, res) => {
       } catch (_) {}
     }
 
-    // 8b. Policies summary (prioritize the policy asked for)
+    // 8b. Shipping ETA (country/city-aware) before generic policies
+    if (/(ship|shipping|deliver|delivery|arrive|receive)/i.test(lower)) {
+      const eta = buildShippingEtaReply(lower, lang);
+      if (eta) {
+        await session.addMessage(currentSessionId, eta, false);
+        await analytics.trackMessage(currentSessionId, eta, false);
+        return res.json({ reply: eta, intent: 'shipping_info', confidence: 0.9, sessionId: currentSessionId, escalation: { required: false } });
+      }
+    }
+
+    // 8c. Policies summary (prioritize the policy asked for)
     if (/refund|return|exchange|policy|shipping|delivery|privacy/i.test(lower)) {
       const policiesReply = await buildPoliciesReplyAsync(storeData, lang, lower);
       if (policiesReply) {
@@ -125,7 +135,7 @@ router.post('/enhanced-chat', async (req, res) => {
       }
     }
 
-    // 8c. Size advice
+    // 8d. Size advice
     if (/size|fit|measurement|measure|waist|hip|bust|height|weight/i.test(lower)) {
       const sizeAdvice = buildSizeAdviceReply(storeData, message, lang);
       if (sizeAdvice) {
@@ -577,6 +587,36 @@ function buildSizeAdviceReply(storeData, message, lang) {
     ? `En fonction des mesures fournies, nous recommandons la taille ${suggested}. Veuillez vérifier également le guide des tailles du produit spécifique pour confirmer.`
     : `Based on your measurements, we recommend size ${suggested}. Please also review the specific product's size guide to confirm.`;
   return note;
+}
+
+// Simple shipping ETA inference
+function buildShippingEtaReply(lowerMsg, lang) {
+  const cityMatch = lowerMsg.match(/to\s+([a-z\s]+)$/i);
+  const text = lowerMsg;
+  const hasToronto = /toronto|ontario|canada/i.test(text);
+  const hasUSA = /usa|united states|u\.s\./i.test(text);
+  const hasEurope = /europe|france|germany|spain|italy|uk|united kingdom/i.test(text);
+
+  if (hasToronto) {
+    return lang==='fr'
+      ? "Livraison vers Toronto: 3–7 jours ouvrables après traitement (1–3 jours). Vous recevrez un suivi dès l'expédition."
+      : "Shipping to Toronto: 3–7 business days after processing (1–3 days). You'll receive tracking once shipped.";
+  }
+  if (hasUSA) {
+    return lang==='fr'
+      ? "Livraison vers les USA: 5–10 jours ouvrables après traitement (1–3 jours)."
+      : "Shipping to the USA: 5–10 business days after processing (1–3 days).";
+  }
+  if (hasEurope) {
+    return lang==='fr'
+      ? "Livraison vers l'Europe: 7–14 jours ouvrables après traitement (1–3 jours)."
+      : "Shipping to Europe: 7–14 business days after processing (1–3 days).";
+  }
+
+  // Generic
+  return lang==='fr'
+    ? "Délais de livraison typiques: 3–7 jours (Canada), 5–10 jours (USA), 7–14 jours (Europe) après 1–3 jours de traitement."
+    : "Typical delivery times: 3–7 days (Canada), 5–10 days (USA), 7–14 days (Europe) after 1–3 days processing.";
 }
 
 // Parse order tracking from message (email or order number)
