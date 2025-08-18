@@ -115,9 +115,9 @@ router.post('/enhanced-chat', async (req, res) => {
       } catch (_) {}
     }
 
-    // 8b. Policies summary
-    if (/refund|return|exchange|policy|shipping|delivery/i.test(lower)) {
-      const policiesReply = buildPoliciesReply(storeData, lang);
+    // 8b. Policies summary (prioritize the policy asked for)
+    if (/refund|return|exchange|policy|shipping|delivery|privacy/i.test(lower)) {
+      const policiesReply = buildPoliciesReply(storeData, lang, lower);
       if (policiesReply) {
         await session.addMessage(currentSessionId, policiesReply, false);
         await analytics.trackMessage(currentSessionId, policiesReply, false);
@@ -351,29 +351,57 @@ function normalizePolicies(rawPolicies, pagesArray) {
 }
 
 // Build policies reply from fetched store data
-function buildPoliciesReply(storeData, lang) {
+function buildPoliciesReply(storeData, lang, lowerMsg = '') {
   const p = storeData.policies || {};
   const parts = [];
-  if (p.refund_policy?.body) parts.push((lang==='fr'? 'Retour': 'Returns') + ': ' + p.refund_policy.body.replace(/<[^>]+>/g, '').slice(0, 280) + '...');
-  if (p.shipping_policy?.body) parts.push((lang==='fr'? 'Livraison': 'Shipping') + ': ' + p.shipping_policy.body.replace(/<[^>]+>/g, '').slice(0, 280) + '...');
-  if (p.privacy_policy?.body) parts.push((lang==='fr'? 'Confidentialité': 'Privacy') + ': ' + p.privacy_policy.body.replace(/<[^>]+>/g, '').slice(0, 200) + '...');
+  const add = (label, body, len) => {
+    if (!body) return;
+    parts.push(`${label}: ${body.replace(/<[^>]+>/g, '').slice(0, len)}...`);
+  };
+
+  const wantShipping = /shipping|delivery/.test(lowerMsg);
+  const wantReturns = /refund|return|exchange/.test(lowerMsg);
+  const wantPrivacy = /privacy/.test(lowerMsg);
+
+  // Prioritize specific request
+  if (wantShipping && p.shipping_policy?.body) return (lang==='fr'? 'Politique de livraison:\n' : 'Shipping policy:\n') + p.shipping_policy.body.replace(/<[^>]+>/g, '').slice(0, 600);
+  if (wantReturns && p.refund_policy?.body) return (lang==='fr'? 'Politique de retour:\n' : 'Return policy:\n') + p.refund_policy.body.replace(/<[^>]+>/g, '').slice(0, 600);
+  if (wantPrivacy && p.privacy_policy?.body) return (lang==='fr'? 'Politique de confidentialité:\n' : 'Privacy policy:\n') + p.privacy_policy.body.replace(/<[^>]+>/g, '').slice(0, 600);
+
+  // Otherwise provide a short summary of all available
+  add(lang==='fr'? 'Retour' : 'Returns', p.refund_policy?.body, 280);
+  add(lang==='fr'? 'Livraison' : 'Shipping', p.shipping_policy?.body, 280);
+  add(lang==='fr'? 'Confidentialité' : 'Privacy', p.privacy_policy?.body, 200);
   if (parts.length === 0) return '';
   return (lang==='fr'? 'Voici nos politiques principales:\n' : 'Here are our main store policies:\n') + parts.join('\n');
 }
 
 // Naive size advice generator from message and typical size charts
 function buildSizeAdviceReply(storeData, message, lang) {
-  const m = message.toLowerCase();
-  const num = (label) => {
-    const rx = new RegExp(`${label}\\s*(?:is|=|:)?\\s*(\\d{2,3})`, 'i');
-    const match = message.match(rx);
-    return match ? parseInt(match[1], 10) : null;
-  };
-  const height = num('height|tall|cm');
-  const weight = num('weight|kg|lbs');
-  const bust = num('bust|chest');
-  const waist = num('waist');
-  const hip = num('hip|hips');
+  const text = message.toLowerCase();
+
+  // 1) Parse triad B/W/H like 88/70/95
+  const triad = text.match(/(\d{2,3})\s*\/\s*(\d{2,3})\s*\/\s*(\d{2,3})/);
+  let bust = triad ? parseInt(triad[1], 10) : null;
+  let waist = triad ? parseInt(triad[2], 10) : null;
+  let hip = triad ? parseInt(triad[3], 10) : null;
+
+  // 2) Parse height and weight in either order: number + unit or label + number
+  const heightNumFirst = text.match(/(\d{2,3})\s*(cm|centimeter|centimetre)\b/);
+  const heightLabelFirst = text.match(/\b(height|tall)\s*(?:is|=|:)?\s*(\d{2,3})\b/);
+  const weightNumFirst = text.match(/(\d{2,3})\s*(kg|kgs|kilograms|lb|lbs)\b/);
+  const weightLabelFirst = text.match(/\b(weight)\s*(?:is|=|:)?\s*(\d{2,3})\b/);
+
+  const height = heightNumFirst ? parseInt(heightNumFirst[1], 10) : (heightLabelFirst ? parseInt(heightLabelFirst[2], 10) : null);
+  const weight = weightNumFirst ? parseInt(weightNumFirst[1], 10) : (weightLabelFirst ? parseInt(weightLabelFirst[2], 10) : null);
+
+  // 3) Also parse labeled bust/waist/hip if present
+  const bustLabel = text.match(/\b(bust|chest)\s*(?:is|=|:)?\s*(\d{2,3})\b/);
+  const waistLabel = text.match(/\b(waist)\s*(?:is|=|:)?\s*(\d{2,3})\b/);
+  const hipLabel = text.match(/\b(hip|hips)\s*(?:is|=|:)?\s*(\d{2,3})\b/);
+  if (!bust && bustLabel) bust = parseInt(bustLabel[2], 10);
+  if (!waist && waistLabel) waist = parseInt(waistLabel[2], 10);
+  if (!hip && hipLabel) hip = parseInt(hipLabel[2], 10);
 
   // simple heuristic
   let suggested = '';
