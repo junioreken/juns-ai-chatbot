@@ -496,8 +496,39 @@ function formatPolicyResponse(kind, text, lang) {
     privacy: lang==='fr' ? "Voici les informations de confidentialité" : "Here is our privacy policy"
   };
   const header = titles[kind] || (lang==='fr' ? 'Voici les informations demandées' : 'Here is the requested policy');
-  const bullets = summarizePolicy(text, lang);
+  let bullets = summarizePolicy(text, lang);
+
+  // Append a final bullet with a direct link for full details
+  const link = getPolicyUrl(kind);
+  if (link) {
+    const linkSentence = lang==='fr'
+      ? (kind==='shipping'
+          ? `Pour tous les détails, consultez la politique de livraison ici: ${link}`
+          : kind==='returns'
+            ? `Pour tous les détails, consultez la politique de retour ici: ${link}`
+            : `Pour tous les détails, consultez la politique de confidentialité ici: ${link}`)
+      : (kind==='shipping'
+          ? `For full details, see the shipping policy here: ${link}`
+          : kind==='returns'
+            ? `For full details, see the return policy here: ${link}`
+            : `For full details, see the privacy policy here: ${link}`);
+    bullets += `\n• ${linkSentence}`;
+  }
+
   return `${header}\n${bullets}`;
+}
+
+function getPolicyUrl(kind) {
+  const envUrl = kind==='shipping' ? process.env.SHIPPING_POLICY_URL
+    : kind==='returns' ? process.env.RETURNS_POLICY_URL
+    : kind==='privacy' ? process.env.PRIVACY_POLICY_URL
+    : '';
+  if (envUrl) return envUrl;
+  const domain = process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOPIFY_DOMAIN;
+  if (!domain) return '';
+  const base = domain.startsWith('http') ? domain : `https://${domain}`;
+  const handle = kind==='shipping' ? 'shipping-policy' : kind==='returns' ? 'refund-policy' : 'privacy-policy';
+  return `${base}/policies/${handle}`;
 }
 
 // Naive size advice generator from message and typical size charts
