@@ -359,13 +359,27 @@ function normalizePolicies(rawPolicies, pagesArray) {
   return out;
 }
 
+// Remove scripts/styles and HTML tags; condense whitespace
+function basicSanitize(html) {
+  if (!html) return '';
+  return String(html)
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // Build policies reply from fetched store data
 function buildPoliciesReply(storeData, lang, lowerMsg = '') {
   const p = storeData.policies || {};
   const parts = [];
   const add = (label, body, len) => {
     if (!body) return;
-    parts.push(`${label}: ${body.replace(/<[^>]+>/g, '').slice(0, len)}...`);
+    const clean = basicSanitize(body);
+    parts.push(`${label}: ${clean.slice(0, len)}...`);
   };
 
   const wantShipping = /shipping|delivery/.test(lowerMsg);
@@ -373,9 +387,9 @@ function buildPoliciesReply(storeData, lang, lowerMsg = '') {
   const wantPrivacy = /privacy/.test(lowerMsg);
 
   // Prioritize specific request
-  if (wantShipping && p.shipping_policy?.body) return (lang==='fr'? 'Politique de livraison:\n' : 'Shipping policy:\n') + p.shipping_policy.body.replace(/<[^>]+>/g, '').slice(0, 600);
-  if (wantReturns && p.refund_policy?.body) return (lang==='fr'? 'Politique de retour:\n' : 'Return policy:\n') + p.refund_policy.body.replace(/<[^>]+>/g, '').slice(0, 600);
-  if (wantPrivacy && p.privacy_policy?.body) return (lang==='fr'? 'Politique de confidentialité:\n' : 'Privacy policy:\n') + p.privacy_policy.body.replace(/<[^>]+>/g, '').slice(0, 600);
+  if (wantShipping && p.shipping_policy?.body) return (lang==='fr'? 'Politique de livraison:\n' : 'Shipping policy:\n') + basicSanitize(p.shipping_policy.body).slice(0, 600);
+  if (wantReturns && p.refund_policy?.body) return (lang==='fr'? 'Politique de retour:\n' : 'Return policy:\n') + basicSanitize(p.refund_policy.body).slice(0, 600);
+  if (wantPrivacy && p.privacy_policy?.body) return (lang==='fr'? 'Politique de confidentialité:\n' : 'Privacy policy:\n') + basicSanitize(p.privacy_policy.body).slice(0, 600);
 
   // Otherwise provide a short summary of all available
   add(lang==='fr'? 'Retour' : 'Returns', p.refund_policy?.body, 280);
