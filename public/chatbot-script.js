@@ -119,7 +119,7 @@ function createLauncher() {
   if (root.getElementById && root.getElementById("juns-ai-button")) return;
   const btn = document.createElement("div");
   btn.id = "juns-ai-button";
-  btn.innerHTML = `<div id="chat-circle">Chat</div>`;
+  btn.innerHTML = `<div id="chat-circle">JUN’S AI</div>`;
   root.appendChild(btn);
 
   btn.addEventListener("click", () => {
