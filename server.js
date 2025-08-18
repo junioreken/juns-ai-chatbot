@@ -157,7 +157,7 @@ app.get('/health', async (req, res) => {
         escalation: true,
         analytics: true
       },
-      shopify_configured: !!(SHOPIFY_DOMAIN && SHOPIFY_API_TOKEN),
+      shopify_configured: Boolean(shopBaseUrl && SHOPIFY_ADMIN_TOKEN),
       openai_configured: !!process.env.OPENAI_API_KEY,
       redis_configured: cache.isConnected
     };
