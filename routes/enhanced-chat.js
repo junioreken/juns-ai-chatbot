@@ -340,13 +340,29 @@ function normalizePolicies(rawPolicies, pagesArray) {
     Object.assign(out, rawPolicies);
   }
   const pages = Array.isArray(pagesArray) ? pagesArray : [];
-  const findBy = (keys) => pages.find(pg => keys.some(k => (pg.title || '').toLowerCase().includes(k)));
-  const refund = findBy(['refund', 'return']);
-  const shipping = findBy(['shipping', 'delivery']);
-  const privacy = findBy(['privacy']);
+
+  const findPage = (titleKeys = [], bodyKeys = []) => {
+    const keysLower = (arr) => arr.map(k => k.toLowerCase());
+    const tks = keysLower(titleKeys);
+    const bks = keysLower(bodyKeys);
+    return pages.find(pg => {
+      const title = (pg.title || '').toLowerCase();
+      const handle = (pg.handle || '').toLowerCase();
+      const body = (pg.body_html || '').toLowerCase();
+      const titleMatch = tks.some(k => title.includes(k) || handle.includes(k));
+      const bodyMatch = bks.length > 0 ? bks.some(k => body.includes(k)) : false;
+      return titleMatch || bodyMatch;
+    });
+  };
+
+  const refund = findPage(['refund', 'return', 'returns', 'exchange'], ['refund', 'return', 'exchange']);
+  const shipping = findPage(['shipping', 'delivery', 'ship', 'shipment'], ['shipping', 'delivery', 'courier', 'ship']);
+  const privacy = findPage(['privacy', 'confidentiality', 'data'], ['privacy', 'personal data']);
+
   if (!out.refund_policy && refund) out.refund_policy = { body: refund.body_html || '' };
   if (!out.shipping_policy && shipping) out.shipping_policy = { body: shipping.body_html || '' };
   if (!out.privacy_policy && privacy) out.privacy_policy = { body: privacy.body_html || '' };
+
   return out;
 }
 
