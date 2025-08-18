@@ -461,7 +461,7 @@ class AnalyticsService {
           count: responseTime.count || 0
         },
         uptime: metrics.uptime || {},
-        totalMessages: await cache.get('performance_metrics')?.totalMessages || 0
+        totalMessages: (await cache.get('performance_metrics'))?.totalMessages || 0
       };
       
     } catch (error) {

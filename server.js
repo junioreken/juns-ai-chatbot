@@ -1,9 +1,9 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-const bodyParser = require('body-parser');
 const { OpenAI } = require('openai');
 const axios = require('axios');
+require('dotenv').config();
 
 // Import enhanced services
 const cache = require('./services/cache');
@@ -17,15 +17,16 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(bodyParser.json());
+app.use(express.json());
 
-// Shopify API config (from Railway variables)
-const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN; // e.g., https://j1ncvb-1b.myshopify.com
-const SHOPIFY_API_TOKEN = process.env.SHOPIFY_API_TOKEN;
+// Shopify API config (supports multiple env var names for compatibility)
+const SHOPIFY_STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOPIFY_DOMAIN || process.env.SHOP_DOMAIN;
+const SHOPIFY_ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN || process.env.SHOPIFY_API_TOKEN || process.env.SHOPIFY_ADMIN_API;
+const shopBaseUrl = SHOPIFY_STORE_DOMAIN
+  ? (SHOPIFY_STORE_DOMAIN.startsWith('http') ? SHOPIFY_STORE_DOMAIN : `https://${SHOPIFY_STORE_DOMAIN}`)
+  : null;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Note: Initialize OpenAI client lazily to avoid boot-time failure if env is missing
 
 // Import enhanced routes
 const enhancedChatRouter = require('./routes/enhanced-chat');
@@ -48,7 +49,7 @@ app.post('/chat', async (req, res) => {
   try {
     // Enhanced system prompt with more context about JUN'S store
     const systemPrompt = lang === 'fr'
-      ? `Tu es JUN'S AI – un assistant mode francophone expert pour la boutique Shopify JUN'S (${SHOPIFY_DOMAIN || storeUrl}).
+      ? `Tu es JUN'S AI – un assistant mode francophone expert pour la boutique Shopify JUN'S (${shopBaseUrl || storeUrl}).
 
 Tu peux aider avec :
 - Questions sur les robes et vêtements de mode
@@ -61,7 +62,7 @@ Tu peux aider avec :
 - Aide à la navigation du site
 
 Réponds toujours en français de manière professionnelle et amicale. Si tu ne sais pas quelque chose, dis-le honnêtement et guide le client vers le support client.`
-      : `You are JUN'S AI – a fashion-savvy AI assistant for the JUN'S Shopify store (${SHOPIFY_DOMAIN || storeUrl}).
+      : `You are JUN'S AI – a fashion-savvy AI assistant for the JUN'S Shopify store (${shopBaseUrl || storeUrl}).
 
 You can help with:
 - Questions about dresses and fashion items
@@ -75,8 +76,9 @@ You can help with:
 
 Always respond professionally and warmly. If you don't know something, be honest and guide the customer to customer support.`;
 
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: message }
@@ -102,14 +104,14 @@ Always respond professionally and warmly. If you don't know something, be honest
 
 // Enhanced endpoint for getting Shopify products with better error handling
 app.get('/products', async (req, res) => {
-  if (!SHOPIFY_DOMAIN || !SHOPIFY_API_TOKEN) {
+  if (!shopBaseUrl || !SHOPIFY_ADMIN_TOKEN) {
     return res.status(400).json({ error: 'Shopify configuration missing' });
   }
 
   try {
-    const result = await axios.get(`${SHOPIFY_DOMAIN}/admin/api/2023-07/products.json`, {
+    const result = await axios.get(`${shopBaseUrl}/admin/api/2023-07/products.json`, {
       headers: {
-        'X-Shopify-Access-Token': SHOPIFY_API_TOKEN,
+        'X-Shopify-Access-Token': SHOPIFY_ADMIN_TOKEN,
         'Content-Type': 'application/json'
       }
     });
@@ -123,14 +125,14 @@ app.get('/products', async (req, res) => {
 
 // New endpoint to get store information
 app.get('/store-info', async (req, res) => {
-  if (!SHOPIFY_DOMAIN || !SHOPIFY_API_TOKEN) {
+  if (!shopBaseUrl || !SHOPIFY_ADMIN_TOKEN) {
     return res.status(400).json({ error: 'Shopify configuration missing' });
   }
 
   try {
-    const result = await axios.get(`${SHOPIFY_DOMAIN}/admin/api/2023-07/shop.json`, {
+    const result = await axios.get(`${shopBaseUrl}/admin/api/2023-07/shop.json`, {
       headers: {
-        'X-Shopify-Access-Token': SHOPIFY_API_TOKEN,
+        'X-Shopify-Access-Token': SHOPIFY_ADMIN_TOKEN,
         'Content-Type': 'application/json'
       }
     });
@@ -259,7 +261,7 @@ process.on('SIGTERM', async () => {
 
 app.listen(PORT, () => {
   console.log(`🎉 JUN'S AI Chatbot Server is live on http://localhost:${PORT}`);
-  console.log(`🏪 Shopify Domain: ${SHOPIFY_DOMAIN || 'Not configured'}`);
+  console.log(`🏪 Shopify Domain: ${shopBaseUrl || 'Not configured'}`);
   console.log(`🔑 OpenAI: ${process.env.OPENAI_API_KEY ? 'Configured' : 'Not configured'}`);
   console.log(`📊 Redis: ${cache.isConnected ? 'Connected' : 'Not connected'}`);
   console.log(`🚀 Enhanced Features: Caching, Sessions, Intent Classification, Escalation, Analytics`);

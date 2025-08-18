@@ -1,7 +1,7 @@
 const axios = require('axios');
 
-const shopifyDomain = process.env.SHOPIFY_STORE_DOMAIN;
-const accessToken = process.env.SHOPIFY_ADMIN_TOKEN;
+const shopifyDomain = process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOPIFY_DOMAIN || process.env.SHOP_DOMAIN;
+const accessToken = process.env.SHOPIFY_ADMIN_TOKEN || process.env.SHOPIFY_API_TOKEN || process.env.SHOPIFY_ADMIN_API;
 
 async function getLatestOrderByEmail(email) {
   const url = `https://${shopifyDomain}/admin/api/2023-07/orders.json?email=${email}&status=any`;
@@ -23,9 +23,10 @@ async function getProductsByTheme(theme) {
     }
   });
 
-  const filtered = response.data.products.filter(p =>
-    p.tags.some(tag => tag.toLowerCase().includes(theme.toLowerCase()))
-  );
+  const filtered = response.data.products.filter(p => {
+    const tagsArray = Array.isArray(p.tags) ? p.tags : (typeof p.tags === 'string' ? p.tags.split(',') : []);
+    return tagsArray.some(tag => String(tag).toLowerCase().includes(String(theme).toLowerCase()));
+  });
 
   return filtered.map(p => ({
     title: p.title,

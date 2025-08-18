@@ -9,10 +9,17 @@ class CacheService {
 
   async init() {
     try {
-      // Use Redis URL from environment or default to localhost
-      const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+      // Only attempt Redis connection if REDIS_URL is provided
+      const redisUrl = process.env.REDIS_URL;
+      if (!redisUrl) {
+        console.log('ℹ️ Redis is disabled (no REDIS_URL). Caching will be a no-op.');
+        this.client = null;
+        this.isConnected = false;
+        return;
+      }
+
       this.client = redis.createClient({ url: redisUrl });
-      
+
       this.client.on('error', (err) => {
         console.error('❌ Redis Client Error:', err);
         this.isConnected = false;

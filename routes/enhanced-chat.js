@@ -1,15 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { OpenAI } = require('openai');
+const axios = require('axios');
 const cache = require('../services/cache');
 const session = require('../services/session');
 const intentClassifier = require('../services/intentClassifier');
 const escalation = require('../services/escalation');
 const analytics = require('../services/analytics');
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Lazy init inside handler
 
 // Enhanced chat endpoint with all optimizations
 router.post('/enhanced-chat', async (req, res) => {
@@ -97,8 +96,9 @@ router.post('/enhanced-chat', async (req, res) => {
     const systemPrompt = buildSystemPrompt(lang, storeData, conversationContext, intentResult);
 
     // 9. Generate AI response
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: message }
@@ -190,22 +190,27 @@ async function getStoreDataWithCache() {
   }
 }
 
-// Fetch data from Shopify
+// Fetch data from Shopify using axios (compatible with Node 16+)
 async function fetchShopifyData(endpoint) {
-  const SHOP_DOMAIN = process.env.SHOPIFY_DOMAIN || "j1ncvb-1b.myshopify.com";
+  const SHOP_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOPIFY_DOMAIN || "j1ncvb-1b.myshopify.com";
   const ADMIN_API_VERSION = "2024-01";
-  
-  const url = `https://${SHOP_DOMAIN}/admin/api/${ADMIN_API_VERSION}/${endpoint}`;
-  
-  const response = await fetch(url, {
-    method: "GET",
+  const ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN || process.env.SHOPIFY_API_TOKEN || process.env.SHOPIFY_ADMIN_API;
+
+  if (!ADMIN_TOKEN) {
+    throw new Error('Shopify admin token is not configured');
+  }
+
+  const baseUrl = SHOP_DOMAIN.startsWith('http') ? SHOP_DOMAIN : `https://${SHOP_DOMAIN}`;
+  const url = `${baseUrl}/admin/api/${ADMIN_API_VERSION}/${endpoint}`;
+
+  const { data } = await axios.get(url, {
     headers: {
-      "X-Shopify-Access-Token": process.env.SHOPIFY_ADMIN_API,
-      "Content-Type": "application/json",
-    },
+      'X-Shopify-Access-Token': ADMIN_TOKEN,
+      'Content-Type': 'application/json'
+    }
   });
 
-  return response.json();
+  return data;
 }
 
 // Build comprehensive system prompt
