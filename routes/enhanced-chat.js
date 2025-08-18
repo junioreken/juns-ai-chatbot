@@ -132,6 +132,13 @@ router.post('/enhanced-chat', async (req, res) => {
         await session.addMessage(currentSessionId, sizeAdvice, false);
         await analytics.trackMessage(currentSessionId, sizeAdvice, false);
         return res.json({ reply: sizeAdvice, intent: 'size_help', confidence: 0.85, sessionId: currentSessionId, escalation: { required: false } });
+      } else {
+        const ask = lang==='fr'
+          ? "Pour vous conseiller la taille, indiquez vos mesures (taille, poids, tour de poitrine/taille/hanches). Ex: 168 cm, 60 kg, 88/70/95."
+          : "To recommend a size, please share your measurements (height, weight, bust/waist/hip). Example: 168 cm, 60 kg, 88/70/95.";
+        await session.addMessage(currentSessionId, ask, false);
+        await analytics.trackMessage(currentSessionId, ask, false);
+        return res.json({ reply: ask, intent: 'size_help', confidence: 0.7, sessionId: currentSessionId, escalation: { required: false } });
       }
     }
 
@@ -226,7 +233,7 @@ async function getStoreDataWithCache(storeUrl) {
       fetchShopifyData('price_rules.json', domain)
     ]);
 
-    const normalizedPolicies = normalizePolicies(policies);
+    const normalizedPolicies = normalizePolicies(policies, pages.pages || []);
     const storeData = {
       products: products.products || [],
       policies: normalizedPolicies,
@@ -327,19 +334,19 @@ function buildSystemPrompt(lang, storeData, conversationContext, intentResult) {
 }
 
 // Normalize policies shape from Shopify API (object or array fallback via pages)
-function normalizePolicies(raw) {
-  if (raw && (raw.refund_policy || raw.shipping_policy || raw.privacy_policy)) return raw;
+function normalizePolicies(rawPolicies, pagesArray) {
   const out = {};
-  if (raw && raw.pages) {
-    const pages = raw.pages;
-    const findBy = (keys) => pages.find(pg => keys.some(k => (pg.title || '').toLowerCase().includes(k)));
-    const refund = findBy(['refund', 'return']);
-    const shipping = findBy(['shipping', 'delivery']);
-    const privacy = findBy(['privacy']);
-    if (refund) out.refund_policy = { body: refund.body_html || '' };
-    if (shipping) out.shipping_policy = { body: shipping.body_html || '' };
-    if (privacy) out.privacy_policy = { body: privacy.body_html || '' };
+  if (rawPolicies && (rawPolicies.refund_policy || rawPolicies.shipping_policy || rawPolicies.privacy_policy)) {
+    Object.assign(out, rawPolicies);
   }
+  const pages = Array.isArray(pagesArray) ? pagesArray : [];
+  const findBy = (keys) => pages.find(pg => keys.some(k => (pg.title || '').toLowerCase().includes(k)));
+  const refund = findBy(['refund', 'return']);
+  const shipping = findBy(['shipping', 'delivery']);
+  const privacy = findBy(['privacy']);
+  if (!out.refund_policy && refund) out.refund_policy = { body: refund.body_html || '' };
+  if (!out.shipping_policy && shipping) out.shipping_policy = { body: shipping.body_html || '' };
+  if (!out.privacy_policy && privacy) out.privacy_policy = { body: privacy.body_html || '' };
   return out;
 }
 
