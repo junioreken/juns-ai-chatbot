@@ -117,7 +117,7 @@ router.post('/enhanced-chat', async (req, res) => {
 
     // 8b. Policies summary (prioritize the policy asked for)
     if (/refund|return|exchange|policy|shipping|delivery|privacy/i.test(lower)) {
-      const policiesReply = buildPoliciesReply(storeData, lang, lower);
+      const policiesReply = await buildPoliciesReplyAsync(storeData, lang, lower);
       if (policiesReply) {
         await session.addMessage(currentSessionId, policiesReply, false);
         await analytics.trackMessage(currentSessionId, policiesReply, false);
@@ -397,6 +397,44 @@ function buildPoliciesReply(storeData, lang, lowerMsg = '') {
   add(lang==='fr'? 'Confidentialité' : 'Privacy', p.privacy_policy?.body, 200);
   if (parts.length === 0) return '';
   return (lang==='fr'? 'Voici nos politiques principales:\n' : 'Here are our main store policies:\n') + parts.join('\n');
+}
+
+// Async wrapper: if requested policy missing, fetch from explicit public URLs
+async function buildPoliciesReplyAsync(storeData, lang, lowerMsg = '') {
+  let reply = buildPoliciesReply(storeData, lang, lowerMsg);
+  if (reply) return reply;
+
+  const wantShipping = /shipping|delivery/.test(lowerMsg);
+  const wantReturns = /refund|return|exchange/.test(lowerMsg);
+  const wantPrivacy = /privacy/.test(lowerMsg);
+
+  if (wantShipping) {
+    const body = await fetchPolicyFromPublicUrl('shipping');
+    if (body) return (lang==='fr'? 'Politique de livraison:\n' : 'Shipping policy:\n') + body;
+  }
+  if (wantReturns) {
+    const body = await fetchPolicyFromPublicUrl('returns');
+    if (body) return (lang==='fr'? 'Politique de retour:\n' : 'Return policy:\n') + body;
+  }
+  if (wantPrivacy) {
+    const body = await fetchPolicyFromPublicUrl('privacy');
+    if (body) return (lang==='fr'? 'Politique de confidentialité:\n' : 'Privacy policy:\n') + body;
+  }
+  return '';
+}
+
+async function fetchPolicyFromPublicUrl(kind) {
+  try {
+    const url =
+      kind === 'shipping' ? process.env.SHIPPING_POLICY_URL :
+      kind === 'returns' ? process.env.RETURNS_POLICY_URL :
+      kind === 'privacy' ? process.env.PRIVACY_POLICY_URL : '';
+    if (!url) return '';
+    const { data } = await axios.get(url, { timeout: 8000 });
+    return basicSanitize(data).slice(0, 900);
+  } catch (e) {
+    return '';
+  }
 }
 
 // Naive size advice generator from message and typical size charts
