@@ -78,6 +78,10 @@
   cursor: pointer;
 }
 
+.chat-title { display: flex; flex-direction: column; line-height: 1; }
+.chat-title .brand { font-size: 18px; font-weight: 800; letter-spacing: 0.5px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; }
+.chat-title .sub { font-size: 12px; opacity: 0.9; font-weight: 600; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+
 .chat-messages {
   flex: 1;
   padding: 16px;
@@ -129,6 +133,8 @@
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
+
+#juns-ai-chatbox.kbd-open { bottom: 50vh; }
 
 .bubble {
   max-width: 80%;
@@ -231,13 +237,7 @@
 
 /* Responsive Design */
 @media screen and (max-width: 500px) {
-  #juns-ai-chatbox {
-    width: 94vw;
-    right: 3vw;
-    left: 3vw;
-    bottom: 90px;
-    max-height: 70vh;
-  }
+  #juns-ai-chatbox { width: 96vw; right: 2vw; left: 2vw; bottom: env(safe-area-inset-bottom, 80px); max-height: 70vh; }
 
   #chat-circle {
     width: 56px;
@@ -246,9 +246,7 @@
     line-height: 56px;
   }
 
-  .chat-messages {
-    max-height: 300px;
-  }
+  .chat-messages { max-height: 58vh; }
 
   .language-buttons {
     flex-direction: column;
