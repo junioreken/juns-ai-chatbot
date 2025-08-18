@@ -160,14 +160,7 @@ router.post('/enhanced-chat', async (req, res) => {
     let reply = response.choices[0]?.message?.content || 
       (lang === 'fr' ? "Désolé, je ne sais pas comment répondre à cela." : "Sorry, I don't know how to answer that.");
 
-    // If we have products and the intent is product_inquiry/general_help, ensure at least one product mention
-    if ((intentResult.intent === 'product_inquiry' || intentResult.intent === 'general_help') && storeData.products.length > 0) {
-      const sample = storeData.products.slice(0, 3).map(p => p.title).join(', ');
-      const reinforcement = isNaN(sample.length) || sample.length === 0 ? '' : (lang === 'fr'
-        ? `\n\nExemples de produits disponibles: ${sample}`
-        : `\n\nExamples of available products: ${sample}`);
-      reply += reinforcement;
-    }
+    // Removed auto-append of product examples to keep responses concise and natural
 
     // 11. Track bot response
     await session.addMessage(currentSessionId, reply, false);
