@@ -53,7 +53,7 @@ app.post('/chat', async (req, res) => {
   try {
     // Enhanced system prompt with more context about JUN'S store
     const systemPrompt = lang === 'fr'
-      ? `Tu es JUN'S AI – un assistant mode francophone expert pour la boutique Shopify JUN'S (${shopBaseUrl || storeUrl}).
+      ? `Tu es JUN'S AI – un assistant mode francophone expert pour la boutique de robes JUN'S (${shopBaseUrl || storeUrl}).
 
 Tu peux aider avec :
 - Questions sur les robes et vêtements de mode
@@ -66,7 +66,7 @@ Tu peux aider avec :
 - Aide à la navigation du site
 
 Réponds toujours en français de manière professionnelle et amicale. Si tu ne sais pas quelque chose, dis-le honnêtement et guide le client vers le support client.`
-      : `You are JUN'S AI – a fashion-savvy AI assistant for the JUN'S Shopify store (${shopBaseUrl || storeUrl}).
+      : `You are JUN'S AI – a fashion-savvy AI assistant for the JUN'S dress store (${shopBaseUrl || storeUrl}).
 
 You can help with:
 - Questions about dresses and fashion items

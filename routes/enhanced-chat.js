@@ -279,8 +279,8 @@ function buildSystemPrompt(lang, storeData, conversationContext, intentResult) {
   
   // Base prompt
   let prompt = isFrench 
-    ? `Tu es JUN'S AI – un assistant mode francophone expert pour la boutique Shopify JUN'S.\nN'utilise que les produits, réductions, pages et politiques fournis dans le contexte ci-dessous. Si l'information n'est pas présente, dis-le et propose d'aider autrement.`
-    : `You are JUN'S AI – a fashion-savvy AI assistant for the JUN'S Shopify store.\nOnly use products, discounts, pages and policies provided in the context below. If the information is not present, say so and offer alternatives.`;
+    ? `Tu es JUN'S AI – un assistant mode francophone expert pour la boutique de robes JUN'S.\nN'utilise que les produits, réductions, pages et politiques fournis dans le contexte ci-dessous. Si l'information n'est pas présente, dis-le et propose d'aider autrement.`
+    : `You are JUN'S AI – a fashion-savvy AI assistant for the JUN'S dress store.\nOnly use products, discounts, pages and policies provided in the context below. If the information is not present, say so and offer alternatives.`;
 
   // Add intent context
   prompt += isFrench
