@@ -114,7 +114,7 @@
     const styles = `
       :host{all:initial}
       .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.34);z-index:2147483646}
-      .card{position:fixed;right:16px;bottom:16px;width:min(420px,92vw);background:#fff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.24);padding:18px;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+      .card{position:fixed;right:16px;bottom:16px;width:min(420px,92vw);background:#fff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.24);padding:18px;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;z-index:2147483647}
       h3{margin:0 0 6px 0;font-size:18px;font-weight:800}
       p{margin:0 0 12px 0;color:#444;font-size:14px}
       .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
