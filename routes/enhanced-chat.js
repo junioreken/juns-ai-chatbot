@@ -627,27 +627,48 @@ async function trackOrderFromMessage(lower) {
     const token = process.env.SHOPIFY_ADMIN_TOKEN || process.env.SHOPIFY_API_TOKEN || process.env.SHOPIFY_ADMIN_API;
     if (!shopifyDomain || !token) return null;
 
+    const formatOrder = (ord) => {
+      const name = ord.name || `#${ord.order_number}`;
+      const fin = ord.financial_status || 'unknown';
+      const ful = ord.fulfillment_status || 'unfulfilled';
+      const updated = ord.updated_at;
+      let trackingLine = '';
+      const f = (ord.fulfillments || []).find(ff => ff.tracking_number || (ff.tracking_numbers && ff.tracking_numbers.length));
+      if (f) {
+        const tn = f.tracking_number || f.tracking_numbers?.[0];
+        const tc = f.tracking_company || 'carrier';
+        const tu = f.tracking_url || (f.tracking_urls && f.tracking_urls[0]);
+        trackingLine = tn ? `\nTracking: ${tn} (${tc})${tu ? ` – ${tu}` : ''}` : '';
+      }
+      return { reply: `Order ${name}: fulfillment ${ful}, financial ${fin}. Last update: ${updated}.${trackingLine}` };
+    };
+
     // order number like #1234 or 12345
-    const numMatch = lower.match(/#?(\d{4,})/);
-    if (numMatch) {
-      const url = `https://${shopifyDomain}/admin/api/2024-01/orders.json?name=${encodeURIComponent('#'+numMatch[1])}&status=any`;
+    const numMatch = lower.match(/(?:order\s*#?|#)(\d{3,7})|\b(\d{5,8})\b/);
+    const orderNumber = numMatch ? (numMatch[1] || numMatch[2]) : null;
+    if (orderNumber) {
+      const url = `https://${shopifyDomain}/admin/api/2024-01/orders.json?name=${encodeURIComponent('#'+orderNumber)}&status=any&limit=1`;
       const { data } = await axios.get(url, { headers: { 'X-Shopify-Access-Token': token }});
       const ord = data.orders?.[0];
-      if (ord) {
-        const status = ord.fulfillment_status || ord.financial_status || 'processing';
-        return { reply: `Order ${ord.name}: current status is ${status}. Last update: ${ord.updated_at}.` };
-      }
+      if (ord) return formatOrder(ord);
     }
 
     const emailMatch = lower.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/);
     if (emailMatch) {
-      const url = `https://${shopifyDomain}/admin/api/2024-01/orders.json?email=${encodeURIComponent(emailMatch[0])}&status=any&limit=1`;
+      const url = `https://${shopifyDomain}/admin/api/2024-01/orders.json?email=${encodeURIComponent(emailMatch[0])}&order=created_at+desc&status=any&limit=1`;
       const { data } = await axios.get(url, { headers: { 'X-Shopify-Access-Token': token }});
       const ord = data.orders?.[0];
-      if (ord) {
-        const status = ord.fulfillment_status || ord.financial_status || 'processing';
-        return { reply: `Latest order ${ord.name}: current status is ${status}. Last update: ${ord.updated_at}.` };
-      }
+      if (ord) return formatOrder(ord);
+    }
+
+    // tracking number heuristic
+    const trackMatch = lower.match(/\b([A-Za-z0-9]{8,20})\b/);
+    if (trackMatch) {
+      const tn = trackMatch[1];
+      const url = `https://${shopifyDomain}/admin/api/2024-01/orders.json?status=any&limit=50&fields=id,name,order_number,updated_at,financial_status,fulfillment_status,fulfillments`;
+      const { data } = await axios.get(url, { headers: { 'X-Shopify-Access-Token': token }});
+      const ord = (data.orders || []).find(o => (o.fulfillments || []).some(ff => (ff.tracking_number && ff.tracking_number.includes(tn)) || (ff.tracking_numbers || []).some(x => x && x.includes(tn))));
+      if (ord) return formatOrder(ord);
     }
     return null;
   } catch (e) {
