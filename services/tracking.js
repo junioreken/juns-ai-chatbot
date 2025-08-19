@@ -6,7 +6,7 @@ const axios = require('axios');
  * @param {string} trackingNumber
  * @returns {Promise<{status:string, courier?:string, last_update?:string, checkpoint?:string, link:string}>}
  */
-async function trackByNumber(trackingNumber) {
+async function trackByNumber(trackingNumber, preferredSlug = '') {
   const number = String(trackingNumber).trim();
   const afterShipKey = process.env.AFTERSHIP_API_KEY;
   const universalLink = `https://t.17track.net/en#nums=${encodeURIComponent(number)}`;
@@ -19,12 +19,14 @@ async function trackByNumber(trackingNumber) {
     };
     try {
       // 0) Try to detect courier slug for better accuracy
-      let slug = '';
+      let slug = preferredSlug || '';
       try {
-        const { data: det } = await axios.post('https://api.aftership.com/v4/couriers/detect', {
-          tracking: { tracking_number: number }
-        }, { headers });
-        slug = det && det.data && det.data.couriers && det.data.couriers[0] && det.data.couriers[0].slug ? det.data.couriers[0].slug : '';
+        if (!slug) {
+          const { data: det } = await axios.post('https://api.aftership.com/v4/couriers/detect', {
+            tracking: { tracking_number: number }
+          }, { headers });
+          slug = det && det.data && det.data.couriers && det.data.couriers[0] && det.data.couriers[0].slug ? det.data.couriers[0].slug : '';
+        }
       } catch (_) {}
 
       // Create or ensure tracking exists (idempotent)
