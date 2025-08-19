@@ -96,8 +96,10 @@ router.post('/enhanced-chat', async (req, res) => {
     // 8. Shortcut handlers for well-known intents before LLM
     const lower = message.toLowerCase();
     // 8a. Order tracking: require tracking number (or detect it directly)
-    const trackingNumDirect = (message.match(/\b(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{8,24}\b/) || [])[0];
-    if (/\b(track|status|where.*order|livraison|suivi)\b/.test(lower) || trackingNumDirect) {
+    // Accept tracking numbers 8-40 chars (alphanumeric, must contain a digit)
+    const trackingNumDirect = (message.match(/\b(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{8,40}\b/) || [])[0];
+    const carrierMatch = lower.match(/\b(dhl|ups|usps|fedex|canpar|gls|purolator|royal\s?mail|evri|yodel|laposte)\b/);
+    if (/\b(track|status|where.*order|livraison|suivi)\b/.test(lower) || trackingNumDirect || carrierMatch) {
       const trackingNum = trackingNumDirect || null;
       if (!trackingNum) {
         const ask = lang==='fr'
@@ -110,7 +112,6 @@ router.post('/enhanced-chat', async (req, res) => {
       try {
         const tn = trackingNum;
         // allow specifying carrier in message: e.g., 'track fedex 123...', 'track dhl 123...'
-        const carrierMatch = lower.match(/\b(dhl|ups|usps|fedex|canpar|gls|purolator|royal\s?mail|evri|yodel|laposte)\b/);
         const preferredSlugMap = { dhl: 'dhl', ups: 'ups', usps: 'usps', fedex: 'fedex', canpar: 'canpar', gls: 'gls', purolator: 'purolator', 'royal mail': 'royal-mail', royalmail: 'royal-mail', evri: 'hermes-uk', yodel: 'yodel', laposte: 'laposte' };
         const preferredSlug = carrierMatch ? (preferredSlugMap[carrierMatch[1].replace(/\s+/g,'')] || '') : '';
         const info = await tracking.trackByNumber(tn, preferredSlug);
