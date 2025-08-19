@@ -97,11 +97,14 @@
     }
   };
   window.JunsChatAdapter = Chat;
+  // Provide unified namespace expected by other scripts
+  window.JUNS = window.JUNS || {};
+  window.JUNS.chat = Chat;
 
   // --- Stylist Popup (Shadow DOM to avoid theme CSS) ---
-  function showPopup() {
+  function showPopup(force = false) {
     if (!allowPopup) return;
-    if (ss.getItem('juns_popup_shown') === '1') return;
+    if (!force && ss.getItem('juns_popup_shown') === '1') return;
     ensureChat();
     // Mark as shown immediately to avoid any other auto-open logic while visible
     ss.setItem('juns_popup_shown','1');
@@ -156,7 +159,11 @@
     const closeAll = (doSoftOpen) => { 
       host.remove(); 
       if (hiddenBubble && bubbleEl) bubbleEl.style.display = '';
-      if (doSoftOpen) setTimeout(()=>{ if (ls.getItem('juns_dnd')==='1') return; Chat.openSoft("Hi 👋 I’m your JUN’S Stylist. Need sizing, delivery, or outfit ideas?"); }, 7000); 
+      if (doSoftOpen) setTimeout(()=>{ if (ls.getItem('juns_dnd')==='1') return; Chat.openSoft("Hi 👋 I’m your JUN’S Stylist. Need sizing, delivery, or outfit ideas?"); }, 7000);
+      // After closing, show a temporary pill to reopen the stylist (unless DND)
+      if (ls.getItem('juns_dnd')!=='1') {
+        showStylistPill();
+      }
     };
     shadow.querySelector('.backdrop').addEventListener('click', () => closeAll(true), { passive:true });
     shadow.querySelector('.close').addEventListener('click', () => closeAll(true));
@@ -169,6 +176,32 @@
       window.location.href = `/pages/event-dress-recommendations?theme=${encodeURIComponent(theme)}&budget=${encodeURIComponent(budget)}`;
     });
   }
+
+  // Mini “Quick Stylist” pill near the chat bubble to reopen the popup
+  function showStylistPill(timeoutMs = 25000) {
+    // Avoid multiple pills
+    if (document.getElementById('juns-stylist-pill-host')) return;
+    const host = document.createElement('div');
+    host.id = 'juns-stylist-pill-host';
+    host.style.cssText = 'position:fixed;right:16px;bottom:92px;z-index:2147483646;';
+    document.body.appendChild(host);
+    const shadow = host.attachShadow({ mode: 'open' });
+    const css = `
+      :host{all:initial}
+      .pill{background:#111;color:#fff;padding:10px 12px;border-radius:999px;font: 600 12px/1 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);cursor:pointer;display:flex;align-items:center;gap:8px}
+      .pill .dot{width:6px;height:6px;border-radius:50%;background:#62e;box-shadow:0 0 0 2px rgba(98,98,238,.25)}
+      .pill:hover{opacity:.95}
+    `;
+    shadow.innerHTML = `<style>${css}</style><button class="pill" aria-label="Reopen Quick Stylist"><span class="dot"></span>Quick Stylist</button>`;
+    const btn = shadow.querySelector('.pill');
+    const close = () => { if (host && host.parentNode) host.parentNode.removeChild(host); };
+    btn.addEventListener('click', () => { close(); showPopup(true); });
+    if (timeoutMs > 0) setTimeout(close, timeoutMs);
+  }
+
+  // Expose stylist open API for other scripts (e.g., chatbot quick actions)
+  window.JUNS.stylist = window.JUNS.stylist || {};
+  window.JUNS.stylist.open = () => showPopup(true);
 
   // scroll nudge
   function installScrollNudge() {

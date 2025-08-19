@@ -67,6 +67,13 @@ function initChat() {
         <textarea id="chatInput" placeholder="Type your message..." rows="1" aria-label="Type your message"></textarea>
         <button id="juns-send" aria-label="Send">➤</button>
       </div>
+      <div class="quick-actions" id="juns-quick-actions" style="display:flex;gap:8px;padding:6px 8px 10px;flex-wrap:wrap;border-top:1px solid #eee">
+        <button data-action="recommend" style="background:#f5f5f5;border:1px solid #e5e5e5;border-radius:16px;padding:6px 10px;font-size:12px;cursor:pointer">Show me recommendations</button>
+        <button data-action="sizing" style="background:#f5f5f5;border:1px solid #e5e5e5;border-radius:16px;padding:6px 10px;font-size:12px;cursor:pointer">Sizing help</button>
+        <button data-action="delivery" style="background:#f5f5f5;border:1px solid #e5e5e5;border-radius:16px;padding:6px 10px;font-size:12px;cursor:pointer">Delivery time</button>
+        <button data-action="tracking" style="background:#f5f5f5;border:1px solid #e5e5e5;border-radius:16px;padding:6px 10px;font-size:12px;cursor:pointer">Order tracking</button>
+        <button data-action="complete" style="background:#f5f5f5;border:1px solid #e5e5e5;border-radius:16px;padding:6px 10px;font-size:12px;cursor:pointer">Complete my look</button>
+      </div>
     `;
     root.appendChild(chatContainer);
   }
@@ -74,6 +81,7 @@ function initChat() {
   const input = root.getElementById("chatInput");
   const messages = root.getElementById("chatMessages");
   const sendBtn = root.getElementById("juns-send");
+  const quickActions = root.getElementById("juns-quick-actions");
 
   async function sendCurrentMessage() {
     if (!input.value.trim()) return;
@@ -127,6 +135,39 @@ function initChat() {
     }
   });
   if (sendBtn) sendBtn.addEventListener("click", sendCurrentMessage);
+  if (quickActions) {
+    quickActions.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const action = btn.getAttribute('data-action');
+      if (action === 'recommend') {
+        if (window.JUNS && window.JUNS.stylist && typeof window.JUNS.stylist.open === 'function') {
+          window.JUNS.stylist.open();
+        }
+        return;
+      }
+      if (action === 'sizing') {
+        messages.appendChild(createMessage('For the best fit, share your height, weight, and bust/waist/hip. I’ll recommend the right size.'));
+        messages.scrollTop = messages.scrollHeight;
+        return;
+      }
+      if (action === 'delivery') {
+        messages.appendChild(createMessage('Tell me your city/country and I’ll estimate delivery time.'));
+        messages.scrollTop = messages.scrollHeight;
+        return;
+      }
+      if (action === 'tracking') {
+        messages.appendChild(createMessage('Share your tracking number (e.g., 1Z..., LB..., 9400...) and I’ll check the latest status.'));
+        messages.scrollTop = messages.scrollHeight;
+        return;
+      }
+      if (action === 'complete') {
+        messages.appendChild(createMessage('I can add a matching clutch & heels. What color are you going for?'));
+        messages.scrollTop = messages.scrollHeight;
+        return;
+      }
+    });
+  }
 
   // Handle keyboard overlap on mobile
   input.addEventListener('focus', () => {
