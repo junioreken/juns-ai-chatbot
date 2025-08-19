@@ -36,16 +36,16 @@ async function trackByNumber(trackingNumber) {
         const last = t.checkpoints && t.checkpoints.slice(-1)[0];
         const checkpoint = last ? `${last.location || ''} ${last.message || ''}`.trim() : '';
         const last_update = (last && last.checkpoint_time) || t.updated_at || '';
-        return { status, courier, last_update, checkpoint, link: universalLink };
+        return { status, courier, last_update, checkpoint };
       }
     } catch (e) {
-      // fall back to universal link
-      return { status: 'Unknown', link: universalLink };
+      // fall back
+      return { status: 'Awaiting carrier update' };
     }
   }
 
   // Fallback only link
-  return { status: 'Unknown', link: universalLink };
+  return { status: 'Awaiting carrier update' };
 }
 
 module.exports = { trackByNumber };
