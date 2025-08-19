@@ -6,7 +6,7 @@
   const theme = (params.get('theme') || '').toLowerCase();
   const budget = (params.get('budget') || 'no-limit').toLowerCase();
 
-  const budgetLabel = budget==='under-80' ? 'Under $80' : budget==='under-150' ? 'Under $150' : 'No limit';
+  const budgetLabel = budget==='under-80' ? 'Under $80' : budget==='under-150' ? 'Under $150' : budget==='over-150' ? 'Over $150' : 'No limit';
   const labelEl = document.getElementById('juns-theme-label');
   if (labelEl) labelEl.textContent = `Theme: "${theme}" · Budget: ${budgetLabel}`;
 
@@ -44,6 +44,7 @@
     const price = parseFloat((p.variants && p.variants[0] && p.variants[0].price) || '0');
     if (budget==='under-80') return price <= 80;
     if (budget==='under-150') return price <= 150;
+    if (budget==='over-150') return price > 150;
     return true;
   }
 

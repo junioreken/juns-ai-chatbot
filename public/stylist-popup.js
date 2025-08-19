@@ -138,9 +138,9 @@
     </div>`;
 
     const themes = ['Wedding','Night Out','Business','Casual','Cocktail','Graduation'];
-    const budgets = ['Under $80','Under $150','No limit'];
+    const budgets = ['Under $80','Under $150','Over $150'];
     const themeSlugs = { 'Wedding':'wedding','Night Out':'night-out','Business':'office','Casual':'casual','Cocktail':'cocktail','Graduation':'graduation' };
-    const budgetSlugs = { 'Under $80':'under-80','Under $150':'under-150','No limit':'no-limit' };
+    const budgetSlugs = { 'Under $80':'under-80','Under $150':'under-150','Over $150':'over-150' };
 
     const themesWrap = shadow.getElementById('themes');
     const budgetsWrap = shadow.getElementById('budgets');
