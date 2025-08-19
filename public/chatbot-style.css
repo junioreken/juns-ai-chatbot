@@ -82,9 +82,7 @@
   cursor: pointer;
 }
 
-.chat-title { display: flex; flex-direction: column; line-height: 1; }
-.chat-title .brand { font-size: 18px; font-weight: 800; letter-spacing: 0.5px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; }
-.chat-title .sub { font-size: 12px; opacity: 0.9; font-weight: 600; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+.chat-title-line { font-size: 18px; font-weight: 800; letter-spacing: 0.5px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; }
 
 .chat-messages {
   flex: 1;
@@ -139,7 +137,7 @@
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
-#juns-ai-chatbox.kbd-open { bottom: 45vh; }
+#juns-ai-chatbox.kbd-open { left: 0; right: 0; width: 100vw; border-radius: 16px 16px 0 0; }
 
 .bubble {
   max-width: 80%;
@@ -242,7 +240,7 @@
 
 /* Responsive Design */
 @media screen and (max-width: 500px) {
-  #juns-ai-chatbox { width: 96vw; right: 2vw; left: auto; bottom: env(safe-area-inset-bottom, 80px); max-height: 70vh; }
+  #juns-ai-chatbox { width: auto; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); max-height: clamp(420px, 80dvh, calc(100dvh - 24px)); }
 
   #chat-circle {
     width: 56px;
@@ -251,7 +249,7 @@
     line-height: 56px;
   }
 
-  .chat-messages { max-height: 58vh; }
+  .chat-messages { max-height: 56dvh; }
 
   .language-buttons {
     flex-direction: column;

@@ -59,7 +59,7 @@ function initChat() {
     chatContainer.style.display = "none"; // start hidden, toggled by launcher
     chatContainer.innerHTML = `
       <div class="chat-header">
-        <div class="chat-title"><span class="brand">JUN’S</span><span class="sub">AI</span></div>
+        <div class="chat-title-line" aria-label="JUN'S AI">JUN’S AI</div>
         <button id="juns-close" aria-label="Close">×</button>
       </div>
       <div class="chat-messages chat-body" id="chatMessages"></div>
