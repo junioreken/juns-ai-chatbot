@@ -105,6 +105,8 @@
   function showPopup(force = false) {
     if (!allowPopup) return;
     if (!force && ss.getItem('juns_popup_shown') === '1') return;
+    // If already open, do nothing
+    if (document.getElementById('juns-stylist-popup-root')) return;
     ensureChat();
     // Mark as shown immediately to avoid any other auto-open logic while visible
     ss.setItem('juns_popup_shown','1');
@@ -183,7 +185,7 @@
     if (document.getElementById('juns-stylist-pill-host')) return;
     const host = document.createElement('div');
     host.id = 'juns-stylist-pill-host';
-    host.style.cssText = 'position:fixed;right:16px;bottom:92px;z-index:2147483646;';
+    host.style.cssText = 'position:fixed;right:16px;bottom:calc(92px + env(safe-area-inset-bottom, 0px));z-index:2147483646;';
     document.body.appendChild(host);
     const shadow = host.attachShadow({ mode: 'open' });
     const css = `

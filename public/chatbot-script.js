@@ -28,7 +28,8 @@ function ensureShadowRoot() {
     JUNS_ROOT.id = 'juns-ai-root';
     document.body.appendChild(JUNS_ROOT);
   }
-  JUNS_SHADOW = JUNS_ROOT.attachShadow({ mode: 'open' });
+  // Create shadow root only once
+  JUNS_SHADOW = JUNS_ROOT.shadowRoot || JUNS_ROOT.attachShadow({ mode: 'open' });
   if (ASSET_ORIGIN) {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
@@ -201,7 +202,7 @@ function createLauncher() {
     initChat();
     const box = root.getElementById("juns-ai-chatbox");
     const closeBtn = root.getElementById("juns-close");
-    if (box.style.display === "none") {
+    if (!box || box.style.display === "none") {
       box.style.display = "flex";
     } else {
       box.style.display = "none";
