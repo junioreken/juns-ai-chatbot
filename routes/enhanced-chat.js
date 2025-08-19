@@ -7,6 +7,7 @@ const session = require('../services/session');
 const intentClassifier = require('../services/intentClassifier');
 const escalation = require('../services/escalation');
 const analytics = require('../services/analytics');
+const tracking = require('../services/tracking');
 
 // Lazy init inside handler
 
@@ -94,24 +95,26 @@ router.post('/enhanced-chat', async (req, res) => {
 
     // 8. Shortcut handlers for well-known intents before LLM
     const lower = message.toLowerCase();
-    // 8a. Order tracking by email or order number pattern
-    if (/\b(track|status)\b/.test(lower)) {
-      const hasId = /#?\d{4,}/.test(lower) || /@/.test(lower);
-      if (!hasId) {
+    // 8a. Order tracking: ask for tracking number only
+    if (/\b(track|status|where.*order|livraison|suivi)\b/.test(lower)) {
+      const trackingNum = lower.match(/\b([A-Za-z0-9]{8,20})\b/);
+      if (!trackingNum) {
         const ask = lang==='fr'
-          ? "Pour suivre votre commande, pourriez-vous me donner votre numéro de commande (ex: #12345) ou l'email utilisé pour l'achat ?"
-          : "To track your order, please share your order number (e.g., #12345) or the email used at checkout.";
+          ? "Pour suivre votre commande, indiquez votre numéro de suivi (tracking) figurant dans l'email d'expédition."
+          : "To track your order, please provide your shipment tracking number from your shipping email.";
         await session.addMessage(currentSessionId, ask, false);
         await analytics.trackMessage(currentSessionId, ask, false);
-        return res.json({ reply: ask, intent: 'order_tracking', confidence: 0.7, sessionId: currentSessionId, escalation: { required: false } });
+        return res.json({ reply: ask, intent: 'order_tracking', confidence: 0.8, sessionId: currentSessionId, escalation: { required: false } });
       }
       try {
-        const track = await trackOrderFromMessage(lower);
-        if (track) {
-          await session.addMessage(currentSessionId, track.reply, false);
-          await analytics.trackMessage(currentSessionId, track.reply, false);
-          return res.json({ reply: track.reply, intent: 'order_tracking', confidence: 0.95, sessionId: currentSessionId, escalation: { required: false } });
-        }
+        const tn = trackingNum[1];
+        const info = await tracking.trackByNumber(tn);
+        const reply = lang==='fr'
+          ? `Statut: ${info.status}${info.courier ? ` | Transporteur: ${info.courier}` : ''}${info.last_update ? ` | Dernière mise à jour: ${info.last_update}` : ''}${info.checkpoint ? `\nDernier point: ${info.checkpoint}` : ''}\nSuivi complet: ${info.link}`
+          : `Status: ${info.status}${info.courier ? ` | Carrier: ${info.courier}` : ''}${info.last_update ? ` | Last update: ${info.last_update}` : ''}${info.checkpoint ? `\nLast checkpoint: ${info.checkpoint}` : ''}\nFull tracking: ${info.link}`;
+        await session.addMessage(currentSessionId, reply, false);
+        await analytics.trackMessage(currentSessionId, reply, false);
+        return res.json({ reply, intent: 'order_tracking', confidence: 0.95, sessionId: currentSessionId, escalation: { required: false } });
       } catch (_) {}
     }
 
