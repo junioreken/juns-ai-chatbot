@@ -103,6 +103,8 @@
     if (!allowPopup) return;
     if (ss.getItem('juns_popup_shown') === '1') return;
     ensureChat();
+    // Mark as shown immediately to avoid any other auto-open logic while visible
+    ss.setItem('juns_popup_shown','1');
 
     const host = document.createElement('div');
     host.id = 'juns-stylist-popup-root';
@@ -146,7 +148,16 @@
     themes.forEach(t => { const b=document.createElement('button'); b.className='chip'; b.textContent=t; b.onclick=()=>{chosenTheme=t;[...themesWrap.children].forEach(c=>c.classList.remove('active')); b.classList.add('active');}; themesWrap.appendChild(b); });
     budgets.forEach(t => { const b=document.createElement('button'); b.className='chip'; b.textContent=t; b.onclick=()=>{chosenBudget=t;[...budgetsWrap.children].forEach(c=>c.classList.remove('active')); b.classList.add('active');}; budgetsWrap.appendChild(b); });
 
-    const closeAll = (doSoftOpen) => { ss.setItem('juns_popup_shown','1'); host.remove(); if (doSoftOpen) setTimeout(()=>{ if (ls.getItem('juns_dnd')==='1') return; Chat.openSoft("Hi 👋 I’m your JUN’S Stylist. Need sizing, delivery, or outfit ideas?"); }, 7000); };
+    // Temporarily hide chat bubble while popup is displayed to avoid overlap/click interception
+    const root = getShadow();
+    let hiddenBubble = false; let bubbleEl = null;
+    if (root) { bubbleEl = root.getElementById('juns-ai-button'); if (bubbleEl) { bubbleEl.style.display = 'none'; hiddenBubble = true; } }
+
+    const closeAll = (doSoftOpen) => { 
+      host.remove(); 
+      if (hiddenBubble && bubbleEl) bubbleEl.style.display = '';
+      if (doSoftOpen) setTimeout(()=>{ if (ls.getItem('juns_dnd')==='1') return; Chat.openSoft("Hi 👋 I’m your JUN’S Stylist. Need sizing, delivery, or outfit ideas?"); }, 7000); 
+    };
     shadow.querySelector('.backdrop').addEventListener('click', () => closeAll(true), { passive:true });
     shadow.querySelector('.close').addEventListener('click', () => closeAll(true));
     shadow.getElementById('dnd').addEventListener('click', () => { ls.setItem('juns_dnd','1'); closeAll(false); });
