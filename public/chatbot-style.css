@@ -1,3 +1,6 @@
+#juns-ai-chatbox .chat-input { align-items: center; }
+.chat-input button#juns-send { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+.chat-input textarea { width: 100%; min-height: 40px; max-height: 120px; resize: none; border: 2px solid #e0e0e0; border-radius: 24px; padding: 10px 14px; }
 /* JUN'S AI Chatbot Styles */
 #juns-ai-button {
   position: fixed;
@@ -123,8 +126,8 @@
   background: linear-gradient(135deg, #000000, #333333);
   color: white;
   border: none;
-  padding: 12px 20px;
-  border-radius: 25px;
+  padding: 0 16px;
+  border-radius: 24px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -137,7 +140,7 @@
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
-#juns-ai-chatbox.kbd-open { left: 0; right: 0; width: 100vw; border-radius: 16px 16px 0 0; }
+#juns-ai-chatbox.kbd-open { border-radius: 16px 16px 0 0; }
 
 .bubble {
   max-width: 80%;
