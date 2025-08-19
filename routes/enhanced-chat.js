@@ -95,9 +95,10 @@ router.post('/enhanced-chat', async (req, res) => {
 
     // 8. Shortcut handlers for well-known intents before LLM
     const lower = message.toLowerCase();
-    // 8a. Order tracking: ask for tracking number only
-    if (/\b(track|status|where.*order|livraison|suivi)\b/.test(lower)) {
-      const trackingNum = lower.match(/\b([A-Za-z0-9]{8,20})\b/);
+    // 8a. Order tracking: require tracking number (or detect it directly)
+    const trackingNumDirect = (message.match(/\b(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{8,24}\b/) || [])[0];
+    if (/\b(track|status|where.*order|livraison|suivi)\b/.test(lower) || trackingNumDirect) {
+      const trackingNum = trackingNumDirect || null;
       if (!trackingNum) {
         const ask = lang==='fr'
           ? "Pour suivre votre commande, indiquez votre numéro de suivi (tracking) figurant dans l'email d'expédition."
@@ -107,7 +108,7 @@ router.post('/enhanced-chat', async (req, res) => {
         return res.json({ reply: ask, intent: 'order_tracking', confidence: 0.8, sessionId: currentSessionId, escalation: { required: false } });
       }
       try {
-        const tn = trackingNum[1];
+        const tn = trackingNum;
         const info = await tracking.trackByNumber(tn);
         const reply = lang==='fr'
           ? `Statut: ${info.status}${info.courier ? ` | Transporteur: ${info.courier}` : ''}${info.last_update ? ` | Dernière mise à jour: ${info.last_update}` : ''}${info.checkpoint ? `\nDernier point: ${info.checkpoint}` : ''}\nSuivi complet: ${info.link}`

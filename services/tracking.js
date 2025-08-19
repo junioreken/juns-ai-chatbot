@@ -29,13 +29,13 @@ async function trackByNumber(trackingNumber) {
 
       // Fetch current status
       const { data } = await axios.get(`https://api.aftership.com/v4/trackings/${encodeURIComponent(number)}`, { headers });
-      const t = data?.data?.tracking;
+      const t = data && data.data && data.data.tracking ? data.data.tracking : null;
       if (t) {
         const status = t.tag || t.subtag || t?.checkpoints?.slice(-1)[0]?.subtag || 'Unknown';
-        const courier = t.slug || t.courier || (t?.checkpoints?.slice(-1)[0]?.courier || '');
-        const last = t?.checkpoints?.slice(-1)[0];
+        const courier = t.slug || t.courier || ((t.checkpoints && t.checkpoints.slice(-1)[0] && t.checkpoints.slice(-1)[0].courier) || '');
+        const last = t.checkpoints && t.checkpoints.slice(-1)[0];
         const checkpoint = last ? `${last.location || ''} ${last.message || ''}`.trim() : '';
-        const last_update = last?.checkpoint_time || t?.updated_at || '';
+        const last_update = (last && last.checkpoint_time) || t.updated_at || '';
         return { status, courier, last_update, checkpoint, link: universalLink };
       }
     } catch (e) {
