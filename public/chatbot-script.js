@@ -62,9 +62,9 @@ function initChat() {
         <div class="chat-title"><span class="brand">JUN’S</span><span class="sub">AI</span></div>
         <button id="juns-close" aria-label="Close">×</button>
       </div>
-      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-messages chat-body" id="chatMessages"></div>
       <div class="chat-input">
-        <input type="text" id="chatInput" placeholder="Type your message..." />
+        <textarea id="chatInput" placeholder="Type your message..." rows="1" aria-label="Type your message"></textarea>
         <button id="juns-send" aria-label="Send">➤</button>
       </div>
     `;
@@ -113,8 +113,18 @@ function initChat() {
     }
   }
 
+  // Auto-grow textarea up to 5 lines
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    const max = 5 * 20; // approx 5 lines
+    input.style.height = Math.min(input.scrollHeight, max) + 'px';
+  });
+
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") sendCurrentMessage();
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendCurrentMessage();
+    }
   });
   if (sendBtn) sendBtn.addEventListener("click", sendCurrentMessage);
 
@@ -126,6 +136,15 @@ function initChat() {
   input.addEventListener('blur', () => {
     chatContainer.classList.remove('kbd-open');
   });
+
+  // visualViewport adjustment for iOS/Android keyboards
+  if (window.visualViewport) {
+    const handler = () => {
+      const offset = Math.max(12, (window.visualViewport.height < window.innerHeight) ? 12 : 16);
+      chatContainer.style.bottom = `calc(env(safe-area-inset-bottom, 0px) + ${offset}px)`;
+    };
+    window.visualViewport.addEventListener('resize', handler, { passive: true });
+  }
 }
 
 function createLauncher() {

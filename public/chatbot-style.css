@@ -121,7 +121,7 @@
   border-color: #000000;
 }
 
-.chat-input-container button {
+.chat-input-container button, .chat-input button#juns-send {
   background: linear-gradient(135deg, #000000, #333333);
   color: white;
   border: none;
@@ -139,7 +139,7 @@
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
-#juns-ai-chatbox.kbd-open { bottom: 50vh; }
+#juns-ai-chatbox.kbd-open { bottom: 45vh; }
 
 .bubble {
   max-width: 80%;
