@@ -15,13 +15,14 @@
     wedding:['wedding','elegant','white','lace','satin'],
     gala:['gala','evening','black-tie','luxury'],
     'night-out':['sexy','night-out','short','bold'],
+    'night out':['sexy','night-out','short','bold'],
     eid:['modest','long','embroidered','classy'],
     office:['chic','professional','neutral','office'],
     business:['chic','professional','neutral','office'],
     birthday:['fun','bright','celebration'],
     casual:['casual']
   };
-  const tags = map[theme] || [theme];
+  const tags = map[theme] || [theme, theme.replace(/-/g,' ')].filter(Boolean);
 
   const grid = document.getElementById('juns-products-grid');
   if (!grid) return;
@@ -40,17 +41,52 @@
     return out;
   }
 
+  function getLowestVariantPrice(p) {
+    const variants = Array.isArray(p.variants) ? p.variants : [];
+    if (!variants.length) return 0;
+    let lowest = Number.POSITIVE_INFINITY;
+    for (const v of variants) {
+      const val = typeof v.price === 'string' ? parseFloat(v.price.replace(/[^0-9.]/g,'')) : Number(v.price || 0);
+      if (!Number.isNaN(val) && val < lowest) lowest = val;
+    }
+    return lowest === Number.POSITIVE_INFINITY ? 0 : lowest;
+  }
+
   function priceOk(p) {
-    const price = parseFloat((p.variants && p.variants[0] && p.variants[0].price) || '0');
+    if (budget==='no-limit') return true;
+    const price = getLowestVariantPrice(p);
     if (budget==='under-80') return price <= 80;
     if (budget==='under-150') return price <= 150;
-    if (budget==='no-limit') return true;
     return true;
   }
 
+  function normalizeTags(value) {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.map(t => String(t).toLowerCase().trim());
+    return String(value).toLowerCase().split(',').map(t => t.trim()).filter(Boolean);
+  }
+
+  function sanitize(text) {
+    return String(text || '')
+      .toLowerCase()
+      .replace(/[_–—-]+/g, ' ')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   function themeOk(p) {
-    const prodTags = (p.tags || '').toLowerCase();
-    return tags.some(t => prodTags.includes(t));
+    const prodTagsArr = normalizeTags(p.tags);
+    const normalizedTags = prodTagsArr.map(sanitize);
+    const haystack = [sanitize(p.title), sanitize(p.handle), sanitize(p.body_html)].join(' ');
+    const needles = Array.from(new Set(tags.map(sanitize).filter(Boolean)));
+    for (const needle of needles) {
+      if (!needle) continue;
+      if (normalizedTags.includes(needle)) return true;
+      if (normalizedTags.some(t => t.includes(needle) || needle.includes(t))) return true;
+      if (haystack.includes(needle)) return true;
+    }
+    return false;
   }
 
   try {
@@ -62,7 +98,7 @@
     }
     const html = filtered.slice(0, 60).map(p => {
       const img = (p.images && p.images[0] && p.images[0].src) || '';
-      const price = (p.variants && p.variants[0] && p.variants[0].price) || '—';
+      const price = getLowestVariantPrice(p) || '—';
       return `<a href="/products/${p.handle}" class="j-item" style="text-decoration:none;color:inherit">
         <div class="j-card"><img src="${img}" alt="${p.title}" loading="lazy" style="width:100%;height:auto;border-radius:8px"/><div class="j-title" style="margin-top:6px;font-size:14px">${p.title}</div><div class="j-price" style="color:#111;font-weight:600">$${price}</div></div>
       </a>`;
