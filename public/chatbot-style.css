@@ -40,10 +40,10 @@
 
 #juns-ai-chatbox {
   position: fixed;
-  bottom: 110px;
-  right: 30px;
-  width: min(420px, 96vw);
-  max-height: 600px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  right: 16px;
+  width: min(420px, 92vw);
+  max-height: 70vh;
   background: white;
   border-radius: 20px;
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
@@ -90,11 +90,12 @@
   flex: 1;
   padding: 16px;
   overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: 12px;
   background: #f8f9fa;
-  max-height: 420px;
   line-height: 1.6;
 }
 
