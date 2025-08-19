@@ -18,17 +18,27 @@ async function trackByNumber(trackingNumber) {
       'content-type': 'application/json'
     };
     try {
+      // 0) Try to detect courier slug for better accuracy
+      let slug = '';
+      try {
+        const { data: det } = await axios.post('https://api.aftership.com/v4/couriers/detect', {
+          tracking: { tracking_number: number }
+        }, { headers });
+        slug = det && det.data && det.data.couriers && det.data.couriers[0] && det.data.couriers[0].slug ? det.data.couriers[0].slug : '';
+      } catch (_) {}
+
       // Create or ensure tracking exists (idempotent)
       try {
         await axios.post('https://api.aftership.com/v4/trackings', {
-          tracking: { tracking_number: number }
+          tracking: { tracking_number: number, slug: slug || undefined }
         }, { headers });
       } catch (_) {
         // ignore if already exists or any 4xx which indicates duplicate
       }
 
       // Fetch current status
-      const { data } = await axios.get(`https://api.aftership.com/v4/trackings/${encodeURIComponent(number)}`, { headers });
+      const endpoint = slug ? `https://api.aftership.com/v4/trackings/${slug}/${encodeURIComponent(number)}` : `https://api.aftership.com/v4/trackings/${encodeURIComponent(number)}`;
+      const { data } = await axios.get(endpoint, { headers });
       const t = data && data.data && data.data.tracking ? data.data.tracking : null;
       if (t) {
         const status = t.tag || t.subtag || t?.checkpoints?.slice(-1)[0]?.subtag || 'Unknown';
