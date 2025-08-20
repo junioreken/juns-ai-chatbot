@@ -645,80 +645,149 @@ function formatActiveDiscounts(storeData, lang) {
 
 // Naive size advice generator from message and typical size charts
 function buildSizeAdviceReply(storeData, message, lang) {
-  const text = message.toLowerCase();
+  const text = String(message).toLowerCase();
 
-  // 1) Parse triad B/W/H like 88/70/95
-  const triad = text.match(/(\d{2,3})\s*\/\s*(\d{2,3})\s*\/\s*(\d{2,3})/);
-  let bust = triad ? parseInt(triad[1], 10) : null;
-  let waist = triad ? parseInt(triad[2], 10) : null;
-  let hip = triad ? parseInt(triad[3], 10) : null;
+  // Helpers: unit parsing and conversion
+  const toNumber = (v) => {
+    const n = parseFloat(String(v).replace(/[^0-9.]/g, ''));
+    return Number.isNaN(n) ? null : n;
+  };
 
-  // 2) Parse height and weight in either order: number + unit or label + number
-  const heightNumFirst = text.match(/(\d{2,3})\s*(cm|centimeter|centimetre)\b/);
-  const heightLabelFirst = text.match(/\b(height|tall)\s*(?:is|=|:)?\s*(\d{2,3})\b/);
-  const weightNumFirst = text.match(/(\d{2,3})\s*(kg|kgs|kilograms|lb|lbs)\b/);
-  const weightLabelFirst = text.match(/\b(weight)\s*(?:is|=|:)?\s*(\d{2,3})\b/);
+  const parseHeight = (t) => {
+    // Formats: 170 cm, 1.65 m, 5'6, 5 ft 6 in
+    let cm = null;
+    const m = t.match(/(\d{1}\.\d{1,2})\s*m\b/);
+    if (m) cm = Math.round(parseFloat(m[1]) * 100);
+    const cmM = t.match(/(\d{2,3})\s*cm\b/);
+    if (cmM) cm = parseInt(cmM[1], 10);
+    const feetIn = t.match(/(\d)\s*(?:ft|foot|')\s*(\d{1,2})?\s*(?:in|"|inch|inches)?/);
+    if (!cm && feetIn) {
+      const ft = parseInt(feetIn[1], 10);
+      const inch = feetIn[2] ? parseInt(feetIn[2], 10) : 0;
+      cm = Math.round((ft * 12 + inch) * 2.54);
+    }
+    return cm;
+  };
 
-  const height = heightNumFirst ? parseInt(heightNumFirst[1], 10) : (heightLabelFirst ? parseInt(heightLabelFirst[2], 10) : null);
-  const weight = weightNumFirst ? parseInt(weightNumFirst[1], 10) : (weightLabelFirst ? parseInt(weightLabelFirst[2], 10) : null);
+  const parseWeight = (t) => {
+    // Formats: 60 kg, 132 lb/lbs
+    const kgM = t.match(/(\d{2,3})\s*(kg|kgs|kilograms)\b/);
+    if (kgM) return parseInt(kgM[1], 10);
+    const lbM = t.match(/(\d{2,3})\s*(lb|lbs|pounds?)\b/);
+    if (lbM) return Math.round(parseInt(lbM[1], 10) * 0.453592);
+    return null;
+  };
 
-  // 3) Also parse labeled bust/waist/hip if present
-  const bustLabel = text.match(/\b(bust|chest)\s*(?:is|=|:)?\s*(\d{2,3})\b/);
-  const waistLabel = text.match(/\b(waist)\s*(?:is|=|:)?\s*(\d{2,3})\b/);
-  const hipLabel = text.match(/\b(hip|hips)\s*(?:is|=|:)?\s*(\d{2,3})\b/);
-  if (!bust && bustLabel) bust = parseInt(bustLabel[2], 10);
-  if (!waist && waistLabel) waist = parseInt(waistLabel[2], 10);
-  if (!hip && hipLabel) hip = parseInt(hipLabel[2], 10);
+  const parseTriad = (t) => {
+    // 88/70/95 (cm) or 34-27-38 (in)
+    const tri = t.match(/(\d{2,3})\s*[\/\-]\s*(\d{2,3})\s*[\/\-]\s*(\d{2,3})/);
+    if (!tri) return { bust: null, waist: null, hip: null };
+    let b = parseInt(tri[1], 10), w = parseInt(tri[2], 10), h = parseInt(tri[3], 10);
+    // Heuristic: assume inches if typical inch ranges
+    const likelyInches = b < 60 && w < 60 && h < 60;
+    if (likelyInches) {
+      b = Math.round(b * 2.54); w = Math.round(w * 2.54); h = Math.round(h * 2.54);
+    }
+    return { bust: b, waist: w, hip: h };
+  };
 
-  // simple heuristic
-  let suggested = '';
-  if (bust && waist && hip) {
-    if (bust < 86 && waist < 66 && hip < 90) suggested = 'XS';
-    else if (bust < 92 && waist < 72 && hip < 96) suggested = 'S';
-    else if (bust < 98 && waist < 78 && hip < 102) suggested = 'M';
-    else if (bust < 104 && waist < 84 && hip < 108) suggested = 'L';
-    else suggested = 'XL or above';
-  } else if (height && weight) {
-    if (height < 162 && weight < 55) suggested = 'S';
-    else if (height < 170 && weight < 68) suggested = 'M';
-    else suggested = 'L';
-  }
+  // Parse inputs
+  let { bust, waist, hip } = parseTriad(text);
+  const labels = {
+    bust: text.match(/\b(bust|chest)\s*(?:is|=|:)?\s*(\d{2,3})\b/),
+    waist: text.match(/\b(waist)\s*(?:is|=|:)?\s*(\d{2,3})\b/),
+    hip: text.match(/\b(hip|hips)\s*(?:is|=|:)?\s*(\d{2,3})\b/)
+  };
+  if (!bust && labels.bust) bust = parseInt(labels.bust[2], 10);
+  if (!waist && labels.waist) waist = parseInt(labels.waist[2], 10);
+  if (!hip && labels.hip) hip = parseInt(labels.hip[2], 10);
 
-  if (!suggested) return '';
+  const heightCm = parseHeight(text);
+  const weightKg = parseWeight(text);
+
+  // Suggest size with layered heuristics
+  const suggestByBWH = () => {
+    if (!(bust && waist && hip)) return '';
+    if (bust < 86 && waist < 66 && hip < 90) return 'XS';
+    if (bust < 92 && waist < 72 && hip < 96) return 'S';
+    if (bust < 98 && waist < 78 && hip < 102) return 'M';
+    if (bust < 104 && waist < 84 && hip < 108) return 'L';
+    return 'XL or above';
+  };
+
+  const suggestByHW = () => {
+    if (!(heightCm && weightKg)) return '';
+    // Rough BMI-based split
+    const bmi = weightKg / Math.pow(heightCm / 100, 2);
+    if (bmi < 20.5) return 'S';
+    if (bmi < 24.5) return 'M';
+    if (bmi < 28.5) return 'L';
+    return 'XL';
+  };
+
+  const size = suggestByBWH() || suggestByHW();
+  if (!size) return '';
+
   const note = lang==='fr'
-    ? `En fonction des mesures fournies, nous recommandons la taille ${suggested}. Veuillez vérifier également le guide des tailles du produit spécifique pour confirmer.`
-    : `Based on your measurements, we recommend size ${suggested}. Please also review the specific product's size guide to confirm.`;
-  return note;
+    ? `Conseil taille: ${size}. ${heightCm ? `Taille: ${heightCm} cm. ` : ''}${weightKg ? `Poids: ${weightKg} kg. ` : ''}${bust ? `Tour de poitrine: ${bust} cm. ` : ''}${waist ? `Taille: ${waist} cm. ` : ''}${hip ? `Hanches: ${hip} cm. ` : ''}Vérifiez aussi le guide des tailles du produit.`
+    : `Size tip: ${size}. ${heightCm ? `Height: ${heightCm} cm. ` : ''}${weightKg ? `Weight: ${weightKg} kg. ` : ''}${bust ? `Bust: ${bust} cm. ` : ''}${waist ? `Waist: ${waist} cm. ` : ''}${hip ? `Hip: ${hip} cm. ` : ''}Please also check the product’s size guide.`;
+  return note.trim();
 }
 
 // Simple shipping ETA inference
 function buildShippingEtaReply(lowerMsg, lang) {
-  const cityMatch = lowerMsg.match(/to\s+([a-z\s]+)$/i);
-  const text = lowerMsg;
-  const hasToronto = /toronto|ontario|canada/i.test(text);
-  const hasUSA = /usa|united states|u\.s\./i.test(text);
-  const hasEurope = /europe|france|germany|spain|italy|uk|united kingdom/i.test(text);
+  const text = String(lowerMsg);
 
-  if (hasToronto) {
-    return lang==='fr'
-      ? "Livraison vers Toronto: 3–7 jours ouvrables après traitement (1–3 jours). Vous recevrez un suivi dès l'expédition."
-      : "Shipping to Toronto: 3–7 business days after processing (1–3 days). You'll receive tracking once shipped.";
-  }
-  if (hasUSA) {
-    return lang==='fr'
-      ? "Livraison vers les USA: 5–10 jours ouvrables après traitement (1–3 jours)."
-      : "Shipping to the USA: 5–10 business days after processing (1–3 days).";
-  }
-  if (hasEurope) {
-    return lang==='fr'
-      ? "Livraison vers l'Europe: 7–14 jours ouvrables après traitement (1–3 jours)."
-      : "Shipping to Europe: 7–14 business days after processing (1–3 days).";
+  // Extract destination phrases: "to X", "in X", "ship to X"
+  const toMatch = text.match(/\b(?:to|in|vers|pour)\s+([a-z ,'-]{2,60})/i);
+  const placeRaw = toMatch ? toMatch[1].trim() : '';
+  const place = placeRaw.replace(/[^a-z ,'-]/ig,'').toLowerCase();
+
+  const inSet = (s, arr) => arr.some(x => s.includes(x));
+  const CA = ['canada','ontario','toronto','ottawa','montreal','quebec','bc','british columbia','vancouver','alberta','calgary','edmonton','manitoba','winnipeg'];
+  const US = ['usa','united states','u.s.','new york','california','texas','florida','los angeles','chicago','nyc'];
+  const UK = ['uk','united kingdom','england','london','manchester','scotland','wales'];
+  const EU = ['france','germany','spain','italy','portugal','netherlands','belgium','austria','sweden','finland','denmark','ireland','poland','greece','europe'];
+  const AU = ['australia','sydney','melbourne','new zealand','auckland','nz'];
+  const ME = ['uae','dubai','saudi','riyadh','qatar','doha','kuwait','bahrain'];
+  const AS = ['japan','tokyo','china','shanghai','hong kong','singapore','malaysia','korea','seoul','india','mumbai','delhi','bangkok','thailand','vietnam'];
+  const AF = ['nigeria','lagos','ghana','accra','kenya','nairobi','south africa','johannesburg','egypt','cairo'];
+  const LATAM = ['mexico','brazil','argentina','chile','colombia','peru'];
+
+  const pick = () => {
+    if (place && inSet(place, CA)) return 'CA';
+    if (place && inSet(place, US)) return 'US';
+    if (place && (inSet(place, UK) || inSet(place, EU))) return 'EU';
+    if (place && inSet(place, AU)) return 'AU';
+    if (place && inSet(place, ME)) return 'ME';
+    if (place && inSet(place, AS)) return 'AS';
+    if (place && inSet(place, AF)) return 'AF';
+    if (place && inSet(place, LATAM)) return 'LATAM';
+    return '';
+  };
+
+  const zone = pick();
+  const byZone = {
+    CA: { en: 'Shipping to Canada', fr: 'Livraison vers le Canada', eta: '3–7 business days after 1–3 days processing' },
+    US: { en: 'Shipping to the USA', fr: 'Livraison vers les USA', eta: '5–10 business days after 1–3 days processing' },
+    EU: { en: 'Shipping to the UK/EU', fr: "Livraison vers le Royaume‑Uni/UE", eta: '7–14 business days after 1–3 days processing' },
+    AU: { en: 'Shipping to Australia/NZ', fr: 'Livraison vers Australie/NZ', eta: '7–15 business days after 1–3 days processing' },
+    ME: { en: 'Shipping to Middle East', fr: 'Livraison vers le Moyen‑Orient', eta: '7–15 business days after 1–3 days processing' },
+    AS: { en: 'Shipping to Asia', fr: 'Livraison vers l’Asie', eta: '7–15 business days after 1–3 days processing' },
+    AF: { en: 'Shipping to Africa', fr: 'Livraison vers l’Afrique', eta: '10–20 business days after 1–3 days processing' },
+    LATAM: { en: 'Shipping to Latin America', fr: "Livraison vers l’Amérique latine", eta: '10–20 business days after 1–3 days processing' }
+  };
+
+  if (zone) {
+    const hdr = lang==='fr' ? byZone[zone].fr : byZone[zone].en;
+    const eta = byZone[zone].eta;
+    return `${hdr}${place ? ` (${placeRaw})` : ''}: ${eta}. ${lang==='fr' ? "Suivi fourni après l’expédition." : "Tracking provided after shipment."}`;
   }
 
   // Generic
   return lang==='fr'
-    ? "Délais de livraison typiques: 3–7 jours (Canada), 5–10 jours (USA), 7–14 jours (Europe) après 1–3 jours de traitement."
-    : "Typical delivery times: 3–7 days (Canada), 5–10 days (USA), 7–14 days (Europe) after 1–3 days processing.";
+    ? "Délais typiques: Canada 3–7 j, USA 5–10 j, UK/UE 7–14 j, Australie/NZ 7–15 j (après 1–3 j de traitement)."
+    : "Typical ETAs: Canada 3–7 days, USA 5–10, UK/EU 7–14, Australia/NZ 7–15 (after 1–3 days processing).";
 }
 
 // Parse order tracking from message (email or order number)
