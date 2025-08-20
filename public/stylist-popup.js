@@ -158,10 +158,11 @@
     let hiddenBubble = false; let bubbleEl = null;
     if (root) { bubbleEl = root.getElementById('juns-ai-button'); if (bubbleEl) { bubbleEl.style.display = 'none'; hiddenBubble = true; } }
 
+    let greeted = false;
     const closeAll = (doSoftOpen) => { 
       host.remove(); 
       if (hiddenBubble && bubbleEl) bubbleEl.style.display = '';
-      if (doSoftOpen) setTimeout(()=>{ if (ls.getItem('juns_dnd')==='1') return; Chat.openSoft("Hi 👋 I’m your JUN’S Stylist. Need sizing, delivery, or outfit ideas?"); }, 7000);
+      if (doSoftOpen && !greeted) setTimeout(()=>{ if (ls.getItem('juns_dnd')==='1') return; greeted=true; Chat.openSoft("Hi 👋 I’m your JUN’S Stylist. Need sizing, delivery, or outfit ideas?"); }, 7000);
       // After closing, show a temporary pill to reopen the stylist (unless DND)
       if (ls.getItem('juns_dnd')!=='1') {
         showStylistPill();

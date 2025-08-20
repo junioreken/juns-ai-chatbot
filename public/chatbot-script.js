@@ -84,6 +84,12 @@ function initChat() {
   const sendBtn = root.getElementById("juns-send");
   const quickActions = root.getElementById("juns-quick-actions");
 
+  // Avoid attaching duplicate listeners on repeated opens
+  if (chatContainer.dataset.bound === '1') {
+    return;
+  }
+  chatContainer.dataset.bound = '1';
+
   async function sendCurrentMessage() {
     if (!input.value.trim()) return;
     const userMessage = input.value.trim();
@@ -136,7 +142,8 @@ function initChat() {
     }
   });
   if (sendBtn) sendBtn.addEventListener("click", sendCurrentMessage);
-  if (quickActions) {
+  if (quickActions && !quickActions.dataset.bound) {
+    quickActions.dataset.bound = '1';
     quickActions.addEventListener('click', (e) => {
       const btn = e.target.closest('button');
       if (!btn) return;
