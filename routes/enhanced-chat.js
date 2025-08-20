@@ -257,7 +257,7 @@ async function getStoreDataWithCache(storeUrl) {
     // Fetch fresh data if not cached
     console.log('🔄 Fetching fresh store data');
     const [products, policies, pages, discounts] = await Promise.all([
-      fetchShopifyData('products.json?limit=20', domain),
+      fetchShopifyData('products.json?limit=250', domain),
       fetchShopifyData('policies.json', domain),
       fetchShopifyData('pages.json', domain),
       fetchShopifyData('price_rules.json', domain)
@@ -578,19 +578,50 @@ function handleProductDiscovery(storeData, message, lang) {
   if (products.length === 0) return '';
 
   const text = normalize(message);
-  const colors = ['red','blue','green','black','white','ivory','cream','gold','silver','pink','purple','yellow','beige','brown','orange','navy','burgundy'];
-  const color = colors.find(c => new RegExp(`\\b${c}\\b`, 'i').test(text));
+  const colorMap = {
+    red: ['red','wine','burgundy','maroon'],
+    blue: ['blue','navy','cobalt','royal blue'],
+    green: ['green','emerald','olive','sage'],
+    black: ['black','noir'],
+    white: ['white','ivory','cream'],
+    pink: ['pink','blush','rose','fuchsia','magenta'],
+    purple: ['purple','lavender','lilac','violet'],
+    gold: ['gold','champagne'],
+    silver: ['silver','metallic'],
+    beige: ['beige','taupe','nude','sand'],
+    yellow: ['yellow','mustard'],
+    orange: ['orange','rust','terracotta'],
+    brown: ['brown','chocolate','coffee'],
+    grey: ['grey','gray','charcoal']
+  };
+  const allColorTerms = Object.values(colorMap).flat();
+  const colorFound = allColorTerms.find(c => new RegExp(`\\b${c}\\b`, 'i').test(text));
+  const canonicalColor = colorFound && Object.keys(colorMap).find(k => colorMap[k].includes(colorFound));
+
   const priceUnder = (() => {
     const m = text.match(/under\s*\$?\s*(\d{2,4})/i) || text.match(/below\s*\$?\s*(\d{2,4})/i);
     return m ? parseFloat(m[1]) : null;
   })();
-  const themeMatch = text.match(/(wedding|gala|night\s*out|office|business|casual|birthday|cocktail|graduation)/i);
+  const priceOver = (() => {
+    const m = text.match(/over\s*\$?\s*(\d{2,4})/i) || text.match(/above\s*\$?\s*(\d{2,4})/i);
+    return m ? parseFloat(m[1]) : null;
+  })();
+  const priceBetween = (() => {
+    const m = text.match(/(?:between|from)\s*\$?\s*(\d{2,4})\s*(?:and|to|-)\s*\$?\s*(\d{2,4})/i);
+    return m ? [parseFloat(m[1]), parseFloat(m[2])].sort((a,b)=>a-b) : null;
+  })();
+
+  const themeMatch = text.match(/(wedding|gala|night\s*out|office|business|casual|birthday|cocktail|graduation|beach|summer|eid)/i);
   const theme = themeMatch ? themeMatch[1].toLowerCase().replace(/\s+/g,'-') : '';
 
+  const accessoryTerms = ['accessory','accessories','bag','purse','clutch','heels','shoes','earrings','necklace','bracelet','ring','scarf','belt'];
+  const wantAccessories = accessoryTerms.some(t => new RegExp(`\\b${t}\\b`,`i`).test(text));
+
   const needles = [];
-  if (color) needles.push(color);
+  if (canonicalColor) needles.push(canonicalColor, ...(colorMap[canonicalColor]||[]));
   if (theme) needles.push(theme, theme.replace(/-/g,' '));
-  const wantRecommend = /(recommend|suggest|show|looking|ideas?|best|bestsellers?|options?)/i.test(text) || needles.length > 0;
+  if (wantAccessories) needles.push(...accessoryTerms);
+  const wantRecommend = /(recommend|suggest|show|looking|ideas?|best|bestsellers?|options?|complete my look)/i.test(text) || needles.length > 0;
   if (!wantRecommend) return '';
 
   function lowestVariantPrice(p) {
@@ -603,23 +634,46 @@ function handleProductDiscovery(storeData, message, lang) {
     return min === Number.POSITIVE_INFINITY ? 0 : min;
   }
 
-  function matchesNeedles(p) {
+  function scoreProduct(p) {
     const title = normalize(p.title);
     const handle = normalize(p.handle);
     const body = normalize(p.body_html);
     const tags = Array.isArray(p.tags) ? p.tags.map(t => normalize(t)) : String(p.tags || '').split(',').map(t => normalize(t.trim()));
     const hay = [title, handle, body, tags.join(' ')].join(' ');
-    return needles.length === 0 ? true : needles.some(n => n && hay.includes(n));
+    let score = 0;
+    if (theme) {
+      const themeNeedles = [theme, theme.replace(/-/g,' ')];
+      if (themeNeedles.some(n => n && hay.includes(n))) score += 2;
+    }
+    if (canonicalColor) {
+      const terms = colorMap[canonicalColor] || [canonicalColor];
+      if (terms.some(n => n && hay.includes(n))) score += 2;
+    }
+    if (wantAccessories) {
+      if (accessoryTerms.some(n => hay.includes(n))) score += 2; else score -= 1;
+    } else {
+      if (hay.includes('dress')) score += 1;
+    }
+    return score;
   }
 
-  let list = products.filter(p => matchesNeedles(p));
-  if (priceUnder !== null) list = list.filter(p => lowestVariantPrice(p) <= priceUnder);
-  // simple relevance: prefer items whose tags/title include color/theme first
-  list = list.sort((a,b) => {
-    const aScore = (needles.filter(n => normalize(a.title).includes(n)).length) + (needles.filter(n => String(a.tags||'').toLowerCase().includes(n)).length);
-    const bScore = (needles.filter(n => normalize(b.title).includes(n)).length) + (needles.filter(n => String(b.tags||'').toLowerCase().includes(n)).length);
-    return bScore - aScore;
-  }).slice(0, 3);
+  function pricePass(p) {
+    const price = lowestVariantPrice(p);
+    if (priceBetween) return price >= priceBetween[0] && price <= priceBetween[1];
+    if (priceUnder !== null) return price <= priceUnder;
+    if (priceOver !== null) return price >= priceOver;
+    return true;
+  }
+
+  let list = products.filter(p => pricePass(p)).map(p => ({ p, s: scoreProduct(p) }));
+  const bothRequested = Boolean(theme) && Boolean(canonicalColor);
+  if (bothRequested) {
+    const strict = list.filter(x => x.s >= 4).sort((a,b)=>b.s-a.s).slice(0,4);
+    if (strict.length >= 2) list = strict; else list = list.filter(x => x.s >= 2).sort((a,b)=>b.s-a.s).slice(0,4);
+  } else {
+    list = list.filter(x => x.s >= 1).sort((a,b)=>b.s-a.s).slice(0,4);
+  }
+  list = list.map(x => x.p);
 
   if (list.length === 0) return '';
 
