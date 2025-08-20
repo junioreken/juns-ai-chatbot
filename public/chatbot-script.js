@@ -160,27 +160,35 @@ function initChat() {
         return;
       }
       if (action === 'sizing') {
-        const details = window.prompt('Enter your measurements (e.g., 168 cm, 60 kg, 88/70/95). You can also type in feet/inches and pounds.');
-        const text = details && details.trim() ? `Sizing help: ${details}` : 'Sizing help';
-        sendMessageText(text);
+        const guidance = 'For the best fit, share your height, weight, and bust/waist/hip. Example: 168 cm, 60 kg, 88/70/95. You can also use ft/in and lb.';
+        messages.appendChild(createMessage(guidance));
+        input.placeholder = 'Type your measurements...';
+        input.focus();
+        messages.scrollTop = messages.scrollHeight;
         return;
       }
       if (action === 'delivery') {
-        const where = window.prompt('Delivery to which city/country? Example: Toronto, Canada');
-        const text = where && where.trim() ? `How long is delivery to ${where}?` : 'Delivery time information';
-        sendMessageText(text);
+        const guidance = 'Tell me your city/country and I’ll estimate delivery time. Example: Toronto, Canada';
+        messages.appendChild(createMessage(guidance));
+        input.placeholder = 'City, Country...';
+        input.focus();
+        messages.scrollTop = messages.scrollHeight;
         return;
       }
       if (action === 'tracking') {
-        const tn = window.prompt('Enter your shipment tracking number (e.g., 1Z..., LB..., 9400...). Optional: prefix with carrier name like "FedEx 123..."');
-        const text = tn && tn.trim() ? `Track: ${tn}` : 'Track my order';
-        sendMessageText(text);
+        const guidance = 'Enter your shipment tracking number (e.g., 1Z..., LB..., 9400...). You can include the carrier name (e.g., FedEx 123...).';
+        messages.appendChild(createMessage(guidance));
+        input.placeholder = 'Tracking number...';
+        input.focus();
+        messages.scrollTop = messages.scrollHeight;
         return;
       }
       if (action === 'complete') {
-        const color = window.prompt('Any color preference for accessories? (Optional)');
-        const text = color && color.trim() ? `Suggest accessories to complete my look in ${color}` : 'Suggest accessories to complete my look';
-        sendMessageText(text);
+        const guidance = 'I can add a matching clutch & heels. Any color preference?';
+        messages.appendChild(createMessage(guidance));
+        input.placeholder = 'Optional: color preference...';
+        input.focus();
+        messages.scrollTop = messages.scrollHeight;
         return;
       }
     });
