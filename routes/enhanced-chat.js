@@ -623,14 +623,22 @@ function handleProductDiscovery(storeData, message, lang) {
 
   if (list.length === 0) return '';
 
-  const lines = list.map(p => {
+  // Prefer first image if present
+  const grid = `
+<div class="product-grid">
+  ${list.map(p => {
+    const img = (p.images && p.images[0] && p.images[0].src) || '';
     const price = p.variants?.[0]?.price || lowestVariantPrice(p) || '—';
-    return `• ${p.title} — $${price} → /products/${p.handle}`;
-  }).join('\n');
+    const href = `/products/${p.handle}`;
+    return `<div class="product-card"><a href="${href}" target="_blank" rel="noopener"><img src="${img}" alt="${p.title}"/><div class="pc-title">${p.title}</div><div class="pc-price">$${price}</div></a></div>`;
+  }).join('')}
+</div>`;
 
-  return lang==='fr'
-    ? `Voici quelques suggestions${color ? ` en ${color}` : ''}${theme ? ` pour ${theme.replace(/-/g,' ')}` : ''}:\n${lines}`
-    : `Here are a few picks${color ? ` in ${color}` : ''}${theme ? ` for ${theme.replace(/-/g,' ')}` : ''}:\n${lines}`;
+  const header = lang==='fr'
+    ? `Voici quelques suggestions${color ? ` en ${color}` : ''}${theme ? ` pour ${theme.replace(/-/g,' ')}` : ''}:`
+    : `Here are a few picks${color ? ` in ${color}` : ''}${theme ? ` for ${theme.replace(/-/g,' ')}` : ''}:`;
+
+  return `${header}\n${grid}`;
 }
 
 function formatActiveDiscounts(storeData, lang) {

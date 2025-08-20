@@ -46,7 +46,13 @@ function createMessage(content, isUser = false) {
     message.textContent = content;
   } else {
     // Allow basic formatting and clickable links from trusted server responses
-    message.innerHTML = String(content).replace(/\n/g, '<br>');
+    const html = String(content);
+    // Render simple product card markup if present
+    if (html.includes('<div class="product-grid"')) {
+      message.innerHTML = html;
+    } else {
+      message.innerHTML = html.replace(/\n/g, '<br>');
+    }
   }
   return message;
 }
@@ -228,6 +234,17 @@ function createLauncher() {
     const closeBtn = root.getElementById("juns-close");
     if (!box || box.style.display === "none") {
       box.style.display = "flex";
+      // First-time greeting per browser/session
+      try {
+        const greeted = localStorage.getItem('juns_greeted');
+        const messages = root.getElementById('chatMessages');
+        if (!greeted && messages) {
+          const greeting = 'Hi 👋 I’m your JUN’S Stylist. I can help with sizing, delivery, order tracking, and outfit ideas.';
+          messages.appendChild(createMessage(greeting));
+          messages.scrollTop = messages.scrollHeight;
+          localStorage.setItem('juns_greeted','1');
+        }
+      } catch (_) {}
     } else {
       box.style.display = "none";
     }

@@ -190,6 +190,25 @@
   font-size: 13px;
 }
 
+/* Product recommendation cards inside chat */
+.product-grid { 
+  display: grid; 
+  grid-template-columns: repeat(2, 1fr); 
+  gap: 10px; 
+  margin-top: 8px; 
+}
+.product-card { 
+  background: #fff; 
+  border: 1px solid #eee; 
+  border-radius: 10px; 
+  overflow: hidden; 
+  box-shadow: 0 2px 6px rgba(0,0,0,.06);
+}
+.product-card a { color: inherit; text-decoration: none; display: block; }
+.product-card img { width: 100%; height: 140px; object-fit: cover; display: block; }
+.product-card .pc-title { font-size: 12px; font-weight: 600; padding: 8px 10px 2px; }
+.product-card .pc-price { font-size: 12px; color: #444; padding: 0 10px 10px; }
+
 .bubble.loading {
   font-style: italic;
   opacity: 0.6;
