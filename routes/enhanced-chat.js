@@ -688,9 +688,10 @@ function handleProductDiscovery(storeData, message, lang) {
   }).join('')}
 </div>`;
 
+  const displayColor = (colorFound || canonicalColor) ? (colorFound || canonicalColor) : '';
   const header = lang==='fr'
-    ? `Voici quelques suggestions${color ? ` en ${color}` : ''}${theme ? ` pour ${theme.replace(/-/g,' ')}` : ''}:`
-    : `Here are a few picks${color ? ` in ${color}` : ''}${theme ? ` for ${theme.replace(/-/g,' ')}` : ''}:`;
+    ? `Voici quelques suggestions${displayColor ? ` en ${displayColor}` : ''}${theme ? ` pour ${theme.replace(/-/g,' ')}` : ''}:`
+    : `Here are a few picks${displayColor ? ` in ${displayColor}` : ''}${theme ? ` for ${theme.replace(/-/g,' ')}` : ''}:`;
 
   return `${header}\n${grid}`;
 }
