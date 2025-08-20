@@ -161,6 +161,24 @@ router.post('/enhanced-chat', async (req, res) => {
       }
     }
 
+    // 8e. Product discovery (colors, themes, budget cues) before LLM
+    const productDiscovery = handleProductDiscovery(storeData, message, lang);
+    if (productDiscovery) {
+      await session.addMessage(currentSessionId, productDiscovery, false);
+      await analytics.trackMessage(currentSessionId, productDiscovery, false);
+      return res.json({ reply: productDiscovery, intent: 'product_inquiry', confidence: 0.85, sessionId: currentSessionId, escalation: { required: false } });
+    }
+
+    // 8f. Discounts/promos quick answer
+    if (/(discount|promo|code|coupon|sale)/i.test(lower)) {
+      const disc = formatActiveDiscounts(storeData, lang);
+      if (disc) {
+        await session.addMessage(currentSessionId, disc, false);
+        await analytics.trackMessage(currentSessionId, disc, false);
+        return res.json({ reply: disc, intent: 'general_help', confidence: 0.8, sessionId: currentSessionId, escalation: { required: false } });
+      }
+    }
+
     // 9. Build AI prompt with context
     const systemPrompt = buildSystemPrompt(lang, storeData, conversationContext, intentResult);
 
@@ -339,8 +357,8 @@ function buildSystemPrompt(lang, storeData, conversationContext, intentResult) {
 
   // Add response guidelines
   prompt += isFrench
-    ? `\n\nInstructions:\n- Réponds en français de manière professionnelle et amicale\n- Utilise le contexte de la conversation si pertinent\n- Suggère des produits spécifiques provenant de la liste ci-dessus uniquement\n- Mentionne les réductions disponibles si applicable\n- Si l'information n'est pas disponible, dis-le clairement et propose d'autres options (ex: recommandations générales)`
-    : `\n\nInstructions:\n- Respond professionally and warmly\n- Use conversation context if relevant\n- Suggest specific products strictly from the list above\n- Mention available discounts if applicable\n- If the requested info is not available, state that clearly and offer general alternatives`;
+    ? `\n\nInstructions:\n- Réponds en français de manière professionnelle et amicale\n- Utilise le contexte de la conversation si pertinent\n- Suggère des produits spécifiques provenant de la liste ci-dessus uniquement\n- Mentionne les réductions disponibles si applicable\n- Si l'information n'est pas disponible, dis-le clairement et propose des alternatives ou options générales liées aux achats (livraison, retours, tailles)\n- Évite les excuses répétitives; sois précis et concis (3–5 phrases max)`
+    : `\n\nInstructions:\n- Respond professionally and warmly\n- Use conversation context if relevant\n- Suggest specific products strictly from the list above\n- Mention available discounts if applicable\n- If info isn't available, say so clearly and offer helpful shopping guidance (shipping, returns, sizing)\n- Avoid repetitive disclaimers; be precise and concise (3–5 sentences max)`;
 
   return prompt;
 }
@@ -548,6 +566,81 @@ function getPolicyUrl(kind) {
   const base = domain.startsWith('http') ? domain : `https://${domain}`;
   const handle = kind==='shipping' ? 'shipping-policy' : kind==='returns' ? 'refund-policy' : 'privacy-policy';
   return `${base}/policies/${handle}`;
+}
+
+// ---------- Product discovery helpers ----------
+function normalize(str) {
+  return String(str || '').toLowerCase();
+}
+
+function handleProductDiscovery(storeData, message, lang) {
+  const products = Array.isArray(storeData.products) ? storeData.products : [];
+  if (products.length === 0) return '';
+
+  const text = normalize(message);
+  const colors = ['red','blue','green','black','white','ivory','cream','gold','silver','pink','purple','yellow','beige','brown','orange','navy','burgundy'];
+  const color = colors.find(c => new RegExp(`\\b${c}\\b`, 'i').test(text));
+  const priceUnder = (() => {
+    const m = text.match(/under\s*\$?\s*(\d{2,4})/i) || text.match(/below\s*\$?\s*(\d{2,4})/i);
+    return m ? parseFloat(m[1]) : null;
+  })();
+  const themeMatch = text.match(/(wedding|gala|night\s*out|office|business|casual|birthday|cocktail|graduation)/i);
+  const theme = themeMatch ? themeMatch[1].toLowerCase().replace(/\s+/g,'-') : '';
+
+  const needles = [];
+  if (color) needles.push(color);
+  if (theme) needles.push(theme, theme.replace(/-/g,' '));
+  const wantRecommend = /(recommend|suggest|show|looking|ideas?|best|bestsellers?|options?)/i.test(text) || needles.length > 0;
+  if (!wantRecommend) return '';
+
+  function lowestVariantPrice(p) {
+    const vars = Array.isArray(p.variants) ? p.variants : [];
+    let min = Number.POSITIVE_INFINITY;
+    for (const v of vars) {
+      const val = parseFloat(String(v.price || '0').replace(/[^0-9.]/g,''));
+      if (!Number.isNaN(val) && val < min) min = val;
+    }
+    return min === Number.POSITIVE_INFINITY ? 0 : min;
+  }
+
+  function matchesNeedles(p) {
+    const title = normalize(p.title);
+    const handle = normalize(p.handle);
+    const body = normalize(p.body_html);
+    const tags = Array.isArray(p.tags) ? p.tags.map(t => normalize(t)) : String(p.tags || '').split(',').map(t => normalize(t.trim()));
+    const hay = [title, handle, body, tags.join(' ')].join(' ');
+    return needles.length === 0 ? true : needles.some(n => n && hay.includes(n));
+  }
+
+  let list = products.filter(p => matchesNeedles(p));
+  if (priceUnder !== null) list = list.filter(p => lowestVariantPrice(p) <= priceUnder);
+  // simple relevance: prefer items whose tags/title include color/theme first
+  list = list.sort((a,b) => {
+    const aScore = (needles.filter(n => normalize(a.title).includes(n)).length) + (needles.filter(n => String(a.tags||'').toLowerCase().includes(n)).length);
+    const bScore = (needles.filter(n => normalize(b.title).includes(n)).length) + (needles.filter(n => String(b.tags||'').toLowerCase().includes(n)).length);
+    return bScore - aScore;
+  }).slice(0, 3);
+
+  if (list.length === 0) return '';
+
+  const lines = list.map(p => {
+    const price = p.variants?.[0]?.price || lowestVariantPrice(p) || '—';
+    return `• ${p.title} — $${price} → /products/${p.handle}`;
+  }).join('\n');
+
+  return lang==='fr'
+    ? `Voici quelques suggestions${color ? ` en ${color}` : ''}${theme ? ` pour ${theme.replace(/-/g,' ')}` : ''}:\n${lines}`
+    : `Here are a few picks${color ? ` in ${color}` : ''}${theme ? ` for ${theme.replace(/-/g,' ')}` : ''}:\n${lines}`;
+}
+
+function formatActiveDiscounts(storeData, lang) {
+  const rules = Array.isArray(storeData.discounts) ? storeData.discounts : [];
+  if (rules.length === 0) return '';
+  const items = rules.slice(0, 5).map(r => {
+    const val = r.value_type === 'percentage' ? `${String(r.value).replace('-', '')}% off` : `$${r.value} off`;
+    return `• ${r.title} — ${val}`;
+  }).join('\n');
+  return lang==='fr' ? `Promotions en cours:\n${items}` : `Current promotions:\n${items}`;
 }
 
 // Naive size advice generator from message and typical size charts
