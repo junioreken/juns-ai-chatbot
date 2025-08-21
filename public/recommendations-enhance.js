@@ -84,9 +84,19 @@
     return needles.some(n => normalizedTags.includes(n) || normalizedTags.some(t => t === n || (t.includes(n) && n.length >= 4)));
   }
 
+  function isDress(p) {
+    const t = sanitize(p.title);
+    const pt = sanitize(p.product_type || '');
+    const tagset = normalizeTags(p.tags).map(sanitize);
+    const hasDressTag = tagset.includes('dress') || tagset.includes('gown');
+    const inTitle = /\b(dress|gown)\b/.test(t);
+    const inType = /\b(dress|gown)\b/.test(pt);
+    return hasDressTag || inTitle || inType;
+  }
+
   try {
     const all = await fetchAllProducts();
-    const filtered = all.filter(p => themeOk(p) && priceOk(p));
+    const filtered = all.filter(p => isDress(p) && themeOk(p) && priceOk(p));
     if (!filtered.length) {
       grid.innerHTML = '<div style="padding:12px;color:#666">No matching dresses found.</div>';
       return;
