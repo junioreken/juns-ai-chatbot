@@ -76,18 +76,10 @@
   }
 
   function themeOk(p) {
-    const prodTagsArr = normalizeTags(p.tags);
-    const normalizedTags = prodTagsArr.map(sanitize);
-    const haystack = [sanitize(p.title), sanitize(p.handle), sanitize(p.body_html)].join(' ');
+    // STRICT: match ONLY against product tags the merchant set
+    const normalizedTags = normalizeTags(p.tags).map(sanitize);
     const needles = Array.from(new Set(tags.map(sanitize).filter(Boolean)));
-    for (const needle of needles) {
-      if (!needle) continue;
-      if (normalizedTags.includes(needle)) return true;
-      // Require tag word match or strong title match; avoid partial noise
-      if (normalizedTags.some(t => (t === needle) || (t.includes(needle) && needle.length >= 4))) return true;
-      if (haystack.includes(` ${needle} `) || haystack.startsWith(needle + ' ') || haystack.endsWith(' ' + needle) || haystack.includes('-' + needle + '-') ) return true;
-    }
-    return false;
+    return needles.some(n => normalizedTags.includes(n) || normalizedTags.some(t => t === n || (t.includes(n) && n.length >= 4)));
   }
 
   try {
