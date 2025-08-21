@@ -199,7 +199,8 @@ function initChat() {
         const box = root && root.getElementById('juns-ai-chatbox');
         if (box) box.style.display = 'none';
       } catch(_) {}
-      openLiveChat();
+      // Open Tawk after a short, calm delay
+      setTimeout(() => { openLiveChat(); }, 5000);
       return;
     }
 
