@@ -193,14 +193,15 @@ function initChat() {
       const connecting = '✅ Connecting you to our live assistant…';
       messages.appendChild(createMessage(connecting));
       messages.scrollTop = messages.scrollHeight;
-      // Close chatbot immediately for a clean handoff
-      try {
-        const root = ensureShadowRoot();
-        const box = root && root.getElementById('juns-ai-chatbox');
-        if (box) box.style.display = 'none';
-      } catch(_) {}
-      // Open Tawk after a short, calm delay
-      setTimeout(() => { openLiveChat(); }, 5000);
+      // Keep chatbot open for ~5s, then close and open Tawk
+      setTimeout(() => {
+        try {
+          const root = ensureShadowRoot();
+          const box = root && root.getElementById('juns-ai-chatbox');
+          if (box) box.style.display = 'none';
+        } catch(_) {}
+        openLiveChat();
+      }, 5000);
       return;
     }
 
