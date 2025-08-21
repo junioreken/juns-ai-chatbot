@@ -11,16 +11,16 @@
   if (labelEl) labelEl.textContent = `Theme: "${theme}" · Budget: ${budgetLabel}`;
 
   const map = {
-    beach:['beach','summer','boho'],
-    wedding:['wedding','elegant','white','lace','satin'],
-    gala:['gala','evening','black-tie','luxury'],
-    'night-out':['sexy','night-out','short','bold'],
-    'night out':['sexy','night-out','short','bold'],
-    eid:['modest','long','embroidered','classy'],
-    office:['chic','professional','neutral','office'],
-    business:['chic','professional','neutral','office'],
-    birthday:['fun','bright','celebration'],
-    casual:['casual']
+    beach:['beach','summer','boho','vacation','resort'],
+    wedding:['wedding','bride','bridal','elegant','white','ivory','lace','satin','guest'],
+    gala:['gala','evening','black-tie','luxury','formal'],
+    'night-out':['night-out','night out','party','sexy','short','bold','club'],
+    'night out':['night-out','night out','party','sexy','short','bold','club'],
+    eid:['eid','modest','long','embroidered','classy','abaya'],
+    office:['office','work','business','professional','chic','neutral'],
+    business:['office','work','business','professional','chic','neutral'],
+    birthday:['birthday','celebration','party','fun','bright'],
+    casual:['casual','day','everyday','relaxed'],
   };
   const tags = map[theme] || [theme, theme.replace(/-/g,' ')].filter(Boolean);
 
@@ -83,8 +83,9 @@
     for (const needle of needles) {
       if (!needle) continue;
       if (normalizedTags.includes(needle)) return true;
-      if (normalizedTags.some(t => t.includes(needle) || needle.includes(t))) return true;
-      if (haystack.includes(needle)) return true;
+      // Require tag word match or strong title match; avoid partial noise
+      if (normalizedTags.some(t => (t === needle) || (t.includes(needle) && needle.length >= 4))) return true;
+      if (haystack.includes(` ${needle} `) || haystack.startsWith(needle + ' ') || haystack.endsWith(' ' + needle) || haystack.includes('-' + needle + '-') ) return true;
     }
     return false;
   }
