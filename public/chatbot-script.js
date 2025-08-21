@@ -77,6 +77,14 @@ function loadTawkOnce() {
     s1.onload = function () {
       TAWK_LOADED = true;
       try { if (typeof Tawk_API !== 'undefined') { Tawk_API.hideWidget(); } } catch(_) {}
+      // Keep hidden in case the widget tries to re-appear
+      try {
+        let attempts = 0; const hideLoop = setInterval(() => {
+          attempts++;
+          try { if (window.Tawk_API) window.Tawk_API.hideWidget(); } catch(_) {}
+          if (attempts > 60) clearInterval(hideLoop);
+        }, 100);
+      } catch(_) {}
     };
     if (s0 && s0.parentNode) s0.parentNode.insertBefore(s1, s0); else document.head.appendChild(s1);
   })();
@@ -92,10 +100,17 @@ async function openLiveChat() {
   loadTawkOnce();
   // wait briefly for Tawk to be ready
   let tries = 0;
-  const maxTries = 40;
+  const maxTries = 100; // ~5s worst case
   while (tries < maxTries) {
     if (window.Tawk_API && typeof window.Tawk_API.showWidget === 'function') {
-      try { window.Tawk_API.showWidget(); window.Tawk_API.maximize(); } catch(_) {}
+      try {
+        window.Tawk_API.showWidget();
+        // Call maximize repeatedly for first second to ensure full chat view opens
+        let repeat = 0; const ensureOpen = setInterval(() => {
+          try { window.Tawk_API.maximize(); } catch(_) {}
+          if (++repeat > 20) clearInterval(ensureOpen);
+        }, 50);
+      } catch(_) {}
       // Close/minimize our chatbot UI so only Tawk remains visible
       try {
         const root = ensureShadowRoot();
@@ -139,6 +154,12 @@ function initChat() {
     const prefetch = () => loadFullStylesOnce(root);
     if ('requestIdleCallback' in window) window.requestIdleCallback(prefetch, { timeout: 1200 });
     else setTimeout(prefetch, 1200);
+  } catch(_) {}
+  // Also pre-load Tawk silently so opening is instant later
+  try {
+    const preload = () => loadTawkOnce();
+    if ('requestIdleCallback' in window) window.requestIdleCallback(preload, { timeout: 2000 });
+    else setTimeout(preload, 2000);
   } catch(_) {}
   let chatContainer = root.getElementById && root.getElementById("juns-ai-chatbox");
   if (!chatContainer) {
