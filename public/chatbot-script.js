@@ -30,13 +30,34 @@ function ensureShadowRoot() {
   }
   // Create shadow root only once
   JUNS_SHADOW = JUNS_ROOT.shadowRoot || JUNS_ROOT.attachShadow({ mode: 'open' });
-  if (ASSET_ORIGIN) {
+  // Inject minimal critical styles for the launcher bubble only (to avoid blocking page load)
+  const style = document.createElement('style');
+  style.textContent = `
+    #juns-ai-button{position:fixed;bottom:30px;right:30px;z-index:2147483647}
+    #chat-circle{width:60px;height:60px;background:linear-gradient(135deg,#000,#333);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(0,0,0,.3);cursor:pointer}
+    #chat-circle .bubble-title{display:flex;flex-direction:column;align-items:center;line-height:1.1}
+    #chat-circle .bubble-title .brand{font-weight:800;font-size:11px}
+    #chat-circle .bubble-title .sub{font-weight:700;font-size:9px;opacity:.95}
+  `;
+  JUNS_SHADOW.appendChild(style);
+  return JUNS_SHADOW;
+}
+
+// Lazy-load full stylesheet on first interaction
+function loadFullStylesOnce(root){
+  return new Promise((resolve)=>{
+    if (!ASSET_ORIGIN) return resolve();
+    if (root.getElementById && root.getElementById('juns-ai-style-link')) return resolve();
     const link = document.createElement('link');
+    link.id = 'juns-ai-style-link';
     link.rel = 'stylesheet';
     link.href = `${ASSET_ORIGIN}/chatbot-style.css`;
-    JUNS_SHADOW.appendChild(link);
-  }
-  return JUNS_SHADOW;
+    link.onload = () => resolve();
+    link.onerror = () => resolve();
+    root.appendChild(link);
+    // Fallback resolve in case onload doesn't fire
+    setTimeout(resolve, 600);
+  });
 }
 
 function createMessage(content, isUser = false) {
@@ -59,6 +80,12 @@ function createMessage(content, isUser = false) {
 
 function initChat() {
   const root = ensureShadowRoot();
+  // Idle prefetch of stylesheet so first open is fast but not blocking page load
+  try {
+    const prefetch = () => loadFullStylesOnce(root);
+    if ('requestIdleCallback' in window) window.requestIdleCallback(prefetch, { timeout: 1200 });
+    else setTimeout(prefetch, 1200);
+  } catch(_) {}
   let chatContainer = root.getElementById && root.getElementById("juns-ai-chatbox");
   if (!chatContainer) {
     chatContainer = document.createElement("div");
@@ -223,11 +250,12 @@ function createLauncher() {
   btn.innerHTML = `<div id="chat-circle"><div class="bubble-title"><span class="brand">JUN’S</span><span class="sub">AI</span></div></div>`;
   root.appendChild(btn);
 
-  btn.addEventListener("click", () => {
+  btn.addEventListener("click", async () => {
     initChat();
     const box = root.getElementById("juns-ai-chatbox");
     const closeBtn = root.getElementById("juns-close");
     if (!box || box.style.display === "none") {
+      await loadFullStylesOnce(root);
       box.style.display = "flex";
       // First-time greeting per browser/session
       try {
