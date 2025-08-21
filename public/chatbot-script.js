@@ -193,13 +193,15 @@ function initChat() {
       const connecting = '✅ Connecting you to our live assistant…';
       messages.appendChild(createMessage(connecting));
       messages.scrollTop = messages.scrollHeight;
-      // Close immediately, then open Tawk discussion widget
-      try {
-        const root = ensureShadowRoot();
-        const box = root && root.getElementById('juns-ai-chatbox');
-        if (box) box.style.display = 'none';
-      } catch(_) {}
-      openLiveChat();
+      // Wait ~4s so the user sees the confirmation, then close and open Tawk
+      setTimeout(() => {
+        try {
+          const root = ensureShadowRoot();
+          const box = root && root.getElementById('juns-ai-chatbox');
+          if (box) box.style.display = 'none';
+        } catch(_) {}
+        openLiveChat();
+      }, 4000);
       return;
     }
 
