@@ -171,6 +171,8 @@ function initChat() {
         input.placeholder = 'Type your measurements...';
         input.focus();
         messages.scrollTop = messages.scrollHeight;
+        // Also trigger backend so it immediately asks for the needed details or recommends if known
+        sendMessageText('size help');
         return;
       }
       if (action === 'delivery') {
@@ -179,6 +181,13 @@ function initChat() {
         input.placeholder = 'City, Country...';
         input.focus();
         messages.scrollTop = messages.scrollHeight;
+        // If the user already typed a location, include it; else get general ETA
+        const typed = (input.value || '').trim();
+        if (typed) {
+          sendMessageText(`shipping to ${typed}`);
+        } else {
+          sendMessageText('what is the delivery time?');
+        }
         return;
       }
       if (action === 'tracking') {
@@ -187,6 +196,8 @@ function initChat() {
         input.placeholder = 'Tracking number...';
         input.focus();
         messages.scrollTop = messages.scrollHeight;
+        // Trigger backend prompt flow to request a tracking number securely
+        sendMessageText('track order');
         return;
       }
       if (action === 'complete') {
