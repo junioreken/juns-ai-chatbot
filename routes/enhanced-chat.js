@@ -718,12 +718,22 @@ function handleProductDiscovery(storeData, message, lang) {
   }
 
   const classifyProduct = (p) => {
-    const hay = [normalize(p.title), normalize(p.handle), normalize(p.body_html), normalize(p.tags), normalize(p.product_type)].join(' ');
-    if (/(dress|gown)/i.test(hay)) return 'dress';
-    if (/(bag|purse|clutch|handbag|tote)/i.test(hay)) return 'bag';
-    if (/(heel|shoe|sandal|pump|boots)/i.test(hay)) return 'shoes';
-    if (/(jewel|necklace|earring|bracelet|ring)/i.test(hay)) return 'jewelry';
-    if (/(belt|scarf|accessor)/i.test(hay)) return 'accessory';
+    const hay = [normalize(p.title), normalize(p.handle), normalize(p.body_html), normalize(Array.isArray(p.tags) ? p.tags.join(',') : p.tags), normalize(p.product_type)].join(' ');
+    // Category regex with word boundaries to avoid "dressy", "address"
+    const re = {
+      bag: /\b(bag|purse|clutch|handbag|tote|shoulder\s*bag)\b/i,
+      shoes: /\b(heel|heels|shoe|shoes|sandal|sandals|pump|pumps|boot|boots)\b/i,
+      jewelry: /\b(jewel(?:ry|lery)?|necklace|earring(?:s)?|bracelet|ring|pendant)\b/i,
+      accessory: /\b(accessor(?:y|ies)|belt|scarf|shawl|headband|hair\s*clip)\b/i,
+      dress: /\b(dress(?:es)?|gown(?:s)?)\b/i,
+      skirt: /\b(skirt|skirts)\b/i
+    };
+    if (re.bag.test(hay)) return 'bag';
+    if (re.shoes.test(hay)) return 'shoes';
+    if (re.jewelry.test(hay)) return 'jewelry';
+    if (re.accessory.test(hay)) return 'accessory';
+    if (re.skirt.test(hay)) return 'skirt';
+    if (re.dress.test(hay)) return 'dress';
     return '';
   };
 
@@ -733,6 +743,8 @@ function handleProductDiscovery(storeData, message, lang) {
     if (desiredCategory) {
       const cat = classifyProduct(product);
       const allowed = desiredCategory === 'accessory' ? ['accessory','bag','jewelry'] : [desiredCategory];
+      // Exclude skirts when asking for dresses only
+      if (desiredCategory === 'dress' && cat === 'skirt') continue;
       if (!allowed.includes(cat)) continue;
     }
 
