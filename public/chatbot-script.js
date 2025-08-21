@@ -19,6 +19,8 @@ const { api: API_URL, origin: ASSET_ORIGIN } = getAssetInfo();
 
 let JUNS_SHADOW = null; // ShadowRoot
 let JUNS_ROOT = null; // Host element
+let TAWK_LOADING = false;
+let TAWK_LOADED = false;
 
 function ensureShadowRoot() {
   if (JUNS_SHADOW) return JUNS_SHADOW;
@@ -58,6 +60,46 @@ function loadFullStylesOnce(root){
     // Fallback resolve in case onload doesn't fire
     setTimeout(resolve, 600);
   });
+}
+
+// --- Tawk.to integration (hidden by default) ---
+function loadTawkOnce() {
+  if (TAWK_LOADING || TAWK_LOADED) return;
+  TAWK_LOADING = true;
+  (function () {
+    var s1 = document.createElement("script"),
+      s0 = document.getElementsByTagName("script")[0];
+    s1.async = true;
+    // Replace with your own Tawk property ID if needed
+    s1.src = 'https://embed.tawk.to/68a6b4e77ebce11927981c0e/1j35j5a9d';
+    s1.charset = 'UTF-8';
+    s1.setAttribute('crossorigin', '*');
+    s1.onload = function () {
+      TAWK_LOADED = true;
+      try { if (typeof Tawk_API !== 'undefined') { Tawk_API.hideWidget(); } } catch(_) {}
+    };
+    if (s0 && s0.parentNode) s0.parentNode.insertBefore(s1, s0); else document.head.appendChild(s1);
+  })();
+}
+
+async function openLiveChat() {
+  loadTawkOnce();
+  // wait briefly for Tawk to be ready
+  let tries = 0;
+  const maxTries = 40;
+  while (tries < maxTries) {
+    if (window.Tawk_API && typeof window.Tawk_API.showWidget === 'function') {
+      try { window.Tawk_API.showWidget(); window.Tawk_API.maximize(); } catch(_) {}
+      break;
+    }
+    await new Promise(r => setTimeout(r, 100));
+    tries++;
+  }
+}
+
+function isSupportIntent(text) {
+  const t = String(text).toLowerCase();
+  return /(talk|speak|chat).*(support|agent|human|person)|live\s*(agent|chat)|need\s*help\s*from\s*(someone|a\s*person)/i.test(t) || /customer\s*service/i.test(t);
 }
 
 function createMessage(content, isUser = false) {
@@ -133,6 +175,15 @@ function initChat() {
     if (!userMessage || !userMessage.trim()) return;
     messages.appendChild(createMessage(userMessage, true));
     input.value = "";
+
+    // Frontend shortcut: live agent intent -> open Tawk and return
+    if (isSupportIntent(userMessage)) {
+      const connecting = '✅ Connecting you to our live assistant…';
+      messages.appendChild(createMessage(connecting));
+      messages.scrollTop = messages.scrollHeight;
+      openLiveChat();
+      return;
+    }
 
     const loading = createMessage("...");
     messages.appendChild(loading);
