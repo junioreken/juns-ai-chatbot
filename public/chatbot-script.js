@@ -193,6 +193,12 @@ function initChat() {
       const connecting = '✅ Connecting you to our live assistant…';
       messages.appendChild(createMessage(connecting));
       messages.scrollTop = messages.scrollHeight;
+      // Close chatbot immediately for a clean handoff
+      try {
+        const root = ensureShadowRoot();
+        const box = root && root.getElementById('juns-ai-chatbox');
+        if (box) box.style.display = 'none';
+      } catch(_) {}
       openLiveChat();
       return;
     }
