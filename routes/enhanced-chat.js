@@ -614,8 +614,35 @@ function handleProductDiscovery(storeData, message, lang) {
   const themeMatch = text.match(/(wedding|gala|night\s*out|office|business|casual|birthday|cocktail|graduation|beach|summer|eid)/i);
   const theme = themeMatch ? themeMatch[1].toLowerCase().replace(/\s+/g,'-') : '';
 
-  const accessoryTerms = ['accessory','accessories','bag','purse','clutch','heels','shoes','earrings','necklace','bracelet','ring','scarf','belt'];
+  // Theme synonyms mapping for exact matching
+  const themeSynonyms = {
+    'wedding': ['wedding','bride','bridal','ceremony','elegant','white','ivory','lace','satin'],
+    'gala': ['gala','evening','black-tie','luxury','formal'],
+    'night-out': ['night out','night-out','party','sexy','bold','club','short'],
+    'office': ['office','work','business','professional','chic','neutral'],
+    'casual': ['casual','day','everyday','relaxed'],
+    'birthday': ['birthday','celebration','party','fun','bright'],
+    'cocktail': ['cocktail','semi-formal'],
+    'graduation': ['graduation','grad'],
+    'beach': ['beach','summer','vacation','boho'],
+    'summer': ['summer','beach','boho','sun'],
+    'eid': ['eid','modest','abaya','long','classy']
+  };
+
+  // Category intent parsing
+  const categoryMap = {
+    dress: ['dress','dresses','gown','gowns'],
+    bag: ['bag','bags','purse','clutch','handbag','tote'],
+    shoes: ['heel','heels','shoe','shoes','sandal','sandals','pump','pumps','boots'],
+    jewelry: ['jewelry','jewelery','necklace','earring','earrings','bracelet','ring'],
+    accessory: ['accessory','accessories','belt','scarf','hat','headband']
+  };
+  const accessoryTerms = Array.from(new Set(Object.values(categoryMap).flat()));
   const wantAccessories = accessoryTerms.some(t => new RegExp(`\\b${t}\\b`,`i`).test(text));
+  const detectedCategories = Object.entries(categoryMap)
+    .filter(([, words]) => words.some(w => new RegExp(`\\b${w}\\b`,`i`).test(text)))
+    .map(([k]) => k);
+  const desiredCategory = detectedCategories[0] || (/(accessory|accessories)/i.test(text) ? 'accessory' : '');
 
   const needles = [];
   if (canonicalColor) needles.push(canonicalColor, ...(colorMap[canonicalColor]||[]));
@@ -663,7 +690,8 @@ function handleProductDiscovery(storeData, message, lang) {
     const hay = [title, handle, body, tags.join(' ')].join(' ');
     let score = 0;
     if (theme) {
-      const themeNeedles = [theme, theme.replace(/-/g,' ')];
+      const syn = themeSynonyms[theme] || [theme];
+      const themeNeedles = syn.map(s => s.replace(/-/g,' '));
       if (themeNeedles.some(n => n && hay.includes(n))) score += 2;
     }
     if (canonicalColor) {
@@ -687,8 +715,34 @@ function handleProductDiscovery(storeData, message, lang) {
     return true;
   }
 
+  const classifyProduct = (p) => {
+    const hay = [normalize(p.title), normalize(p.handle), normalize(p.body_html), normalize(p.tags), normalize(p.product_type)].join(' ');
+    if (/(dress|gown)/i.test(hay)) return 'dress';
+    if (/(bag|purse|clutch|handbag|tote)/i.test(hay)) return 'bag';
+    if (/(heel|shoe|sandal|pump|boots)/i.test(hay)) return 'shoes';
+    if (/(jewel|necklace|earring|bracelet|ring)/i.test(hay)) return 'jewelry';
+    if (/(belt|scarf|accessor)/i.test(hay)) return 'accessory';
+    return '';
+  };
+
   const candidates = [];
   for (const product of products) {
+    // Category enforcement
+    if (desiredCategory) {
+      const cat = classifyProduct(product);
+      const allowed = desiredCategory === 'accessory' ? ['accessory','bag','jewelry'] : [desiredCategory];
+      if (!allowed.includes(cat)) continue;
+    }
+
+    // Theme enforcement (must match one of synonyms if a theme is provided)
+    if (theme) {
+      const syn = themeSynonyms[theme] || [theme];
+      const needles = syn.map(s => normalize(s));
+      const hay = [normalize(product.title), normalize(product.handle), normalize(product.body_html), normalize(product.tags)].join(' ');
+      const match = needles.some(n => n && hay.includes(n));
+      if (!match) continue;
+    }
+
     let chosenVariant = null;
     let matchedColorTerm = '';
     if (canonicalColor) {
@@ -699,8 +753,10 @@ function handleProductDiscovery(storeData, message, lang) {
         if (!pricePassValue(vPrice)) continue;
         chosenVariant = variant;
       } else {
-        // Require a real color match; skip if none
-        continue;
+        // Require a real color match at product-level at least
+        if (!matchedColorTerm) continue;
+        const minPrice = lowestVariantPrice(product);
+        if (!pricePassValue(minPrice)) continue;
       }
     } else {
       const minPrice = lowestVariantPrice(product);
