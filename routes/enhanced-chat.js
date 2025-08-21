@@ -616,15 +616,15 @@ function handleProductDiscovery(storeData, message, lang) {
 
   // Theme synonyms mapping for exact matching
   const themeSynonyms = {
-    'wedding': ['wedding','bride','bridal','ceremony','elegant','white','ivory','lace','satin'],
+    'wedding': ['wedding','bride','bridal','ceremony','elegant','white','ivory','lace','satin','guest'],
     'gala': ['gala','evening','black-tie','luxury','formal'],
     'night-out': ['night out','night-out','party','sexy','bold','club','short'],
     'office': ['office','work','business','professional','chic','neutral'],
-    'casual': ['casual','day','everyday','relaxed'],
+    'casual': ['casual','day','everyday','relaxed','cozy','soft','sweater','pullover','fleece','autumn','winter','warm','streetwear'],
     'birthday': ['birthday','celebration','party','fun','bright'],
     'cocktail': ['cocktail','semi-formal'],
     'graduation': ['graduation','grad'],
-    'beach': ['beach','summer','vacation','boho'],
+    'beach': ['beach','summer','vacation','boho','resort'],
     'summer': ['summer','beach','boho','sun'],
     'eid': ['eid','modest','abaya','long','classy']
   };

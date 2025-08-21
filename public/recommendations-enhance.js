@@ -20,7 +20,9 @@
     office:['office','work','business','professional','chic','neutral'],
     business:['office','work','business','professional','chic','neutral'],
     birthday:['birthday','celebration','party','fun','bright'],
-    casual:['casual','day','everyday','relaxed'],
+    casual:['casual','day','everyday','relaxed','cozy','soft','sweater','pullover','fleece','autumn','winter','warm','streetwear'],
+    cocktail:['cocktail','semi-formal'],
+    graduation:['graduation','grad']
   };
   const tags = map[theme] || [theme, theme.replace(/-/g,' ')].filter(Boolean);
 
