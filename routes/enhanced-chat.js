@@ -642,7 +642,9 @@ function handleProductDiscovery(storeData, message, lang) {
   const detectedCategories = Object.entries(categoryMap)
     .filter(([, words]) => words.some(w => new RegExp(`\\b${w}\\b`,`i`).test(text)))
     .map(([k]) => k);
-  const desiredCategory = detectedCategories[0] || (/(accessory|accessories)/i.test(text) ? 'accessory' : '');
+  let desiredCategory = detectedCategories[0] || (/(accessory|accessories)/i.test(text) ? 'accessory' : '');
+  // Default to dresses when user specifies only a theme (e.g., "casual", "wedding") with no category
+  if (!desiredCategory && theme) desiredCategory = 'dress';
 
   const needles = [];
   if (canonicalColor) needles.push(canonicalColor, ...(colorMap[canonicalColor]||[]));
@@ -734,13 +736,14 @@ function handleProductDiscovery(storeData, message, lang) {
       if (!allowed.includes(cat)) continue;
     }
 
-    // Theme enforcement (must match one of synonyms if a theme is provided)
+    // Theme enforcement: hard for dress/general, soft for accessory-specific queries
+    const requireHardTheme = Boolean(theme) && (!desiredCategory || desiredCategory === 'dress');
     if (theme) {
       const syn = themeSynonyms[theme] || [theme];
       const needles = syn.map(s => normalize(s));
       const hay = [normalize(product.title), normalize(product.handle), normalize(product.body_html), normalize(product.tags)].join(' ');
       const match = needles.some(n => n && hay.includes(n));
-      if (!match) continue;
+      if (requireHardTheme && !match) continue;
     }
 
     let chosenVariant = null;
@@ -768,11 +771,12 @@ function handleProductDiscovery(storeData, message, lang) {
 
   const bothRequested = Boolean(theme) && Boolean(canonicalColor);
   let list = candidates.sort((a,b)=>b.score-a.score);
+  const limit = desiredCategory && desiredCategory !== 'dress' ? 8 : 4;
   if (bothRequested) {
-    const strict = list.filter(x => x.score >= 5).slice(0,4);
-    list = strict.length >= 2 ? strict : list.filter(x => x.score >= 2).slice(0,4);
+    const strict = list.filter(x => x.score >= 5).slice(0, limit);
+    list = strict.length >= 2 ? strict : list.filter(x => x.score >= 1).slice(0, limit);
   } else {
-    list = list.filter(x => x.score >= 1).slice(0,4);
+    list = list.filter(x => x.score >= 0).slice(0, limit);
   }
 
   if (list.length === 0) return '';
@@ -793,9 +797,10 @@ function handleProductDiscovery(storeData, message, lang) {
 </div>`;
 
   const displayColor = (colorFound || canonicalColor) ? (colorFound || canonicalColor) : '';
+  const catLabel = desiredCategory && desiredCategory !== 'dress' ? ` ${desiredCategory}` : '';
   const header = lang==='fr'
-    ? `Voici quelques suggestions${displayColor ? ` en ${displayColor}` : ''}${theme ? ` pour ${theme.replace(/-/g,' ')}` : ''}:`
-    : `Here are a few picks${displayColor ? ` in ${displayColor}` : ''}${theme ? ` for ${theme.replace(/-/g,' ')}` : ''}:`;
+    ? `Voici quelques${catLabel ? ` ${catLabel}` : ''} suggestions${displayColor ? ` en ${displayColor}` : ''}${theme ? ` pour ${theme.replace(/-/g,' ')}` : ''}:`
+    : `Here are a few${catLabel ? ` ${catLabel}` : ''} picks${displayColor ? ` in ${displayColor}` : ''}${theme ? ` for ${theme.replace(/-/g,' ')}` : ''}:`;
 
   return `${header}\n${grid}`;
 }
