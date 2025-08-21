@@ -83,6 +83,12 @@ function loadTawkOnce() {
 }
 
 async function openLiveChat() {
+  // If theme provided helper, use it (will also close chatbot)
+  if (window.JUNS && window.JUNS.support && typeof window.JUNS.support.open === 'function') {
+    window.JUNS.support.open();
+    return;
+  }
+  // Otherwise load Tawk ourselves
   loadTawkOnce();
   // wait briefly for Tawk to be ready
   let tries = 0;
@@ -90,6 +96,12 @@ async function openLiveChat() {
   while (tries < maxTries) {
     if (window.Tawk_API && typeof window.Tawk_API.showWidget === 'function') {
       try { window.Tawk_API.showWidget(); window.Tawk_API.maximize(); } catch(_) {}
+      // Close/minimize our chatbot UI so only Tawk remains visible
+      try {
+        const root = ensureShadowRoot();
+        const box = root && root.getElementById('juns-ai-chatbox');
+        if (box) box.style.display = 'none';
+      } catch(_) {}
       break;
     }
     await new Promise(r => setTimeout(r, 100));
