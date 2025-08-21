@@ -4,8 +4,8 @@ const cache = require('./cache');
 class EscalationService {
   constructor() {
     this.escalationThresholds = {
-      confidence: 0.6, // Escalate if AI confidence is below this
-      complexity: 0.7, // Escalate if query complexity is above this
+      confidence: 0.4, // Softer threshold; don't escalate normal queries
+      complexity: 0.75, // Only treat as complex when clearly high
       attempts: 3,     // Escalate after this many failed attempts
       sentiment: 0.3   // Escalate if customer sentiment is negative
     };
@@ -32,14 +32,35 @@ class EscalationService {
   // Determine if escalation is needed
   async shouldEscalate(message, intent, confidence, sessionId) {
     try {
+      const attemptsCount = await this.getFailedAttempts(sessionId);
+      const lowConfidence = confidence < this.escalationThresholds.confidence;
+      const veryLowConfidence = confidence < 0.25;
+      const highComplexity = this.calculateComplexity(message) > this.escalationThresholds.complexity;
+      const negativeSentiment = this.analyzeSentiment(message) < this.escalationThresholds.sentiment;
+
       const escalationFactors = {
-        confidence: confidence < this.escalationThresholds.confidence,
-        complexity: this.calculateComplexity(message) > this.escalationThresholds.complexity,
-        attempts: await this.getFailedAttempts(sessionId) >= this.escalationThresholds.attempts,
-        sentiment: this.analyzeSentiment(message) < this.escalationThresholds.sentiment
+        confidence: lowConfidence,
+        complexity: highComplexity,
+        attempts: attemptsCount >= this.escalationThresholds.attempts,
+        sentiment: negativeSentiment
       };
 
-      const shouldEscalate = Object.values(escalationFactors).some(factor => factor);
+      // Guardrails: don't escalate friendly/simple queries immediately
+      const softIntents = new Set(['greeting', 'general_help', 'product_inquiry', 'size_help', 'shipping_info', 'return_exchange']);
+      if (softIntents.has(intent)) {
+        // Only escalate for these intents if there is negative sentiment or repeated failures
+        if (!negativeSentiment && attemptsCount < 1) {
+          return { shouldEscalate: false };
+        }
+      }
+
+      // Final decision: escalate only for strong signals
+      const shouldEscalate = (
+        negativeSentiment ||
+        (attemptsCount >= this.escalationThresholds.attempts) ||
+        veryLowConfidence ||
+        (lowConfidence && highComplexity && attemptsCount >= 1)
+      );
       
       if (shouldEscalate) {
         const reason = this.determineEscalationReason(escalationFactors);
