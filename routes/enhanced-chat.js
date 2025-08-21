@@ -634,7 +634,28 @@ function handleProductDiscovery(storeData, message, lang) {
     return min === Number.POSITIVE_INFINITY ? 0 : min;
   }
 
-  function scoreProduct(p) {
+  function findColorOptionIndex(product) {
+    const options = Array.isArray(product.options) ? product.options : [];
+    return options.findIndex(opt => /color|colour|couleur/i.test(String(opt?.name || '')));
+  }
+
+  function matchVariantByColor(product, canonicalColorKey) {
+    if (!canonicalColorKey) return { variant: null, matchedTerm: '' };
+    const synonyms = colorMap[canonicalColorKey] || [canonicalColorKey];
+    const colorIdx = findColorOptionIndex(product);
+    const variants = Array.isArray(product.variants) ? product.variants : [];
+    for (const variant of variants) {
+      const value = colorIdx >= 0 ? String(variant[`option${colorIdx + 1}`] || '').toLowerCase() : String(variant.title || '').toLowerCase();
+      const hit = synonyms.find(term => value.includes(term));
+      if (hit) return { variant, matchedTerm: hit };
+    }
+    // Fallback: product-level
+    const hay = [normalize(product.title), normalize(product.handle), normalize(product.body_html), normalize(product.tags)].join(' ');
+    const hit = synonyms.find(term => hay.includes(term));
+    return { variant: null, matchedTerm: hit || '' };
+  }
+
+  function scoreProduct(p, variantColorHit) {
     const title = normalize(p.title);
     const handle = normalize(p.handle);
     const body = normalize(p.body_html);
@@ -646,8 +667,10 @@ function handleProductDiscovery(storeData, message, lang) {
       if (themeNeedles.some(n => n && hay.includes(n))) score += 2;
     }
     if (canonicalColor) {
-      const terms = colorMap[canonicalColor] || [canonicalColor];
-      if (terms.some(n => n && hay.includes(n))) score += 2;
+      if (variantColorHit) score += 3; else {
+        const terms = colorMap[canonicalColor] || [canonicalColor];
+        if (terms.some(n => n && hay.includes(n))) score += 1;
+      }
     }
     if (wantAccessories) {
       if (accessoryTerms.some(n => hay.includes(n))) score += 2; else score -= 1;
@@ -657,34 +680,59 @@ function handleProductDiscovery(storeData, message, lang) {
     return score;
   }
 
-  function pricePass(p) {
-    const price = lowestVariantPrice(p);
-    if (priceBetween) return price >= priceBetween[0] && price <= priceBetween[1];
-    if (priceUnder !== null) return price <= priceUnder;
-    if (priceOver !== null) return price >= priceOver;
+  function pricePassValue(value) {
+    if (priceBetween) return value >= priceBetween[0] && value <= priceBetween[1];
+    if (priceUnder !== null) return value <= priceUnder;
+    if (priceOver !== null) return value >= priceOver;
     return true;
   }
 
-  let list = products.filter(p => pricePass(p)).map(p => ({ p, s: scoreProduct(p) }));
-  const bothRequested = Boolean(theme) && Boolean(canonicalColor);
-  if (bothRequested) {
-    const strict = list.filter(x => x.s >= 4).sort((a,b)=>b.s-a.s).slice(0,4);
-    if (strict.length >= 2) list = strict; else list = list.filter(x => x.s >= 2).sort((a,b)=>b.s-a.s).slice(0,4);
-  } else {
-    list = list.filter(x => x.s >= 1).sort((a,b)=>b.s-a.s).slice(0,4);
+  const candidates = [];
+  for (const product of products) {
+    let chosenVariant = null;
+    let matchedColorTerm = '';
+    if (canonicalColor) {
+      const { variant, matchedTerm } = matchVariantByColor(product, canonicalColor);
+      matchedColorTerm = matchedTerm;
+      if (variant) {
+        const vPrice = parseFloat(String(variant.price || '0').replace(/[^0-9.]/g,'')) || 0;
+        if (!pricePassValue(vPrice)) continue;
+        chosenVariant = variant;
+      } else {
+        // Require a real color match; skip if none
+        continue;
+      }
+    } else {
+      const minPrice = lowestVariantPrice(product);
+      if (!pricePassValue(minPrice)) continue;
+    }
+    const s = scoreProduct(product, Boolean(chosenVariant));
+    candidates.push({ product, score: s, chosenVariant, matchedColorTerm });
   }
-  list = list.map(x => x.p);
+
+  const bothRequested = Boolean(theme) && Boolean(canonicalColor);
+  let list = candidates.sort((a,b)=>b.score-a.score);
+  if (bothRequested) {
+    const strict = list.filter(x => x.score >= 5).slice(0,4);
+    list = strict.length >= 2 ? strict : list.filter(x => x.score >= 2).slice(0,4);
+  } else {
+    list = list.filter(x => x.score >= 1).slice(0,4);
+  }
 
   if (list.length === 0) return '';
 
   // Prefer first image if present
   const grid = `
 <div class="product-grid">
-  ${list.map(p => {
-    const img = (p.images && p.images[0] && p.images[0].src) || '';
-    const price = p.variants?.[0]?.price || lowestVariantPrice(p) || '—';
-    const href = `/products/${p.handle}`;
-    return `<div class="product-card"><a href="${href}" target="_blank" rel="noopener"><img src="${img}" alt="${p.title}"/><div class="pc-title">${p.title}</div><div class="pc-price">$${price}</div></a></div>`;
+  ${list.map(({ product, chosenVariant }) => {
+    let img = (product.images && product.images[0] && product.images[0].src) || '';
+    if (chosenVariant && chosenVariant.image_id && Array.isArray(product.images)) {
+      const hit = product.images.find(im => String(im.id) === String(chosenVariant.image_id));
+      if (hit && hit.src) img = hit.src;
+    }
+    const price = chosenVariant ? chosenVariant.price : (product.variants?.[0]?.price || lowestVariantPrice(product) || '—');
+    const href = `/products/${product.handle}`;
+    return `<div class="product-card"><a href="${href}" target="_blank" rel="noopener"><img src="${img}" alt="${product.title}"/><div class="pc-title">${product.title}</div><div class="pc-price">$${price}</div></a></div>`;
   }).join('')}
 </div>`;
 
