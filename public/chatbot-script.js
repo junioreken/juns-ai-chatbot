@@ -166,46 +166,30 @@ function initChat() {
         return;
       }
       if (action === 'sizing') {
-        const guidance = 'For the best fit, share your height, weight, and bust/waist/hip. Example: 168 cm, 60 kg, 88/70/95. You can also use ft/in and lb.';
-        messages.appendChild(createMessage(guidance));
         input.placeholder = 'Type your measurements...';
         input.focus();
-        messages.scrollTop = messages.scrollHeight;
-        // Also trigger backend so it immediately asks for the needed details or recommends if known
+        // Trigger backend only (no duplicate guidance bubble)
         sendMessageText('size help');
         return;
       }
       if (action === 'delivery') {
-        const guidance = 'Tell me your city/country and I’ll estimate delivery time. Example: Toronto, Canada';
-        messages.appendChild(createMessage(guidance));
         input.placeholder = 'City, Country...';
         input.focus();
-        messages.scrollTop = messages.scrollHeight;
-        // If the user already typed a location, include it; else get general ETA
         const typed = (input.value || '').trim();
-        if (typed) {
-          sendMessageText(`shipping to ${typed}`);
-        } else {
-          sendMessageText('what is the delivery time?');
-        }
+        sendMessageText(typed ? `shipping to ${typed}` : 'delivery time');
         return;
       }
       if (action === 'tracking') {
-        const guidance = 'Enter your shipment tracking number (e.g., 1Z..., LB..., 9400...). You can include the carrier name (e.g., FedEx 123...).';
-        messages.appendChild(createMessage(guidance));
         input.placeholder = 'Tracking number...';
         input.focus();
-        messages.scrollTop = messages.scrollHeight;
-        // Trigger backend prompt flow to request a tracking number securely
+        // Trigger backend prompt flow (no duplicate instructions)
         sendMessageText('track order');
         return;
       }
       if (action === 'complete') {
-        const guidance = 'I can add a matching clutch & heels. Any color preference?';
-        messages.appendChild(createMessage(guidance));
         input.placeholder = 'Optional: color preference...';
         input.focus();
-        messages.scrollTop = messages.scrollHeight;
+        sendMessageText('complete my look');
         return;
       }
     });
