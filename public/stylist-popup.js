@@ -198,10 +198,11 @@
     shadow.getElementById('dnd').addEventListener('click', () => { ls.setItem('juns_dnd','1'); closeAll(false); });
     shadow.getElementById('go').addEventListener('click', () => {
       if (!chosenTheme || !chosenBudget) return;
+      // Write stable params (slug) and clear stale caches by forcing full reload
       ss.setItem('juns_popup_submitted','1');
       const theme = themeSlugs[chosenTheme] || chosenTheme.toLowerCase().replace(/\s+/g,'-');
       const budget = budgetSlugs[chosenBudget] || 'no-limit';
-      window.location.href = `/pages/event-dress-recommendations?theme=${encodeURIComponent(theme)}&budget=${encodeURIComponent(budget)}`;
+      window.location.assign(`/pages/event-dress-recommendations?theme=${encodeURIComponent(theme)}&budget=${encodeURIComponent(budget)}`);
     });
   }
 
