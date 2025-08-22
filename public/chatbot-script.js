@@ -161,6 +161,26 @@ function isSupportIntent(text) {
   return /(talk|speak|chat).*(support|agent|human|person)|live\s*(agent|chat)|need\s*help\s*from\s*(someone|a\s*person)/i.test(t) || /customer\s*service/i.test(t);
 }
 
+// Ensure stylist popup script is present, then resolve
+function ensureStylistPopup() {
+  return new Promise((resolve) => {
+    if (window.JUNS && window.JUNS.stylist && typeof window.JUNS.stylist.open === 'function') return resolve(true);
+    try {
+      const url = ASSET_ORIGIN ? `${ASSET_ORIGIN}/stylist-popup.js` : '/stylist-popup.js';
+      const exist = Array.from(document.getElementsByTagName('script')).some(s => (s.src || '').includes('stylist-popup.js'));
+      if (exist) {
+        setTimeout(() => resolve(Boolean(window.JUNS && window.JUNS.stylist)), 300);
+        return;
+      }
+      const s = document.createElement('script');
+      s.async = true; s.src = url;
+      s.onload = () => resolve(true);
+      s.onerror = () => resolve(false);
+      document.head.appendChild(s);
+    } catch (_) { resolve(false); }
+  });
+}
+
 function createMessage(content, isUser = false) {
   const message = document.createElement("div");
   message.className = `bubble ${isUser ? "user" : "ai"}`;
@@ -313,20 +333,28 @@ function initChat() {
       if (!btn) return;
       const action = btn.getAttribute('data-action');
       if (action === 'recommend') {
-        if (window.JUNS && window.JUNS.stylist && typeof window.JUNS.stylist.open === 'function') {
-          window.JUNS.stylist.open();
-        }
+        (async () => {
+          const ok = await ensureStylistPopup();
+          if (window.JUNS && window.JUNS.stylist && typeof window.JUNS.stylist.open === 'function') {
+            window.JUNS.stylist.open();
+          } else if (!ok) {
+            // Fallback: navigate to recommendations page without params
+            window.location.href = '/pages/event-dress-recommendations';
+          }
+        })();
         return;
       }
       if (action === 'sizing') {
-        input.placeholder = 'Type your measurements...';
+        const T = I18N[detectLang()];
+        input.placeholder = T.sizingPlaceholder;
         input.focus();
         // Trigger backend only (no duplicate guidance bubble)
         sendMessageText('size help');
         return;
       }
       if (action === 'delivery') {
-        input.placeholder = 'City, Country...';
+        const T = I18N[detectLang()];
+        input.placeholder = T.deliveryPlaceholder;
         input.focus();
         const typed = (input.value || '').trim();
         sendMessageText(typed ? `shipping to ${typed}` : 'delivery time');
@@ -388,7 +416,7 @@ function createLauncher() {
         const greeted = localStorage.getItem('juns_greeted');
         const messages = root.getElementById('chatMessages');
         if (!greeted && messages) {
-          const greeting = 'Hi 👋 I’m your JUN’S Stylist. I can help with sizing, delivery, order tracking, and outfit ideas.';
+          const greeting = I18N[detectLang()].greet;
           messages.appendChild(createMessage(greeting));
           messages.scrollTop = messages.scrollHeight;
           localStorage.setItem('juns_greeted','1');
