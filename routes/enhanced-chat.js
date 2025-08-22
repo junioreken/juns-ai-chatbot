@@ -615,6 +615,7 @@ function handleProductDiscovery(storeData, message, lang) {
   const themeMatch = text.match(/(wedding|gala|night\s*out|night\s*club|club|office|business|casual|birthday|cocktail|graduation|beach|summer|eid)/i);
   const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
   const theme = themeRaw ? themeRaw.replace(/\s+/g,'-').replace('night-club','night-out').replace(/^club$/,'night-out') : '';
+  const decodedTheme = theme ? decodeURIComponent(theme) : '';
 
   // Theme synonyms mapping for exact matching
   const themeSynonyms = {
@@ -694,9 +695,10 @@ function handleProductDiscovery(storeData, message, lang) {
   }
 
   function hasThemeTagStrict(p) {
-    if (!theme) return true;
+    if (!decodedTheme) return true;
     const tags = normalizeTagsValue(p.tags);
-    return tags.includes(theme);
+    // accept exact slug or space version
+    return tags.includes(decodedTheme) || tags.includes(decodedTheme.replace(/-/g,' '));
   }
 
   function hasDressTagStrict(p) {

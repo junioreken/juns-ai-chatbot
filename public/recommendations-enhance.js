@@ -12,7 +12,11 @@
 
   // STRICT matching: only products explicitly tagged with the exact theme slug
   // Example: if theme=wedding, product must have the tag 'wedding' (case-insensitive)
-  const tags = [theme].filter(Boolean);
+  const decodedTheme = decodeURIComponent(theme || '');
+  const tags = Array.from(new Set([
+    decodedTheme,
+    decodedTheme.replace(/-/g,' ')
+  ].filter(Boolean)));
 
   const grid = document.getElementById('juns-products-grid');
   if (!grid) return;
