@@ -141,7 +141,7 @@
       secondary: 'Je parcours seulement',
       themes: ['Mariage','Soirée','Bureau','Décontracté','Cocktail','Remise des diplômes'],
       budgets: ['Moins de 80 $','Moins de 150 $','Sans limite'],
-      mapTheme: { 'Mariage':'wedding','Soirée':'night-out','Bureau':'office','Décontracté':'casual','Cocktail':'cocktail','Remise des diplômes':'graduation' },
+      mapTheme: { 'Mariage':'wedding','Soirée':'night-out','Bureau':'business','Décontracté':'casual','Cocktail':'cocktail','Remise des diplômes':'graduation' },
       mapBudget: { 'Moins de 80 $':'under-80','Moins de 150 $':'under-150','Sans limite':'no-limit' },
       greet: "Bonjour 👋 Je suis votre styliste JUN’S. Besoin d’aide pour la taille, la livraison ou des idées de tenues ?"
     } : {
@@ -151,7 +151,7 @@
       secondary: 'Just browsing',
       themes: ['Wedding','Night Out','Business','Casual','Cocktail','Graduation'],
       budgets: ['Under $80','Under $150','No limit'],
-      mapTheme: { 'Wedding':'wedding','Night Out':'night-out','Business':'office','Casual':'casual','Cocktail':'cocktail','Graduation':'graduation' },
+      mapTheme: { 'Wedding':'wedding','Night Out':'night-out','Business':'business','Casual':'casual','Cocktail':'cocktail','Graduation':'graduation' },
       mapBudget: { 'Under $80':'under-80','Under $150':'under-150','No limit':'no-limit' },
       greet: "Hi 👋 I’m your JUN’S Stylist. Need sizing, delivery, or outfit ideas?"
     };
