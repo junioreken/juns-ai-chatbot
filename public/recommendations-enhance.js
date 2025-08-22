@@ -1,6 +1,16 @@
 /* Enhance recommendations logic without altering layout */
-(async function(){
+(function(){
   if (!/\/pages\/event-dress-recommendations/i.test(location.pathname)) return;
+
+  function waitFor(elId, cb){
+    const el = document.getElementById(elId);
+    if (el) return cb(el);
+    const mo = new MutationObserver(()=>{
+      const e = document.getElementById(elId);
+      if (e){ mo.disconnect(); cb(e); }
+    });
+    mo.observe(document.documentElement || document.body, { childList:true, subtree:true });
+  }
 
   const params = new URLSearchParams(location.search);
   const theme = (params.get('theme') || '').toLowerCase();
@@ -18,8 +28,7 @@
     decodedTheme.replace(/-/g,' ')
   ].filter(Boolean)));
 
-  const grid = document.getElementById('juns-products-grid');
-  if (!grid) return;
+  waitFor('juns-products-grid', async (grid) => {
   grid.innerHTML = '<div style="padding:12px;color:#666">Loading recommendations…</div>';
 
   async function fetchPage(url, attempt = 1) {
@@ -131,6 +140,7 @@
   } catch (e) {
     grid.innerHTML = '<div style="padding:12px;color:#666">No matching dresses found.</div>';
   }
+  });
 })();
 
 
