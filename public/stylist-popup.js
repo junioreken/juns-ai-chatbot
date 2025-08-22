@@ -1,8 +1,11 @@
 /* JUN'S – Stylist Popup + Chat Adapter (Behavior only) */
 (function () {
-  const PATH = window.location.pathname;
+  const PATH = window.location.pathname || '';
   const isCartOrCheckout = /\/(cart|checkout)(\/|$)/i.test(PATH);
-  const isHome = PATH === '/' || PATH === '/index.html';
+  const isHome = (
+    PATH === '/' || PATH === '/index.html' ||
+    PATH === '/fr' || PATH === '/fr/' || PATH === '/fr/index.html'
+  );
   const isCollection = /\/collections\//i.test(PATH) || PATH === '/collections' || PATH === '/collections/';
   const isProduct = /\/products\//i.test(PATH);
   const allowPopup = (isHome || isCollection || isProduct) && !isCartOrCheckout;
@@ -103,7 +106,7 @@
 
   // --- Stylist Popup (Shadow DOM to avoid theme CSS) ---
   function showPopup(force = false) {
-    if (!allowPopup) return;
+    if (!allowPopup && !force) return;
     if (!force && ss.getItem('juns_popup_shown') === '1') return;
     // If already open, do nothing
     if (document.getElementById('juns-stylist-popup-root')) return;

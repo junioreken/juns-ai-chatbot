@@ -338,8 +338,9 @@ function initChat() {
           if (window.JUNS && window.JUNS.stylist && typeof window.JUNS.stylist.open === 'function') {
             window.JUNS.stylist.open();
           } else if (!ok) {
-            // Fallback: navigate to recommendations page without params
-            window.location.href = '/pages/event-dress-recommendations';
+            // Fallback: navigate to recommendations page without params (respect FR path)
+            const isFr = detectLang() === 'fr';
+            window.location.href = (isFr ? '/fr' : '') + '/pages/event-dress-recommendations';
           }
         })();
         return;
