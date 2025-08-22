@@ -20,9 +20,12 @@ const { api: API_URL, origin: ASSET_ORIGIN } = getAssetInfo();
 function detectLang() {
   try {
     const htmlLang = (document.documentElement.getAttribute('lang') || '').toLowerCase();
-    const pathIsFr = /(^|\/)(fr)(\/|$)/i.test(window.location.pathname);
+    const shopifyLocale = (window.Shopify && (Shopify.locale || Shopify.translationLocale)) || '';
+    const rootPrefix = (window.Shopify && Shopify.routes && Shopify.routes.root) || '';
+    const path = window.location.pathname || '';
+    const pathIsFr = path === '/fr' || path.startsWith('/fr/') || /^\/(fr)(\b|\/|\?|#)/i.test(path);
     const navLang = (navigator.language || '').toLowerCase();
-    if (htmlLang.startsWith('fr') || pathIsFr || navLang.startsWith('fr')) return 'fr';
+    if (htmlLang.startsWith('fr') || String(shopifyLocale).toLowerCase().startsWith('fr') || String(rootPrefix).startsWith('/fr') || pathIsFr || navLang.startsWith('fr')) return 'fr';
   } catch (_) {}
   return 'en';
 }

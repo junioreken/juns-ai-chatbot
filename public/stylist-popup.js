@@ -130,7 +130,7 @@
       .secondary{background:transparent;border:none;color:#666;cursor:pointer}
       .close{position:absolute;right:10px;top:6px;background:transparent;border:none;font-size:18px;cursor:pointer}
     `;
-    const isFr = /(^|\/)(fr)(\/|$)/i.test(location.pathname) || (document.documentElement.getAttribute('lang')||'').toLowerCase().startsWith('fr');
+    const isFr = /(^|\/)(fr)(\/|$)/i.test(location.pathname) || (document.documentElement.getAttribute('lang')||'').toLowerCase().startsWith('fr') || (window.Shopify && ((Shopify.locale||'').toLowerCase().startsWith('fr') || (Shopify.routes && String(Shopify.routes.root).startsWith('/fr'))));
     const T = isFr ? {
       title: 'Trouvez votre tenue parfaite ✨',
       subtitle: 'Dites-nous votre thème et votre budget. Nous proposerons des looks instantanément.',
