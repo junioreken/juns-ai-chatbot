@@ -76,9 +76,10 @@
     const t = sanitize(p.title);
     const pt = sanitize(p.product_type || '');
     const tagset = normalizeTags(p.tags).map(sanitize);
-    const hasDressTag = tagset.includes('dress') || tagset.includes('gown');
-    const inTitle = /\b(dress|gown)\b/.test(t);
-    const inType = /\b(dress|gown)\b/.test(pt);
+    const reDress = /\b(dress|gown|robe|robes)\b/; // include FR 'robe'
+    const hasDressTag = tagset.some(tag => reDress.test(tag));
+    const inTitle = reDress.test(t);
+    const inType = reDress.test(pt);
     return hasDressTag || inTitle || inType;
   }
 
@@ -90,7 +91,7 @@
       return;
     }
     const html = filtered.slice(0, 60).map(p => {
-      const img = (p.images && p.images[0] && p.images[0].src) || '';
+      const img = (p.images && p.images[0] && (p.images[0].src || p.images[0].original_src)) || '';
       const price = getLowestVariantPrice(p) || '—';
       return `<a href="/products/${p.handle}" class="j-item" style="text-decoration:none;color:inherit">
         <div class="j-card"><img src="${img}" alt="${p.title}" loading="lazy" style="width:100%;height:auto;border-radius:8px"/><div class="j-title" style="margin-top:6px;font-size:14px">${p.title}</div><div class="j-price" style="color:#111;font-weight:600">$${price}</div></div>
