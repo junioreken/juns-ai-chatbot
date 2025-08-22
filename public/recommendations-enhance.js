@@ -10,21 +10,9 @@
   const labelEl = document.getElementById('juns-theme-label');
   if (labelEl) labelEl.textContent = `Theme: "${theme}" · Budget: ${budgetLabel}`;
 
-  const map = {
-    beach:['beach','summer','boho','vacation','resort'],
-    wedding:['wedding','bride','bridal','elegant','white','ivory','lace','satin','guest'],
-    gala:['gala','evening','black-tie','luxury','formal'],
-    'night-out':['night-out','night out','party','sexy','short','bold','club'],
-    'night out':['night-out','night out','party','sexy','short','bold','club'],
-    eid:['eid','modest','long','embroidered','classy','abaya'],
-    office:['office','work','business','professional','chic','neutral'],
-    business:['office','work','business','professional','chic','neutral'],
-    birthday:['birthday','celebration','party','fun','bright'],
-    casual:['casual','day','everyday','relaxed','cozy','soft','sweater','pullover','fleece','autumn','winter','warm','streetwear'],
-    cocktail:['cocktail','semi-formal'],
-    graduation:['graduation','grad']
-  };
-  const tags = map[theme] || [theme, theme.replace(/-/g,' ')].filter(Boolean);
+  // STRICT matching: only products explicitly tagged with the exact theme slug
+  // Example: if theme=wedding, product must have the tag 'wedding' (case-insensitive)
+  const tags = [theme].filter(Boolean);
 
   const grid = document.getElementById('juns-products-grid');
   if (!grid) return;
@@ -78,10 +66,10 @@
   }
 
   function themeOk(p) {
-    // STRICT: match ONLY against product tags the merchant set
+    // STRICT: product must include the exact theme tag (after normalization)
     const normalizedTags = normalizeTags(p.tags).map(sanitize);
     const needles = Array.from(new Set(tags.map(sanitize).filter(Boolean)));
-    return needles.some(n => normalizedTags.includes(n) || normalizedTags.some(t => t === n || (t.includes(n) && n.length >= 4)));
+    return needles.some(n => normalizedTags.includes(n));
   }
 
   function isDress(p) {
