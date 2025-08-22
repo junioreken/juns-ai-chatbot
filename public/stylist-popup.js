@@ -202,7 +202,9 @@
       ss.setItem('juns_popup_submitted','1');
       const theme = themeSlugs[chosenTheme] || chosenTheme.toLowerCase().replace(/\s+/g,'-');
       const budget = budgetSlugs[chosenBudget] || 'no-limit';
-      window.location.assign(`/pages/event-dress-recommendations?theme=${encodeURIComponent(theme)}&budget=${encodeURIComponent(budget)}`);
+      const url = `/pages/event-dress-recommendations?theme=${encodeURIComponent(theme)}&budget=${encodeURIComponent(budget)}&ts=${Date.now()}`;
+      // Use replace to avoid back-button cache, and add ts to bust CDN caches
+      window.location.replace(url);
     });
   }
 

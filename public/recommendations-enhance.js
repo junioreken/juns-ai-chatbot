@@ -22,15 +22,38 @@
   if (!grid) return;
   grid.innerHTML = '<div style="padding:12px;color:#666">Loading recommendations…</div>';
 
+  async function fetchPage(url, attempt = 1) {
+    try {
+      const res = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          'accept': 'application/json',
+          'pragma': 'no-cache',
+          'cache-control': 'no-cache'
+        }
+      });
+      if (!res.ok) throw new Error('bad status');
+      return await res.json();
+    } catch (_) {
+      if (attempt >= 3) return { products: [] };
+      await new Promise(r => setTimeout(r, 200 * attempt));
+      return fetchPage(url, attempt + 1);
+    }
+  }
+
   async function fetchAllProducts() {
     const base = '/collections/all/products.json';
     let page = 1; const out = [];
+    const seen = new Set();
     while (true) {
       const url = `${base}?page=${page}&limit=250`;
-      const res = await fetch(url, { headers: { 'accept':'application/json' } });
-      if (!res.ok) break; const data = await res.json();
+      const data = await fetchPage(url);
       const arr = data.products || data || [];
-      if (!arr.length) break; out.push(...arr); page += 1; if (page>10) break;
+      if (!arr.length) break;
+      for (const p of arr) {
+        if (!seen.has(p.handle)) { seen.add(p.handle); out.push(p); }
+      }
+      page += 1; if (page > 10) break;
     }
     return out;
   }
