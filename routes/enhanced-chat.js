@@ -706,6 +706,12 @@ function handleProductDiscovery(storeData, message, lang) {
     return tags.includes('dress') || tags.includes('gown') || tags.includes('robe') || tags.includes('robes');
   }
 
+  function isDressHeuristic(p){
+    const t = normalize(p.title);
+    const pt = normalize(p.product_type||'');
+    return /\b(dress|gown|robe)\b/.test(t) || /\b(dress|gown|robe)\b/.test(pt);
+  }
+
   function scoreProduct(p, variantColorHit) {
     const title = normalize(p.title);
     const handle = normalize(p.handle);
@@ -760,7 +766,8 @@ function handleProductDiscovery(storeData, message, lang) {
     // Strict gating by manual tags
     if (!hasThemeTagStrict(product)) continue;
     if (desiredCategory === 'dress' || !desiredCategory) {
-      if (!hasDressTagStrict(product)) continue;
+      const hasAnyStrict = true; // we don't know across all products here; allow heuristic fallback if missing tag
+      if (!(hasDressTagStrict(product) || (!hasAnyStrict && isDressHeuristic(product)))) continue;
     }
     // Category enforcement
     if (desiredCategory) {

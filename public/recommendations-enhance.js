@@ -35,6 +35,8 @@
     return out;
   }
 
+  function normKey(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+
   function getLowestVariantPrice(p) {
     const variants = Array.isArray(p.variants) ? p.variants : [];
     if (!variants.length) return 0;
@@ -70,21 +72,27 @@
   }
 
   function themeOk(p) {
-    // STRICT: product must include the exact theme tag (after normalization)
-    const normalizedTags = normalizeTags(p.tags).map(sanitize);
-    const needles = Array.from(new Set(tags.map(sanitize).filter(Boolean)));
-    return needles.some(n => normalizedTags.includes(n));
+    // STRICT by tag, but tolerate slug vs spaced and punctuation
+    const productTags = normalizeTags(p.tags);
+    const prodKeys = new Set(productTags.map(normKey));
+    const needles = Array.from(new Set(tags.map(t=>normKey(t)).filter(Boolean)));
+    return needles.some(n => prodKeys.has(n));
   }
 
-  function isDress(p) {
-    // STRICT category: require an explicit dress tag to avoid accessories showing up
+  function isDressStrict(p) {
     const tagset = normalizeTags(p.tags).map(sanitize);
     return tagset.includes('dress') || tagset.includes('gown') || tagset.includes('robe') || tagset.includes('robes');
+  }
+  function isDressHeuristic(p){
+    const t = sanitize(p.title);
+    const pt = sanitize(p.product_type||'');
+    return /\b(dress|gown|robe)\b/.test(t) || /\b(dress|gown|robe)\b/.test(pt);
   }
 
   try {
     const all = await fetchAllProducts();
-    const filtered = all.filter(p => themeOk(p) && isDress(p) && priceOk(p));
+    const anyStrictDress = all.some(isDressStrict);
+    const filtered = all.filter(p => themeOk(p) && (anyStrictDress ? isDressStrict(p) : isDressHeuristic(p)) && priceOk(p));
     if (!filtered.length) {
       grid.innerHTML = '<div style="padding:12px;color:#666">No matching dresses found.</div>';
       return;
