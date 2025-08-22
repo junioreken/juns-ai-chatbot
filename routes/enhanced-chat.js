@@ -612,8 +612,9 @@ function handleProductDiscovery(storeData, message, lang) {
     return m ? [parseFloat(m[1]), parseFloat(m[2])].sort((a,b)=>a-b) : null;
   })();
 
-  const themeMatch = text.match(/(wedding|gala|night\s*out|office|business|casual|birthday|cocktail|graduation|beach|summer|eid)/i);
-  const theme = themeMatch ? themeMatch[1].toLowerCase().replace(/\s+/g,'-') : '';
+  const themeMatch = text.match(/(wedding|gala|night\s*out|night\s*club|club|office|business|casual|birthday|cocktail|graduation|beach|summer|eid)/i);
+  const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
+  const theme = themeRaw ? themeRaw.replace(/\s+/g,'-').replace('night-club','night-out').replace(/^club$/,'night-out') : '';
 
   // Theme synonyms mapping for exact matching
   const themeSynonyms = {
@@ -685,18 +686,32 @@ function handleProductDiscovery(storeData, message, lang) {
     return { variant: null, matchedTerm: hit || '' };
   }
 
+  // ---- Strict tag helpers (merchant-controlled tags only) ----
+  function normalizeTagsValue(value) {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.map(v => String(v).toLowerCase().trim()).filter(Boolean);
+    return String(value).toLowerCase().split(',').map(v => v.trim()).filter(Boolean);
+  }
+
+  function hasThemeTagStrict(p) {
+    if (!theme) return true;
+    const tags = normalizeTagsValue(p.tags);
+    return tags.includes(theme);
+  }
+
+  function hasDressTagStrict(p) {
+    const tags = normalizeTagsValue(p.tags);
+    return tags.includes('dress') || tags.includes('gown') || tags.includes('robe') || tags.includes('robes');
+  }
+
   function scoreProduct(p, variantColorHit) {
     const title = normalize(p.title);
     const handle = normalize(p.handle);
     const body = normalize(p.body_html);
-    const tags = Array.isArray(p.tags) ? p.tags.map(t => normalize(t)) : String(p.tags || '').split(',').map(t => normalize(t.trim()));
+    const tags = normalizeTagsValue(p.tags);
     const hay = [title, handle, body, tags.join(' ')].join(' ');
     let score = 0;
-    if (theme) {
-      const syn = themeSynonyms[theme] || [theme];
-      const themeNeedles = syn.map(s => s.replace(/-/g,' '));
-      if (themeNeedles.some(n => n && hay.includes(n))) score += 2;
-    }
+    if (theme && tags.includes(theme)) score += 3;
     if (canonicalColor) {
       if (variantColorHit) score += 3; else {
         const terms = colorMap[canonicalColor] || [canonicalColor];
@@ -706,7 +721,7 @@ function handleProductDiscovery(storeData, message, lang) {
     if (wantAccessories) {
       if (accessoryTerms.some(n => hay.includes(n))) score += 2; else score -= 1;
     } else {
-      if (hay.includes('dress')) score += 1;
+      if (tags.includes('dress') || tags.includes('gown') || tags.includes('robe') || tags.includes('robes')) score += 1;
     }
     return score;
   }
@@ -740,6 +755,11 @@ function handleProductDiscovery(storeData, message, lang) {
 
   const candidates = [];
   for (const product of products) {
+    // Strict gating by manual tags
+    if (!hasThemeTagStrict(product)) continue;
+    if (desiredCategory === 'dress' || !desiredCategory) {
+      if (!hasDressTagStrict(product)) continue;
+    }
     // Category enforcement
     if (desiredCategory) {
       const cat = classifyProduct(product);
@@ -749,15 +769,7 @@ function handleProductDiscovery(storeData, message, lang) {
       if (!allowed.includes(cat)) continue;
     }
 
-    // Theme enforcement: hard for dress/general, soft for accessory-specific queries
-    const requireHardTheme = Boolean(theme) && (!desiredCategory || desiredCategory === 'dress');
-    if (theme) {
-      const syn = themeSynonyms[theme] || [theme];
-      const needles = syn.map(s => normalize(s));
-      const hay = [normalize(product.title), normalize(product.handle), normalize(product.body_html), normalize(product.tags)].join(' ');
-      const match = needles.some(n => n && hay.includes(n));
-      if (requireHardTheme && !match) continue;
-    }
+    // No fuzzy theme enforcement; strict tag gating above controls theme
 
     let chosenVariant = null;
     let matchedColorTerm = '';
