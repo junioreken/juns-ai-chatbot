@@ -634,7 +634,8 @@ function handleProductDiscovery(storeData, message, lang) {
 
   // Category intent parsing
   const categoryMap = {
-    dress: ['dress','dresses','gown','gowns'],
+    dress: ['dress','dresses','gown','gowns','robe','robes'],
+    jacket: ['jacket','jackets','coat','coats','parka','outerwear','puffer','blazer'],
     bag: ['bag','bags','purse','clutch','handbag','tote'],
     shoes: ['heel','heels','shoe','shoes','sandal','sandals','pump','pumps','boots'],
     jewelry: ['jewelry','jewelery','necklace','earring','earrings','bracelet','ring'],
@@ -749,13 +750,15 @@ function handleProductDiscovery(storeData, message, lang) {
       shoes: /\b(heel|heels|shoe|shoes|sandal|sandals|pump|pumps|boot|boots)\b/i,
       jewelry: /\b(jewel(?:ry|lery)?|necklace|earring(?:s)?|bracelet|ring|pendant)\b/i,
       accessory: /\b(accessor(?:y|ies)|belt|scarf|shawl|headband|hair\s*clip)\b/i,
-      dress: /\b(dress(?:es)?|gown(?:s)?)\b/i,
+      dress: /\b(dress(?:es)?|gown(?:s)?|robe|robes)\b/i,
+      jacket: /\b(jacket|jackets|coat|coats|parka|outerwear|puffer|blazer)\b/i,
       skirt: /\b(skirt|skirts)\b/i
     };
     if (re.bag.test(hay)) return 'bag';
     if (re.shoes.test(hay)) return 'shoes';
     if (re.jewelry.test(hay)) return 'jewelry';
     if (re.accessory.test(hay)) return 'accessory';
+    if (re.jacket.test(hay)) return 'jacket';
     if (re.skirt.test(hay)) return 'skirt';
     if (re.dress.test(hay)) return 'dress';
     return '';
