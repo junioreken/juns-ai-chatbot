@@ -73,19 +73,14 @@
   }
 
   function isDress(p) {
-    const t = sanitize(p.title);
-    const pt = sanitize(p.product_type || '');
+    // STRICT category: require an explicit dress tag to avoid accessories showing up
     const tagset = normalizeTags(p.tags).map(sanitize);
-    const reDress = /\b(dress|gown|robe|robes)\b/; // include FR 'robe'
-    const hasDressTag = tagset.some(tag => reDress.test(tag));
-    const inTitle = reDress.test(t);
-    const inType = reDress.test(pt);
-    return hasDressTag || inTitle || inType;
+    return tagset.includes('dress') || tagset.includes('gown') || tagset.includes('robe') || tagset.includes('robes');
   }
 
   try {
     const all = await fetchAllProducts();
-    const filtered = all.filter(p => isDress(p) && themeOk(p) && priceOk(p));
+    const filtered = all.filter(p => themeOk(p) && isDress(p) && priceOk(p));
     if (!filtered.length) {
       grid.innerHTML = '<div style="padding:12px;color:#666">No matching dresses found.</div>';
       return;
