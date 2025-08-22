@@ -614,8 +614,8 @@ function handleProductDiscovery(storeData, message, lang) {
 
   const themeMatch = text.match(/(wedding|gala|night\s*out|night\s*club|club|office|business|casual|birthday|cocktail|graduation|beach|summer|eid)/i);
   const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
-  const theme = themeRaw ? themeRaw.replace(/\s+/g,'-').replace('night-club','night-out').replace(/^club$/,'night-out') : '';
-  const decodedTheme = theme ? decodeURIComponent(theme) : '';
+  let theme = themeRaw ? themeRaw.replace(/\s+/g,'-').replace('night-club','night-out').replace(/^club$/,'night-out') : '';
+  let selectedTheme = theme ? decodeURIComponent(theme) : '';
 
   // Theme synonyms mapping for exact matching
   const themeSynonyms = {
@@ -649,6 +649,38 @@ function handleProductDiscovery(storeData, message, lang) {
   let desiredCategory = detectedCategories[0] || (/(accessory|accessories)/i.test(text) ? 'accessory' : '');
   // Default to dresses when user specifies only a theme (e.g., "casual", "wedding") with no category
   if (!desiredCategory && theme) desiredCategory = 'dress';
+
+  // If theme not recognized, infer from merchant tags present in the user's message
+  function allStoreTagsLower() {
+    try {
+      const set = new Set();
+      const prods = Array.isArray(storeData.products) ? storeData.products : [];
+      for (const p of prods) {
+        const raw = Array.isArray(p.tags) ? p.tags : String(p.tags || '').split(',');
+        for (const t of raw) {
+          const v = String(t).toLowerCase().trim();
+          if (v) set.add(v);
+        }
+      }
+      return Array.from(set);
+    } catch (_) { return []; }
+  }
+
+  if (!theme) {
+    const tags = allStoreTagsLower();
+    let best = '';
+    for (const t of tags) {
+      const spaced = t;
+      const slug = t.replace(/\s+/g,'-');
+      const re = new RegExp(`\\b${spaced.replace(/[-/\\^$*+?.()|[\]{}]/g,'\\$&')}\\b`, 'i');
+      if (re.test(message) && slug.length > best.length) best = slug;
+    }
+    if (best) {
+      theme = best;
+      selectedTheme = decodeURIComponent(best);
+      if (!desiredCategory) desiredCategory = 'dress';
+    }
+  }
 
   const needles = [];
   if (canonicalColor) needles.push(canonicalColor, ...(colorMap[canonicalColor]||[]));
@@ -696,10 +728,10 @@ function handleProductDiscovery(storeData, message, lang) {
   }
 
   function hasThemeTagStrict(p) {
-    if (!decodedTheme) return true;
+    if (!selectedTheme) return true;
     const tags = normalizeTagsValue(p.tags);
     // accept exact slug or space version
-    return tags.includes(decodedTheme) || tags.includes(decodedTheme.replace(/-/g,' '));
+    return tags.includes(selectedTheme) || tags.includes(selectedTheme.replace(/-/g,' '));
   }
 
   function hasDressTagStrict(p) {
@@ -720,7 +752,7 @@ function handleProductDiscovery(storeData, message, lang) {
     const tags = normalizeTagsValue(p.tags);
     const hay = [title, handle, body, tags.join(' ')].join(' ');
     let score = 0;
-    if (theme && tags.includes(theme)) score += 3;
+    if (selectedTheme && (tags.includes(selectedTheme) || tags.includes(selectedTheme.replace(/-/g,' ')))) score += 3;
     if (canonicalColor) {
       if (variantColorHit) score += 3; else {
         const terms = colorMap[canonicalColor] || [canonicalColor];
@@ -836,8 +868,8 @@ function handleProductDiscovery(storeData, message, lang) {
   const displayColor = (colorFound || canonicalColor) ? (colorFound || canonicalColor) : '';
   const catLabel = desiredCategory && desiredCategory !== 'dress' ? ` ${desiredCategory}` : '';
   const header = lang==='fr'
-    ? `Voici quelques${catLabel ? ` ${catLabel}` : ''} suggestions${displayColor ? ` en ${displayColor}` : ''}${theme ? ` pour ${theme.replace(/-/g,' ')}` : ''}:`
-    : `Here are a few${catLabel ? ` ${catLabel}` : ''} picks${displayColor ? ` in ${displayColor}` : ''}${theme ? ` for ${theme.replace(/-/g,' ')}` : ''}:`;
+    ? `Voici quelques${catLabel ? ` ${catLabel}` : ''} suggestions${displayColor ? ` en ${displayColor}` : ''}${selectedTheme ? ` pour ${selectedTheme.replace(/-/g,' ')}` : ''}:`
+    : `Here are a few${catLabel ? ` ${catLabel}` : ''} picks${displayColor ? ` in ${displayColor}` : ''}${selectedTheme ? ` for ${selectedTheme.replace(/-/g,' ')}` : ''}:`;
 
   return `${header}\n${grid}`;
 }
