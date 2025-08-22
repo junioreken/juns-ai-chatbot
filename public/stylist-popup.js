@@ -130,22 +130,44 @@
       .secondary{background:transparent;border:none;color:#666;cursor:pointer}
       .close{position:absolute;right:10px;top:6px;background:transparent;border:none;font-size:18px;cursor:pointer}
     `;
-    shadow.innerHTML = `<style>${styles}</style><div class="backdrop"></div><div class="card" role="dialog" aria-label="Find your perfect outfit">
+    const isFr = /(^|\/)(fr)(\/|$)/i.test(location.pathname) || (document.documentElement.getAttribute('lang')||'').toLowerCase().startsWith('fr');
+    const T = isFr ? {
+      title: 'Trouvez votre tenue parfaite ✨',
+      subtitle: 'Dites-nous votre thème et votre budget. Nous proposerons des looks instantanément.',
+      primary: 'Voir mes looks →',
+      secondary: 'Je parcours seulement',
+      themes: ['Mariage','Soirée','Bureau','Décontracté','Cocktail','Remise des diplômes'],
+      budgets: ['Moins de 80 $','Moins de 150 $','Sans limite'],
+      mapTheme: { 'Mariage':'wedding','Soirée':'night-out','Bureau':'office','Décontracté':'casual','Cocktail':'cocktail','Remise des diplômes':'graduation' },
+      mapBudget: { 'Moins de 80 $':'under-80','Moins de 150 $':'under-150','Sans limite':'no-limit' },
+      greet: "Bonjour 👋 Je suis votre styliste JUN’S. Besoin d’aide pour la taille, la livraison ou des idées de tenues ?"
+    } : {
+      title: 'Find your perfect outfit ✨',
+      subtitle: 'Tell us your outing theme & budget. We’ll curate looks instantly.',
+      primary: 'Show my looks →',
+      secondary: 'Just browsing',
+      themes: ['Wedding','Night Out','Business','Casual','Cocktail','Graduation'],
+      budgets: ['Under $80','Under $150','No limit'],
+      mapTheme: { 'Wedding':'wedding','Night Out':'night-out','Business':'office','Casual':'casual','Cocktail':'cocktail','Graduation':'graduation' },
+      mapBudget: { 'Under $80':'under-80','Under $150':'under-150','No limit':'no-limit' },
+      greet: "Hi 👋 I’m your JUN’S Stylist. Need sizing, delivery, or outfit ideas?"
+    };
+    shadow.innerHTML = `<style>${styles}</style><div class="backdrop"></div><div class="card" role="dialog" aria-label="${T.title}">
       <button class="close" aria-label="Close">×</button>
-      <h3>Find your perfect outfit ✨</h3>
-      <p>Tell us your outing theme & budget. We’ll curate looks instantly.</p>
+      <h3>${T.title}</h3>
+      <p>${T.subtitle}</p>
       <div class="chips" id="themes"></div>
       <div class="chips" id="budgets"></div>
       <div class="actions">
-        <button class="primary" id="go">Show my looks →</button>
-        <button class="secondary" id="dnd">Just browsing</button>
+        <button class="primary" id="go">${T.primary}</button>
+        <button class="secondary" id="dnd">${T.secondary}</button>
       </div>
     </div>`;
 
-    const themes = ['Wedding','Night Out','Business','Casual','Cocktail','Graduation'];
-    const budgets = ['Under $80','Under $150','No limit'];
-    const themeSlugs = { 'Wedding':'wedding','Night Out':'night-out','Business':'office','Casual':'casual','Cocktail':'cocktail','Graduation':'graduation' };
-    const budgetSlugs = { 'Under $80':'under-80','Under $150':'under-150','No limit':'no-limit' };
+    const themes = T.themes;
+    const budgets = T.budgets;
+    const themeSlugs = T.mapTheme;
+    const budgetSlugs = T.mapBudget;
 
     const themesWrap = shadow.getElementById('themes');
     const budgetsWrap = shadow.getElementById('budgets');
@@ -162,7 +184,7 @@
     const closeAll = (doSoftOpen) => { 
       host.remove(); 
       if (hiddenBubble && bubbleEl) bubbleEl.style.display = '';
-      if (doSoftOpen && !greeted) setTimeout(()=>{ if (ls.getItem('juns_dnd')==='1') return; greeted=true; Chat.openSoft("Hi 👋 I’m your JUN’S Stylist. Need sizing, delivery, or outfit ideas?"); }, 7000);
+      if (doSoftOpen && !greeted) setTimeout(()=>{ if (ls.getItem('juns_dnd')==='1') return; greeted=true; Chat.openSoft(T.greet); }, 7000);
       // After closing, show a temporary pill to reopen the stylist (unless DND)
       if (ls.getItem('juns_dnd')!=='1') {
         showStylistPill();

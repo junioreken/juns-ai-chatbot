@@ -17,6 +17,35 @@ function getAssetInfo() {
 
 const { api: API_URL, origin: ASSET_ORIGIN } = getAssetInfo();
 
+function detectLang() {
+  try {
+    const htmlLang = (document.documentElement.getAttribute('lang') || '').toLowerCase();
+    const pathIsFr = /(^|\/)(fr)(\/|$)/i.test(window.location.pathname);
+    const navLang = (navigator.language || '').toLowerCase();
+    if (htmlLang.startsWith('fr') || pathIsFr || navLang.startsWith('fr')) return 'fr';
+  } catch (_) {}
+  return 'en';
+}
+
+const I18N = {
+  en: {
+    inputPlaceholder: 'Type your message...',
+    quick: { recommend: 'Show me recommendations', sizing: 'Sizing help', delivery: 'Delivery time', tracking: 'Order tracking', complete: 'Complete my look' },
+    greet: "Hi 👋 I’m your JUN’S Stylist. I can help with sizing, delivery, order tracking, and outfit ideas.",
+    connecting: '✅ Connecting you to our live assistant…',
+    sizingPlaceholder: 'Type your measurements...',
+    deliveryPlaceholder: 'City, Country...'
+  },
+  fr: {
+    inputPlaceholder: 'Écrivez votre message…',
+    quick: { recommend: 'Voir des recommandations', sizing: 'Aide taille', delivery: 'Délai de livraison', tracking: 'Suivi de commande', complete: 'Compléter mon look' },
+    greet: "Bonjour 👋 Je suis votre styliste JUN’S. Je peux aider pour les tailles, la livraison, le suivi et les idées de tenues.",
+    connecting: '✅ Connexion à notre assistant en direct…',
+    sizingPlaceholder: 'Saisissez vos mensurations…',
+    deliveryPlaceholder: 'Ville, Pays…'
+  }
+};
+
 let JUNS_SHADOW = null; // ShadowRoot
 let JUNS_ROOT = null; // Host element
 let TAWK_LOADING = false;
@@ -166,6 +195,8 @@ function initChat() {
     chatContainer = document.createElement("div");
     chatContainer.id = "juns-ai-chatbox";
     chatContainer.style.display = "none"; // start hidden, toggled by launcher
+    const lang = detectLang();
+    const T = I18N[lang];
     chatContainer.innerHTML = `
       <div class="chat-header">
         <div class="chat-title-line" aria-label="JUN'S AI">JUN’S AI</div>
@@ -173,15 +204,15 @@ function initChat() {
       </div>
       <div class="chat-messages chat-body" id="chatMessages"></div>
       <div class="chat-input">
-        <textarea id="chatInput" placeholder="Type your message..." rows="1" aria-label="Type your message"></textarea>
+        <textarea id="chatInput" placeholder="${T.inputPlaceholder}" rows="1" aria-label="${T.inputPlaceholder}"></textarea>
         <button id="juns-send" aria-label="Send">➤</button>
       </div>
       <div class="quick-actions" id="juns-quick-actions" style="display:flex;gap:8px;padding:6px 8px 10px;flex-wrap:wrap;border-top:1px solid #eee">
-        <button data-action="recommend" style="background:#f5f5f5;border:1px solid #e5e5e5;border-radius:16px;padding:6px 10px;font-size:12px;cursor:pointer">Show me recommendations</button>
-        <button data-action="sizing" style="background:#f5f5f5;border:1px solid #e5e5e5;border-radius:16px;padding:6px 10px;font-size:12px;cursor:pointer">Sizing help</button>
-        <button data-action="delivery" style="background:#f5f5f5;border:1px solid #e5e5e5;border-radius:16px;padding:6px 10px;font-size:12px;cursor:pointer">Delivery time</button>
-        <button data-action="tracking" style="background:#f5f5f5;border:1px solid #e5e5e5;border-radius:16px;padding:6px 10px;font-size:12px;cursor:pointer">Order tracking</button>
-        <button data-action="complete" style="background:#f5f5f5;border:1px solid #e5e5e5;border-radius:16px;padding:6px 10px;font-size:12px;cursor:pointer">Complete my look</button>
+        <button data-action="recommend" style="background:#f5f5f5;border:1px solid #e5e5e5;border-radius:16px;padding:6px 10px;font-size:12px;cursor:pointer">${T.quick.recommend}</button>
+        <button data-action="sizing" style="background:#f5f5f5;border:1px solid #e5e5e5;border-radius:16px;padding:6px 10px;font-size:12px;cursor:pointer">${T.quick.sizing}</button>
+        <button data-action="delivery" style="background:#f5f5f5;border:1px solid #e5e5e5;border-radius:16px;padding:6px 10px;font-size:12px;cursor:pointer">${T.quick.delivery}</button>
+        <button data-action="tracking" style="background:#f5f5f5;border:1px solid #e5e5e5;border-radius:16px;padding:6px 10px;font-size:12px;cursor:pointer">${T.quick.tracking}</button>
+        <button data-action="complete" style="background:#f5f5f5;border:1px solid #e5e5e5;border-radius:16px;padding:6px 10px;font-size:12px;cursor:pointer">${T.quick.complete}</button>
       </div>
     `;
     root.appendChild(chatContainer);
@@ -211,7 +242,7 @@ function initChat() {
 
     // Frontend shortcut: live agent intent -> open Tawk and return
     if (isSupportIntent(userMessage)) {
-      const connecting = '✅ Connecting you to our live assistant…';
+      const connecting = I18N[detectLang()].connecting;
       messages.appendChild(createMessage(connecting));
       messages.scrollTop = messages.scrollHeight;
       // Wait ~4s so the user sees the confirmation, then close and open Tawk
@@ -243,7 +274,7 @@ function initChat() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: userMessage,
-          lang: navigator.language && navigator.language.startsWith("fr") ? "fr" : "en",
+          lang: detectLang(),
           storeUrl: window.location.origin,
           sessionId
         }),
