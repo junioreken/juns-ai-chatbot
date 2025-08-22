@@ -45,8 +45,9 @@
     const base = '/collections/all/products.json';
     let page = 1; const out = [];
     const seen = new Set();
+    const ts = Date.now();
     while (true) {
-      const url = `${base}?page=${page}&limit=250`;
+      const url = `${base}?page=${page}&limit=250&_=${ts}`;
       const data = await fetchPage(url);
       const arr = data.products || data || [];
       if (!arr.length) break;
@@ -114,8 +115,7 @@
 
   try {
     const all = await fetchAllProducts();
-    const anyStrictDress = all.some(isDressStrict);
-    const filtered = all.filter(p => themeOk(p) && (anyStrictDress ? isDressStrict(p) : isDressHeuristic(p)) && priceOk(p));
+    const filtered = all.filter(p => themeOk(p) && isDressStrict(p) && priceOk(p));
     if (!filtered.length) {
       grid.innerHTML = '<div style="padding:12px;color:#666">No matching dresses found.</div>';
       return;
