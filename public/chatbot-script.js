@@ -429,13 +429,16 @@ function createLauncher() {
       box.style.display = "flex";
       // First-time greeting per browser/session
       try {
-        const greeted = localStorage.getItem('juns_greeted');
+        const greeted = sessionStorage.getItem('juns_greeted');
         const messages = root.getElementById('chatMessages');
         if (!greeted && messages) {
           const greeting = I18N[detectLang()].greet;
-          messages.appendChild(createMessage(greeting));
+          // Avoid duplicate greeting if already present
+          const last = messages.lastElementChild;
+          const already = last && (last.textContent||'').indexOf('JUN’') !== -1;
+          if (!already) messages.appendChild(createMessage(greeting));
           messages.scrollTop = messages.scrollHeight;
-          localStorage.setItem('juns_greeted','1');
+          sessionStorage.setItem('juns_greeted','1');
         }
       } catch (_) {}
     } else {

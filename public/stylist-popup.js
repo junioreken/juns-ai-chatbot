@@ -263,12 +263,23 @@
     productPageHelper();
   }
 
-  // Recommendations page soft upsell
+  // Recommendations page soft upsell (deduped)
   if (/\/pages\/event-dress-recommendations/i.test(PATH)) {
-    if (ss.getItem('juns_popup_submitted')==='1') {
-      // keep minimized with badge, gentle upsell later
+    if (ss.getItem('juns_popup_submitted')==='1' && !ss.getItem('juns_upsell_shown')) {
       ensureChat(); Chat.setBadge(true);
-      setTimeout(()=>{ Chat.message('Want me to add a matching clutch & heels to complete your look?'); }, 15000);
+      setTimeout(()=>{
+        try {
+          const root = getShadow();
+          const messages = root && root.getElementById('chatMessages');
+          const content = 'Want me to add a matching clutch & heels to complete your look?';
+          if (messages) {
+            const last = messages.lastElementChild;
+            if (last && (last.textContent||'').indexOf('matching clutch') !== -1) return;
+          }
+          Chat.message(content);
+          ss.setItem('juns_upsell_shown','1');
+        } catch (_) {}
+      }, 15000);
       ss.removeItem('juns_popup_submitted');
     }
   }
