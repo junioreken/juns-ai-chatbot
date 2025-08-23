@@ -158,7 +158,22 @@ async function openLiveChat() {
 
 function isSupportIntent(text) {
   const t = String(text).toLowerCase();
-  return /(talk|speak|chat).*(support|agent|human|person)|live\s*(agent|chat)|need\s*help\s*from\s*(someone|a\s*person)/i.test(t) || /customer\s*service/i.test(t);
+  // English variants
+  const en = [
+    /\b(customer\s*support|customer\s*service|help\s*desk|helpdesk|live\s*support)\b/i,
+    /(talk|speak|chat|connect)\s*(to|with)?\s*(a|an)?\s*(human|person|agent|representative|rep|advisor|assistant)/i,
+    /(contact|reach)\s*(support|agent|representative|rep)/i,
+    /(need|want|get)\s*(help|assistance)\s*(from)?\s*(someone|a\s*person|agent)?/i,
+    /\b(live\s*agent|live\s*chat)\b/i,
+    /\b(escalate|transfer)\s*(me)?\s*(to)?\s*(agent|human|support)\b/i
+  ];
+  // French variants (basic)
+  const fr = [
+    /\b(service\s*client|support|assistance|aide)\b/i,
+    /(parler|discuter|parlez|connecter)\s*(avec)?\s*(un|une)?\s*(humain|personne|agent|conseiller)/i,
+    /(besoin|je\s*veux)\s*d'?aide|assistance/i
+  ];
+  return [...en, ...fr].some(r => r.test(t));
 }
 
 // Ensure stylist popup script is present, then resolve
