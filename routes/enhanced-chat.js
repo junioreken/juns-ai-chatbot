@@ -612,9 +612,13 @@ function handleProductDiscovery(storeData, message, lang) {
     return m ? [parseFloat(m[1]), parseFloat(m[2])].sort((a,b)=>a-b) : null;
   })();
 
-  const themeMatch = text.match(/(wedding|gala|night\s*out|night\s*club|club|office|business|casual|birthday|cocktail|graduation|beach|summer|eid)/i);
+  const themeMatch = text.match(/(wedding|gala|night\s*out|nightclub|night\s*club|office|business|casual|birthday|cocktail|graduation|beach|summer|eid)/i);
   const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
-  let theme = themeRaw ? themeRaw.replace(/\s+/g,'-').replace('night-club','night-out').replace(/^club$/,'night-out') : '';
+  // Preserve 'nightclub' as its own theme; normalize 'night club' -> 'nightclub'
+  let theme = themeRaw
+    ? themeRaw.replace(/\s+/g, (m) => m === ' ' && themeRaw.includes('night club') ? '' : '-')
+    : '';
+  if (theme === 'night-club') theme = 'nightclub';
   let selectedTheme = theme ? decodeURIComponent(theme) : '';
 
   // Theme synonyms mapping for exact matching
