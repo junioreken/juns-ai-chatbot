@@ -599,6 +599,23 @@ function handleProductDiscovery(storeData, message, lang) {
   const colorFound = allColorTerms.find(c => new RegExp(`\\b${c}\\b`, 'i').test(text));
   const canonicalColor = colorFound && Object.keys(colorMap).find(k => colorMap[k].includes(colorFound));
 
+  // Material/fabric detection (optional hard filter)
+  const materialMap = {
+    leather: ['leather','faux leather','pu leather','pu'],
+    satin: ['satin','silk satin','silky'],
+    denim: ['denim','jean','jeans'],
+    wool: ['wool','cashmere'],
+    cotton: ['cotton'],
+    linen: ['linen'],
+    chiffon: ['chiffon'],
+    velvet: ['velvet'],
+    lace: ['lace'],
+    sequin: ['sequin','sequins']
+  };
+  const allMaterialTerms = Object.values(materialMap).flat();
+  const materialFound = allMaterialTerms.find(m => new RegExp(`\\b${m}\\b`, 'i').test(text));
+  const materialKey = materialFound && Object.keys(materialMap).find(k => materialMap[k].includes(materialFound));
+
   const priceUnder = (() => {
     const m = text.match(/under\s*\$?\s*(\d{2,4})/i) || text.match(/below\s*\$?\s*(\d{2,4})/i);
     return m ? parseFloat(m[1]) : null;
@@ -640,6 +657,7 @@ function handleProductDiscovery(storeData, message, lang) {
   const categoryMap = {
     dress: ['dress','dresses','gown','gowns','robe','robes'],
     jacket: ['jacket','jackets','coat','coats','parka','outerwear','puffer','blazer'],
+    skirt: ['skirt','skirts'],
     bag: ['bag','bags','purse','clutch','handbag','tote'],
     shoes: ['heel','heels','shoe','shoes','sandal','sandals','pump','pumps','boots'],
     jewelry: ['jewelry','jewelery','necklace','earring','earrings','bracelet','ring'],
@@ -743,6 +761,19 @@ function handleProductDiscovery(storeData, message, lang) {
     return tags.includes('dress') || tags.includes('gown') || tags.includes('robe') || tags.includes('robes');
   }
 
+  function hasSkirtTagStrict(p){
+    const tags = normalizeTagsValue(p.tags);
+    return tags.includes('skirt') || tags.includes('skirts');
+  }
+
+  function materialMatch(p){
+    if (!materialKey) return true;
+    const tags = normalizeTagsValue(p.tags);
+    if (tags.includes(materialKey)) return true;
+    const hay = [normalize(p.title), normalize(p.handle), normalize(p.body_html)].join(' ');
+    return new RegExp(`\\b${materialKey}\\b`,'i').test(hay);
+  }
+
   function isDressHeuristic(p){
     const t = normalize(p.title);
     const pt = normalize(p.product_type||'');
@@ -808,6 +839,9 @@ function handleProductDiscovery(storeData, message, lang) {
       const hasAnyStrict = true; // we don't know across all products here; allow heuristic fallback if missing tag
       if (!(hasDressTagStrict(product) || (!hasAnyStrict && isDressHeuristic(product)))) continue;
     }
+    if (desiredCategory === 'skirt') {
+      if (!hasSkirtTagStrict(product)) continue;
+    }
     // Category enforcement
     if (desiredCategory) {
       const cat = classifyProduct(product);
@@ -816,6 +850,9 @@ function handleProductDiscovery(storeData, message, lang) {
       if (desiredCategory === 'dress' && cat === 'skirt') continue;
       if (!allowed.includes(cat)) continue;
     }
+
+    // Optional material hard filter
+    if (!materialMatch(product)) continue;
 
     // No fuzzy theme enforcement; strict tag gating above controls theme
 
