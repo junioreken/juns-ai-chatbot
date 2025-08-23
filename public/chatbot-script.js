@@ -420,6 +420,16 @@ function createLauncher() {
   btn.innerHTML = `<div id="chat-circle"><div class="bubble-title"><span class="brand">JUN’S</span><span class="sub">AI</span></div></div>`;
   root.appendChild(btn);
 
+  function showNudge(text, ms = 10000) {
+    try {
+      const tip = document.createElement('div');
+      tip.style.cssText = 'position:fixed;right:84px;bottom:72px;background:#111;color:#fff;padding:8px 10px;border-radius:8px;font-size:12px;box-shadow:0 6px 16px rgba(0,0,0,.2);z-index:2147483647;max-width:220px;';
+      tip.textContent = text;
+      root.appendChild(tip);
+      setTimeout(() => { try { tip.remove(); } catch(_) {} }, ms);
+    } catch (_) {}
+  }
+
   btn.addEventListener("click", async () => {
     initChat();
     const box = root.getElementById("juns-ai-chatbox");
@@ -440,6 +450,7 @@ function createLauncher() {
           messages.scrollTop = messages.scrollHeight;
           sessionStorage.setItem('juns_greeted','1');
         }
+        sessionStorage.setItem('juns_chat_opened','1');
       } catch (_) {}
     } else {
       box.style.display = "none";
@@ -448,6 +459,17 @@ function createLauncher() {
       closeBtn.onclick = () => { box.style.display = "none"; };
     }
   });
+
+  // Attention nudge if not opened after ~2 minutes
+  try {
+    if (!sessionStorage.getItem('juns_chat_opened') && !sessionStorage.getItem('juns_nudge_shown')) {
+      setTimeout(() => {
+        if (sessionStorage.getItem('juns_chat_opened')==='1' || sessionStorage.getItem('juns_nudge_shown')==='1') return;
+        showNudge('Hi! I can help with sizing, delivery and outfit ideas.');
+        sessionStorage.setItem('juns_nudge_shown','1');
+      }, 120000);
+    }
+  } catch (_) {}
 }
 
 // Always render launcher bubble (lightweight); chat opens on click
