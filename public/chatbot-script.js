@@ -225,8 +225,8 @@ function initChat() {
   // Also pre-load Tawk silently so opening is instant later
   try {
     const preload = () => loadTawkOnce();
-    if ('requestIdleCallback' in window) window.requestIdleCallback(preload, { timeout: 2000 });
-    else setTimeout(preload, 2000);
+    if ('requestIdleCallback' in window) window.requestIdleCallback(preload, { timeout: 3000 });
+    else setTimeout(preload, 3000);
   } catch(_) {}
   let chatContainer = root.getElementById && root.getElementById("juns-ai-chatbox");
   if (!chatContainer) {

@@ -68,10 +68,14 @@
     window.addEventListener(evt, () => { videos.forEach(tryPlay); }, { once: false, passive: true });
   });
 
+  const start = () => {
+    if ('requestIdleCallback' in window) window.requestIdleCallback(boot, { timeout: 1500 });
+    else setTimeout(boot, 800);
+  };
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot, { once: true });
+    document.addEventListener('DOMContentLoaded', start, { once: true });
   } else {
-    boot();
+    start();
   }
 })();
 

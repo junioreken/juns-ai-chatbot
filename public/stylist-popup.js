@@ -258,7 +258,10 @@
 
   // Boot
   if (allowPopup) {
-    setTimeout(() => { if (ls.getItem('juns_dnd')==='1') return; showPopup(); }, 1200);
+    // Defer popup readiness to idle to avoid blocking initial render
+    const open = () => { if (ls.getItem('juns_dnd')==='1') return; showPopup(); };
+    if ('requestIdleCallback' in window) window.requestIdleCallback(open, { timeout: 1600 });
+    else setTimeout(open, 1600);
     installScrollNudge();
     productPageHelper();
   }
