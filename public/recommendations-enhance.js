@@ -17,8 +17,9 @@
   const budget = (params.get('budget') || 'no-limit').toLowerCase();
 
   const budgetLabel = budget==='under-80' ? 'Under $80' : budget==='under-150' ? 'Under $150' : 'No limit';
+  const prettyTheme = theme.replace(/-/g,' ');
   const labelEl = document.getElementById('juns-theme-label');
-  if (labelEl) labelEl.textContent = `Theme: "${theme}" · Budget: ${budgetLabel}`;
+  if (labelEl) labelEl.textContent = `Theme: "${prettyTheme}" · Budget: ${budgetLabel}`;
 
   // STRICT matching: only products explicitly tagged with the exact theme slug
   // Example: if theme=wedding, product must have the tag 'wedding' (case-insensitive)
@@ -29,7 +30,33 @@
   ].filter(Boolean)));
 
   waitFor('juns-products-grid', async (grid) => {
-  grid.innerHTML = '<div style="padding:12px;color:#666">Loading recommendations…</div>';
+  // Lock container and render inside an isolated Shadow DOM to avoid theme scripts injecting extra products
+  grid.setAttribute('data-juns-lock','1');
+  grid.innerHTML = '';
+  const host = document.createElement('div');
+  host.id = 'juns-products-shadow';
+  const supportsShadow = !!host.attachShadow;
+  let shadow = null;
+  if (supportsShadow) {
+    shadow = host.attachShadow({ mode: 'open' });
+    grid.appendChild(host);
+  } else {
+    grid.appendChild(host);
+  }
+  const baseStyles = `
+    :host{all:initial}
+    .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+    .product-card{background:#fff;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.08);padding:10px;display:flex;flex-direction:column}
+    .product-card img{width:100%;height:auto;border-radius:8px;object-fit:cover}
+    .pc-title{margin-top:6px;font-size:14px;line-height:1.35;color:#111}
+    .pc-price{color:#111;font-weight:600}
+    @media (max-width:480px){.product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  `;
+  const setLoading = () => {
+    const html = '<div style="padding:12px;color:#666">Loading recommendations…</div>';
+    if (shadow) shadow.innerHTML = `<style>${baseStyles}</style>${html}`; else host.innerHTML = html;
+  };
+  setLoading();
 
   async function fetchPage(url, attempt = 1) {
     try {
@@ -133,12 +160,22 @@
       const img = (p.images && p.images[0] && (p.images[0].src || p.images[0].original_src)) || '';
       const price = getLowestVariantPrice(p) || '—';
       return `<a href="/products/${p.handle}" class="j-item" style="text-decoration:none;color:inherit">
-        <div class="j-card"><img src="${img}" alt="${p.title}" loading="lazy" style="width:100%;height:auto;border-radius:8px"/><div class="j-title" style="margin-top:6px;font-size:14px">${p.title}</div><div class="j-price" style="color:#111;font-weight:600">$${price}</div></div>
+        <div class="product-card"><img src="${img}" alt="${p.title}" loading="lazy"/><div class="pc-title">${p.title}</div><div class="pc-price">$${price}</div></div>
       </a>`;
     }).join('');
-    grid.innerHTML = html;
+    const finalHtml = `<div class="product-grid">${html}</div>`;
+    if (shadow) shadow.innerHTML = `<style>${baseStyles}</style>${finalHtml}`; else host.innerHTML = finalHtml;
+
+    // Guard against other theme scripts injecting unrelated products
+    const mo = new MutationObserver(() => {
+      if (grid.firstElementChild !== host) {
+        grid.replaceChildren(host);
+      }
+    });
+    mo.observe(grid, { childList:true });
   } catch (e) {
-    grid.innerHTML = '<div style="padding:12px;color:#666">No matching dresses found.</div>';
+    const html = '<div style="padding:12px;color:#666">No matching dresses found.</div>';
+    if (shadow) shadow.innerHTML = `<style>${baseStyles}</style>${html}`; else host.innerHTML = html;
   }
   });
 })();

@@ -147,6 +147,8 @@
       subtitle: 'Dites-nous votre thème et votre budget. Nous proposerons des looks instantanément.',
       primary: 'Voir mes looks →',
       secondary: 'Je parcours seulement',
+      themeLabel: 'Thème',
+      budgetLabel: 'Budget',
       themes: ['Mariage','Soirée','Bureau','Décontracté','Cocktail','Remise des diplômes'],
       budgets: ['Moins de 80 $','Moins de 150 $','Sans limite'],
       mapTheme: { 'Mariage':'wedding','Soirée':'night-out','Bureau':'business','Décontracté':'casual','Cocktail':'cocktail','Remise des diplômes':'graduation' },
@@ -157,6 +159,8 @@
       subtitle: 'Tell us your outing theme & budget. We’ll curate looks instantly.',
       primary: 'Show my looks →',
       secondary: 'Just browsing',
+      themeLabel: 'Theme',
+      budgetLabel: 'Budget',
       themes: ['Wedding','Night Out','Business','Casual','Cocktail','Graduation'],
       budgets: ['Under $80','Under $150','No limit'],
       mapTheme: { 'Wedding':'wedding','Night Out':'night-out','Business':'business','Casual':'casual','Cocktail':'cocktail','Graduation':'graduation' },
@@ -167,8 +171,14 @@
       <button class="close" aria-label="Close">×</button>
       <h3>${T.title}</h3>
       <p>${T.subtitle}</p>
-      <div class="chips" id="themes"></div>
-      <div class="chips" id="budgets"></div>
+      <div class="section" aria-labelledby="label-themes">
+        <div id="label-themes" class="section-label" style="font-weight:700;font-size:12px;letter-spacing:.3px;color:#666;margin:10px 0 6px 2px;text-transform:uppercase">${T.themeLabel}</div>
+        <div class="chips" id="themes"></div>
+      </div>
+      <div class="section" aria-labelledby="label-budgets">
+        <div id="label-budgets" class="section-label" style="font-weight:700;font-size:12px;letter-spacing:.3px;color:#666;margin:6px 0 6px 2px;text-transform:uppercase">${T.budgetLabel}</div>
+        <div class="chips" id="budgets"></div>
+      </div>
       <div class="actions">
         <button class="primary" id="go">${T.primary}</button>
         <button class="secondary" id="dnd">${T.secondary}</button>
