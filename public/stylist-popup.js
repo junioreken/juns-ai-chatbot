@@ -122,16 +122,24 @@
     const styles = `
       :host{all:initial}
       .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.34);z-index:2147483646}
-      .card{position:fixed;right:16px;bottom:16px;width:min(420px,92vw);background:#fff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.24);padding:18px;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;z-index:2147483647}
-      h3{margin:0 0 6px 0;font-size:18px;font-weight:800}
-      p{margin:0 0 12px 0;color:#444;font-size:14px}
+      .card{position:fixed;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);width:auto;max-width:min(420px,92vw);background:#fff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.24);padding:18px;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;z-index:2147483647;max-height:min(80vh,560px);overflow:auto;-webkit-overflow-scrolling:touch}
+      h3{margin:0 0 6px 0;font-size:clamp(16px,4.5vw,20px);font-weight:800;line-height:1.25}
+      p{margin:0 0 12px 0;color:#444;font-size:clamp(13px,3.8vw,16px);line-height:1.4;word-break:break-word}
       .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
-      .chip{padding:8px 12px;border:1px solid #ddd;border-radius:18px;cursor:pointer;font-size:13px}
+      .chip{padding:10px 14px;border:1px solid #ddd;border-radius:18px;cursor:pointer;font-size:clamp(12px,3.6vw,14px);line-height:1.2;background:#fff}
       .chip.active{background:#111;color:#fff;border-color:#111}
       .actions{display:flex;gap:8px;margin-top:12px}
-      .primary{flex:1;background:#111;color:#fff;border:none;border-radius:22px;padding:10px 14px;cursor:pointer}
-      .secondary{background:transparent;border:none;color:#666;cursor:pointer}
-      .close{position:absolute;right:10px;top:6px;background:transparent;border:none;font-size:18px;cursor:pointer}
+      .primary{flex:1;background:#111;color:#fff;border:none;border-radius:22px;padding:12px 16px;cursor:pointer;font-size:clamp(14px,4vw,16px)}
+      .secondary{background:transparent;border:none;color:#666;cursor:pointer;font-size:clamp(13px,3.8vw,15px)}
+      .close{position:absolute;right:10px;top:6px;background:transparent;border:none;font-size:20px;cursor:pointer}
+      @media (max-width: 480px){
+        .card{left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);width:auto;border-radius:14px;padding:16px}
+        .actions{flex-direction:column}
+        .secondary{padding:10px 14px;text-align:center}
+      }
+      @media (min-width: 768px){
+        .card{width:min(480px,92vw)}
+      }
     `;
     const isFr = /(^|\/)(fr)(\/|$)/i.test(location.pathname) || (document.documentElement.getAttribute('lang')||'').toLowerCase().startsWith('fr') || (window.Shopify && ((Shopify.locale||'').toLowerCase().startsWith('fr') || (Shopify.routes && String(Shopify.routes.root).startsWith('/fr'))));
     const T = isFr ? {
