@@ -18,8 +18,36 @@
 
   const budgetLabel = budget==='under-80' ? 'Under $80' : budget==='under-150' ? 'Under $150' : 'No limit';
   const prettyTheme = theme.replace(/-/g,' ');
-  const labelEl = document.getElementById('juns-theme-label');
-  if (labelEl) labelEl.textContent = `Theme: "${prettyTheme}" · Budget: ${budgetLabel}`;
+
+  // Create our own container if the theme doesn't provide one
+  function ensureContainer(){
+    let label = document.getElementById('juns-theme-label');
+    let grid = document.getElementById('juns-products-grid');
+    if (!label || !grid) {
+      const wrap = document.getElementById('juns-reco-wrapper') || document.createElement('div');
+      wrap.id = 'juns-reco-wrapper';
+      wrap.style.cssText = 'max-width:1200px;margin:24px auto;padding:0 16px;';
+      if (!wrap.parentNode) {
+        const main = document.querySelector('main') || document.body;
+        main.insertBefore(wrap, main.firstChild);
+      }
+      if (!label) {
+        label = document.createElement('div');
+        label.id = 'juns-theme-label';
+        label.style.cssText = 'font:600 18px/1.6 Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#333;margin:6px 0 18px;text-align:center';
+        wrap.appendChild(label);
+      }
+      if (!grid) {
+        grid = document.createElement('div');
+        grid.id = 'juns-products-grid';
+        wrap.appendChild(grid);
+      }
+    }
+    // Update label text
+    label.textContent = `Theme: "${prettyTheme}" · Budget: ${budgetLabel}`;
+    return { label, grid };
+  }
+  ensureContainer();
 
   // STRICT matching: only products explicitly tagged with the exact theme slug
   // Example: if theme=wedding, product must have the tag 'wedding' (case-insensitive)
@@ -45,12 +73,14 @@
   }
   const baseStyles = `
     :host{all:initial}
-    .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
-    .product-card{background:#fff;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.08);padding:10px;display:flex;flex-direction:column}
-    .product-card img{width:100%;height:auto;border-radius:8px;object-fit:cover}
-    .pc-title{margin-top:6px;font-size:14px;line-height:1.35;color:#111}
-    .pc-price{color:#111;font-weight:600}
-    @media (max-width:480px){.product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    .product-grid{display:grid;grid-template-columns:repeat(2,minmax(240px,1fr));gap:24px;}
+    .product-card{background:#fff;border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.08);padding:14px;display:flex;flex-direction:column;transition:transform .2s ease, box-shadow .2s ease}
+    .product-card:hover{transform:translateY(-2px);box-shadow:0 16px 34px rgba(0,0,0,.12)}
+    .product-card img{width:100%;height:auto;border-radius:10px;object-fit:cover}
+    .pc-title{margin-top:10px;font-size:16px;font-weight:700;letter-spacing:.2px;line-height:1.35;color:#111}
+    .pc-price{margin-top:6px;color:#444;font-weight:600;font-size:14px}
+    @media (max-width:960px){.product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}}
+    @media (max-width:520px){.product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.pc-title{font-size:14px}.pc-price{font-size:13px}}
   `;
   const setLoading = () => {
     const html = '<div style="padding:12px;color:#666">Loading recommendations…</div>';
@@ -156,11 +186,18 @@
       grid.innerHTML = '<div style="padding:12px;color:#666">No matching dresses found.</div>';
       return;
     }
-    const html = filtered.slice(0, 60).map(p => {
+    // Stable deterministic ordering
+    const ordered = filtered
+      .map(p => ({ p, t: String(p.title||'') }))
+      .sort((a,b) => a.t.localeCompare(b.t, undefined, { sensitivity:'base' }))
+      .map(x => x.p);
+
+    const currency = (window.Shopify && (Shopify.currency?.active || Shopify.currency || '')) || '';
+    const html = ordered.slice(0, 60).map(p => {
       const img = (p.images && p.images[0] && (p.images[0].src || p.images[0].original_src)) || '';
       const price = getLowestVariantPrice(p) || '—';
       return `<a href="/products/${p.handle}" class="j-item" style="text-decoration:none;color:inherit">
-        <div class="product-card"><img src="${img}" alt="${p.title}" loading="lazy"/><div class="pc-title">${p.title}</div><div class="pc-price">$${price}</div></div>
+        <div class="product-card"><img src="${img}" alt="${p.title}" loading="lazy"/><div class="pc-title">${p.title}</div><div class="pc-price">$${price}${currency ? ` ${currency}` : ''}</div></div>
       </a>`;
     }).join('');
     const finalHtml = `<div class="product-grid">${html}</div>`;
@@ -173,6 +210,20 @@
       }
     });
     mo.observe(grid, { childList:true });
+
+    // Attempt to hide large theme collection blocks that might also render products on the page
+    setTimeout(() => {
+      const candidates = Array.from(document.querySelectorAll('main section, main div')).filter(el => !el.closest('#juns-reco-wrapper'));
+      for (const el of candidates) {
+        if (el.id === 'juns-reco-wrapper') continue;
+        if (el.querySelector('#juns-reco-wrapper')) continue;
+        const links = el.querySelectorAll('a[href*="/products/"]');
+        if (links.length >= 6) {
+          el.setAttribute('data-juns-hide','1');
+          el.style.display = 'none';
+        }
+      }
+    }, 0);
   } catch (e) {
     const html = '<div style="padding:12px;color:#666">No matching dresses found.</div>';
     if (shadow) shadow.innerHTML = `<style>${baseStyles}</style>${html}`; else host.innerHTML = html;
