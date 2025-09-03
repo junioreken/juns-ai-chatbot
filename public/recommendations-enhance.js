@@ -62,6 +62,17 @@
     decodedTheme.replace(/-/g,' ')
   ].filter(Boolean)));
 
+  // Theme synonyms (fallback if merchant hasn't tagged with the exact theme)
+  const themeSynonyms = {
+    'wedding': ['wedding','bridal','bride','ceremony','guest','elegant','formal','lace','satin','ivory','white'],
+    'night-out': ['night out','party','club','nightclub','evening','sexy','bold'],
+    'business': ['business','office','work','professional','blazer','suit','pencil'],
+    'casual': ['casual','everyday','day','cozy','relaxed','sweater','knit'],
+    'cocktail': ['cocktail','semi formal','semi-formal','evening'],
+    'graduation': ['graduation','grad','ceremony','commencement']
+  };
+  const synonymList = themeSynonyms[decodedTheme] || [];
+
   async function renderInto(grid) {
   // Lock container and render inside an isolated Shadow DOM to avoid theme scripts injecting extra products
   grid.setAttribute('data-juns-lock','1');
@@ -167,12 +178,20 @@
       .trim();
   }
 
-  function themeOk(p) {
+  function themeStrict(p) {
     // STRICT by tag, but tolerate slug vs spaced and punctuation
     const productTags = normalizeTags(p.tags);
     const prodKeys = new Set(productTags.map(normKey));
     const needles = Array.from(new Set(tags.map(t=>normKey(t)).filter(Boolean)));
     return needles.some(n => prodKeys.has(n));
+  }
+
+  function themeHeuristic(p){
+    // Heuristic: search synonyms in tags/title/handle/body
+    if (!synonymList.length) return false;
+    const productTags = normalizeTags(p.tags).join(' ');
+    const hay = [sanitize(p.title), sanitize(p.handle), sanitize(p.body_html), sanitize(productTags)].join(' ');
+    return synonymList.some(w => new RegExp(`(?:^|\b)${sanitize(w)}(?:$|\b)`, 'i').test(hay));
   }
 
   function isDressStrict(p) {
@@ -187,7 +206,8 @@
 
   try {
     const all = await fetchAllProducts();
-    const filtered = all.filter(p => themeOk(p) && isDressStrict(p) && priceOk(p));
+    const anyStrict = all.some(p => themeStrict(p));
+    const filtered = all.filter(p => (anyStrict ? themeStrict(p) : themeHeuristic(p)) && isDressStrict(p) && priceOk(p));
     if (!filtered.length) {
       grid.innerHTML = '<div style="padding:12px;color:#666">No matching dresses found.</div>';
       return;
