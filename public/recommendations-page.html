@@ -99,10 +99,11 @@ document.addEventListener('DOMContentLoaded', async function() {
   // Fetch products from server endpoint
   async function fetchProducts() {
     const qs = new URLSearchParams({ theme: rawTheme, budget: budgetParam }).toString();
-    console.log('🔍 Fetching from /recommend with:', qs);
+    const serverUrl = 'https://juns-ai-chatbot-production.up.railway.app';
+    console.log('🔍 Fetching from', serverUrl, 'with:', qs);
     
     try {
-      const res = await fetch(`/recommend?${qs}`, { cache: 'no-store' });
+      const res = await fetch(`${serverUrl}/recommend?${qs}`, { cache: 'no-store' });
       console.log('📡 Response status:', res.status);
       
       if (res.ok) {
