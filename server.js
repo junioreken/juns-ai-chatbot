@@ -30,10 +30,18 @@ const openai = new OpenAI({
 // Import enhanced routes
 const enhancedChatRouter = require('./routes/enhanced-chat');
 const recommendRouter = require('./routes/recommend');
+const testRecommendRouter = require('./routes/test-recommend');
 
 // Mount enhanced routes
 app.use('/api', enhancedChatRouter);
-app.use('/', recommendRouter);
+
+// Use test recommend router if Shopify credentials are missing
+if (!SHOPIFY_DOMAIN || !SHOPIFY_API_TOKEN) {
+  console.log('⚠️  Shopify credentials missing, using test recommend endpoint with mock data');
+  app.use('/recommend', testRecommendRouter);
+} else {
+  app.use('/recommend', recommendRouter);
+}
 
 app.get('/', (req, res) => {
   res.send("✅ JUN'S AI Chatbot Server is Running with Enhanced Features!");
