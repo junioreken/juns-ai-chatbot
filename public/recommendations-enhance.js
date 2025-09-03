@@ -64,12 +64,12 @@
 
   // Theme synonyms (fallback if merchant hasn't tagged with the exact theme)
   const themeSynonyms = {
-    'wedding': ['wedding','bridal','bride','ceremony','guest','elegant','formal','lace','satin','ivory','white'],
-    'night-out': ['night out','party','club','nightclub','evening','sexy','bold'],
-    'business': ['business','office','work','professional','blazer','suit','pencil'],
-    'casual': ['casual','everyday','day','cozy','relaxed','sweater','knit'],
-    'cocktail': ['cocktail','semi formal','semi-formal','evening'],
-    'graduation': ['graduation','grad','ceremony','commencement']
+    'wedding': ['wedding','bridal','bride','bridemaid','bridesmaid','guest','ceremony','elegant','formal','lace','satin','ivory','white','mariage','mariée','invité'],
+    'night-out': ['night out','party','club','nightclub','evening','sexy','bold','soirée','soirée chic','boîte de nuit'],
+    'business': ['business','office','work','professional','blazer','suit','pencil','bureau','travail','professionnel'],
+    'casual': ['casual','everyday','day','cozy','relaxed','sweater','knit','décontracté','quotidien'],
+    'cocktail': ['cocktail','semi formal','semi-formal','evening','soirée'],
+    'graduation': ['graduation','grad','ceremony','commencement','remise de diplômes','diplôme']
   };
   const synonymList = themeSynonyms[decodedTheme] || [];
 
@@ -125,6 +125,7 @@
   }
 
   async function fetchAllProducts() {
+    // Try /collections/all first; if store blocks it, fall back to storefront API via HTML product cards present on the page
     const base = '/collections/all/products.json';
     let page = 1; const out = [];
     const seen = new Set();
@@ -139,7 +140,26 @@
       }
       page += 1; if (page > 10) break;
     }
-    return out;
+    if (out.length > 0) return out;
+
+    // Fallback: scrape minimal info from product cards already rendered on the page
+    try {
+      const cards = Array.from(document.querySelectorAll('a[href*="/products/"]'));
+      const uniq = new Map();
+      for (const a of cards) {
+        const href = a.getAttribute('href') || '';
+        const m = href.match(/\/products\/([^/?#]+)/);
+        if (!m) continue;
+        const handle = m[1];
+        if (!uniq.has(handle)) {
+          const img = a.querySelector('img');
+          uniq.set(handle, { handle, title: a.textContent.trim(), images: [{ src: img ? img.src : '' }], variants:[{ price: '' }], tags: [] });
+        }
+      }
+      return Array.from(uniq.values());
+    } catch (_) {
+      return out;
+    }
   }
 
   function normKey(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
@@ -237,7 +257,7 @@
       .sort((a,b) => a.t.localeCompare(b.t, undefined, { sensitivity:'base' }))
       .map(x => x.p);
 
-    const currency = (window.Shopify && (Shopify.currency?.active || Shopify.currency || '')) || '';
+    const currency = (window.Shopify && (Shopify.currency?.active || Shopify.currency || '')) || (document.documentElement.lang === 'fr' ? 'CAD' : '');
     const html = ordered.slice(0, 60).map(p => {
       const img = (p.images && p.images[0] && (p.images[0].src || p.images[0].original_src)) || '';
       const price = getLowestVariantPrice(p) || '—';
