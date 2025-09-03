@@ -24,8 +24,20 @@
       }
     }
     @media (max-width: 360px) {
-      #juns-products-grid {
+      #juns-products-grid, #juns-dresses-grid, #juns-accessories-grid {
         grid-template-columns: 1fr;
+        gap: 12px;
+      }
+    }
+    @media (max-width: 960px) {
+      #juns-dresses-grid, #juns-accessories-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+    }
+    @media (max-width: 560px) {
+      #juns-dresses-grid, #juns-accessories-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
       }
     }
@@ -66,7 +78,24 @@
     }
   </style>
 
-  <div id="juns-products-grid"></div>
+  <!-- Dresses Section -->
+  <div id="dresses-section">
+    <h3 id="dresses-heading" style="text-align:center; font-size: 24px; font-weight: 600; margin-bottom: 20px; color: #333; font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;">
+      Dresses & Skirts
+    </h3>
+    <div id="juns-dresses-grid" style="display: grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap: 24px; margin-bottom: 40px;"></div>
+  </div>
+
+  <!-- Accessories Section -->
+  <div id="accessories-section">
+    <h3 id="accessories-heading" style="text-align:center; font-size: 24px; font-weight: 600; margin-bottom: 20px; color: #333; font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;">
+      Matching Accessories
+    </h3>
+    <div id="juns-accessories-grid" style="display: grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap: 24px;"></div>
+  </div>
+
+  <!-- Fallback grid for backward compatibility -->
+  <div id="juns-products-grid" style="display: none;"></div>
 </div>
 
 <script>
@@ -77,7 +106,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   const headingEl = document.getElementById('juns-heading');
   const labelEl = document.getElementById('juns-theme-label');
-  const gridEl = document.getElementById('juns-products-grid');
+  const dressesGridEl = document.getElementById('juns-dresses-grid');
+  const accessoriesGridEl = document.getElementById('juns-accessories-grid');
+  const dressesHeadingEl = document.getElementById('dresses-heading');
+  const accessoriesHeadingEl = document.getElementById('accessories-heading');
 
   // Update UI
   if (headingEl) {
@@ -120,33 +152,77 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
   }
 
-  // Render products
+  // Render products in separate sections
   function renderProducts(products) {
     if (!products.length) {
-      gridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1;'>No matching dresses found.</p>";
+      dressesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #666;'>No matching dresses found.</p>";
+      accessoriesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #666;'>No matching accessories found.</p>";
       return;
     }
 
     const currency = (window.Shopify && (Shopify.currency?.active || Shopify.currency || '')) || 'CAD';
     
-    gridEl.innerHTML = products.map(p => {
-      const img = p.image || 'https://via.placeholder.com/600x800?text=JUN%27S';
-      const price = p.price ? `$${p.price} ${currency}` : '';
-      
-      return `
-        <a href="${p.url}" style="text-decoration:none; color:#000; display:block">
-          <div class="j-card">
-            <img src="${img}" alt="${p.title}" loading="lazy"/>
-            <div class="j-title">${p.title}</div>
-            <div class="j-price">${price}</div>
-          </div>
-        </a>`;
-    }).join('');
+    // Separate dresses and accessories
+    const dresses = products.filter(p => {
+      const title = p.title.toLowerCase();
+      const isDress = title.includes('dress') || title.includes('gown') || title.includes('robe') || title.includes('skirt');
+      return isDress;
+    });
+    
+    const accessories = products.filter(p => {
+      const title = p.title.toLowerCase();
+      const isAccessory = title.includes('bag') || title.includes('clutch') || title.includes('purse') || 
+                         title.includes('veil') || title.includes('necklace') || title.includes('accessory');
+      return isAccessory;
+    });
+
+    // Render dresses
+    if (dresses.length > 0) {
+      dressesGridEl.innerHTML = dresses.map(p => {
+        const img = p.image || 'https://via.placeholder.com/600x800?text=JUN%27S';
+        const price = p.price ? `$${p.price} ${currency}` : '';
+        
+        return `
+          <a href="${p.url}" style="text-decoration:none; color:#000; display:block">
+            <div class="j-card">
+              <img src="${img}" alt="${p.title}" loading="lazy"/>
+              <div class="j-title">${p.title}</div>
+              <div class="j-price">${price}</div>
+            </div>
+          </a>`;
+      }).join('');
+    } else {
+      dressesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #666;'>No matching dresses found.</p>";
+    }
+
+    // Render accessories
+    if (accessories.length > 0) {
+      accessoriesGridEl.innerHTML = accessories.map(p => {
+        const img = p.image || 'https://via.placeholder.com/600x800?text=JUN%27S';
+        const price = p.price ? `$${p.price} ${currency}` : '';
+        
+        return `
+          <a href="${p.url}" style="text-decoration:none; color:#000; display:block">
+            <div class="j-card">
+              <img src="${img}" alt="${p.title}" loading="lazy"/>
+              <div class="j-title">${p.title}</div>
+              <div class="j-price">${price}</div>
+            </div>
+          </a>`;
+      }).join('');
+    } else {
+      accessoriesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #666;'>No matching accessories found.</p>";
+    }
+
+    // Show/hide sections based on content
+    document.getElementById('dresses-section').style.display = dresses.length > 0 ? 'block' : 'none';
+    document.getElementById('accessories-section').style.display = accessories.length > 0 ? 'block' : 'none';
   }
 
   // Load and render
   try {
-    gridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1;'>Loading looks…</p>";
+    dressesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #666;'>Loading dresses…</p>";
+    accessoriesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #666;'>Loading accessories…</p>";
     
     const products = await fetchProducts();
     console.log('✅ Found', products.length, 'products');
@@ -162,7 +238,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   } catch (err) {
     console.error('❌ Error:', err);
-    gridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1;'>Failed to load products.</p>";
+    dressesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #d32f2f;'>Failed to load products.</p>";
+    accessoriesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #d32f2f;'>Failed to load products.</p>";
   }
 });
 </script>
