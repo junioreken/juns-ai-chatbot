@@ -35,13 +35,9 @@ const testRecommendRouter = require('./routes/test-recommend');
 // Mount enhanced routes
 app.use('/api', enhancedChatRouter);
 
-// Use test recommend router if Shopify credentials are missing
-if (!SHOPIFY_DOMAIN || !SHOPIFY_API_TOKEN) {
-  console.log('⚠️  Shopify credentials missing, using test recommend endpoint with mock data');
-  app.use('/recommend', testRecommendRouter);
-} else {
-  app.use('/recommend', recommendRouter);
-}
+// Use test recommend router for now (temporary for debugging)
+console.log('⚠️  Using test recommend endpoint with mock data for debugging');
+app.use('/recommend', testRecommendRouter);
 
 app.get('/', (req, res) => {
   res.send("✅ JUN'S AI Chatbot Server is Running with Enhanced Features!");
