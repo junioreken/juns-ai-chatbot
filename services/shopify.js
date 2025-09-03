@@ -19,7 +19,7 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
   if (!shopifyDomain || !accessToken) {
     throw new Error('Shopify credentials missing');
   }
-  const ADMIN_API_VERSION = '2024-01';
+  const ADMIN_API_VERSION = '2023-07';
   const base = `https://${shopifyDomain}/admin/api/${ADMIN_API_VERSION}/products.json`;
 
   const out = [];
@@ -27,19 +27,30 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
   // Paginate defensively (max 1000 items)
   for (let page = 1; page <= 5; page++) {
     const url = `${base}?limit=250&page=${page}`;
-    const { data } = await axios.get(url, {
-      headers: {
-        'X-Shopify-Access-Token': accessToken,
-        'Content-Type': 'application/json'
-      },
-      timeout: 12000
-    });
-    const arr = data?.products || [];
-    if (!arr.length) break;
-    for (const p of arr) {
-      if (seen.has(p.handle)) continue;
-      seen.add(p.handle);
-      out.push(p);
+    try {
+      console.log(`🔍 Fetching products page ${page} from Shopify...`);
+      const { data } = await axios.get(url, {
+        headers: {
+          'X-Shopify-Access-Token': accessToken,
+          'Content-Type': 'application/json'
+        },
+        timeout: 12000
+      });
+      const arr = data?.products || [];
+      console.log(`📦 Got ${arr.length} products from page ${page}`);
+      if (!arr.length) break;
+      for (const p of arr) {
+        if (seen.has(p.handle)) continue;
+        seen.add(p.handle);
+        out.push(p);
+      }
+    } catch (error) {
+      console.error(`❌ Error fetching products page ${page}:`, error.message);
+      if (error.response) {
+        console.error(`❌ Response status: ${error.response.status}`);
+        console.error(`❌ Response data:`, error.response.data);
+      }
+      throw error;
     }
   }
 
