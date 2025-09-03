@@ -29,9 +29,11 @@ const openai = new OpenAI({
 
 // Import enhanced routes
 const enhancedChatRouter = require('./routes/enhanced-chat');
+const recommendRouter = require('./routes/recommend');
 
 // Mount enhanced routes
 app.use('/api', enhancedChatRouter);
+app.use('/', recommendRouter);
 
 app.get('/', (req, res) => {
   res.send("✅ JUN'S AI Chatbot Server is Running with Enhanced Features!");

@@ -127,20 +127,32 @@
   async function fetchAllProducts() {
     // Use server endpoint that reads Shopify Admin API by tag and budget
     const qs = new URLSearchParams({ theme: theme, budget: budget }).toString();
+    console.log('🔍 Fetching from /recommend with:', qs);
     try {
       const res = await fetch(`/recommend?${qs}`, { cache: 'no-store' });
+      console.log('📡 Response status:', res.status);
       if (res.ok) {
         const data = await res.json();
+        console.log('📦 Server returned:', data);
         const products = Array.isArray(data.products) ? data.products : [];
-        if (products.length) return products.map(p => ({
-          title: p.title,
-          images: [{ src: p.image || '' }],
-          variants: [{ price: p.price || '' }],
-          handle: p.handle,
-          tags: []
-        }));
+        if (products.length) {
+          console.log('✅ Found', products.length, 'products from server');
+          return products.map(p => ({
+            title: p.title,
+            images: [{ src: p.image || '' }],
+            variants: [{ price: p.price || '' }],
+            handle: p.handle,
+            tags: []
+          }));
+        } else {
+          console.log('⚠️ No products from server, falling back to client-side');
+        }
+      } else {
+        console.log('❌ Server error:', res.status, await res.text());
       }
-    } catch (_) {}
+    } catch (e) {
+      console.log('❌ Fetch error:', e.message);
+    }
 
     // Fallback to old client-side methods if server route unavailable
     const base = '/collections/all/products.json';
