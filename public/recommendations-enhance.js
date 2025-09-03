@@ -125,7 +125,24 @@
   }
 
   async function fetchAllProducts() {
-    // Try /collections/all first; if store blocks it, fall back to storefront API via HTML product cards present on the page
+    // Use server endpoint that reads Shopify Admin API by tag and budget
+    const qs = new URLSearchParams({ theme: theme, budget: budget }).toString();
+    try {
+      const res = await fetch(`/recommend?${qs}`, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        const products = Array.isArray(data.products) ? data.products : [];
+        if (products.length) return products.map(p => ({
+          title: p.title,
+          images: [{ src: p.image || '' }],
+          variants: [{ price: p.price || '' }],
+          handle: p.handle,
+          tags: []
+        }));
+      }
+    } catch (_) {}
+
+    // Fallback to old client-side methods if server route unavailable
     const base = '/collections/all/products.json';
     let page = 1; const out = [];
     const seen = new Set();
@@ -140,42 +157,7 @@
       }
       page += 1; if (page > 10) break;
     }
-    if (out.length > 0) return out;
-
-    // Fallback 2: /products.json pagination (some themes allow this)
-    try {
-      const seen2 = new Set();
-      const out2 = [];
-      for (let p = 1; p <= 5; p++) {
-        const u = `/products.json?limit=250&page=${p}&_=${ts}`;
-        const d = await fetchPage(u);
-        const arr2 = d.products || d || [];
-        if (!arr2.length) break;
-        for (const pr of arr2) {
-          if (!seen2.has(pr.handle)) { seen2.add(pr.handle); out2.push(pr); }
-        }
-      }
-      if (out2.length) return out2;
-    } catch (_) {}
-
-    // Fallback: scrape minimal info from product cards already rendered on the page
-    try {
-      const cards = Array.from(document.querySelectorAll('a[href*="/products/"]'));
-      const uniq = new Map();
-      for (const a of cards) {
-        const href = a.getAttribute('href') || '';
-        const m = href.match(/\/products\/([^/?#]+)/);
-        if (!m) continue;
-        const handle = m[1];
-        if (!uniq.has(handle)) {
-          const img = a.querySelector('img');
-          uniq.set(handle, { handle, title: a.textContent.trim(), images: [{ src: img ? img.src : '' }], variants:[{ price: '' }], tags: [] });
-        }
-      }
-      return Array.from(uniq.values());
-    } catch (_) {
-      return out;
-    }
+    return out;
   }
 
   function normKey(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
