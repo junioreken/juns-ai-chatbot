@@ -142,6 +142,22 @@
     }
     if (out.length > 0) return out;
 
+    // Fallback 2: /products.json pagination (some themes allow this)
+    try {
+      const seen2 = new Set();
+      const out2 = [];
+      for (let p = 1; p <= 5; p++) {
+        const u = `/products.json?limit=250&page=${p}&_=${ts}`;
+        const d = await fetchPage(u);
+        const arr2 = d.products || d || [];
+        if (!arr2.length) break;
+        for (const pr of arr2) {
+          if (!seen2.has(pr.handle)) { seen2.add(pr.handle); out2.push(pr); }
+        }
+      }
+      if (out2.length) return out2;
+    } catch (_) {}
+
     // Fallback: scrape minimal info from product cards already rendered on the page
     try {
       const cards = Array.from(document.querySelectorAll('a[href*="/products/"]'));
