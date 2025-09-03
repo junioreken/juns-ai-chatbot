@@ -1,8 +1,14 @@
 const axios = require('axios');
 
 // Support multiple env var names for compatibility across deployments
-const shopifyDomain = process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOPIFY_DOMAIN;
+let shopifyDomain = process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOPIFY_DOMAIN;
 const accessToken = process.env.SHOPIFY_ADMIN_TOKEN || process.env.SHOPIFY_API_TOKEN || process.env.SHOPIFY_ADMIN_API;
+
+// Clean up domain format - remove https:// and trailing slashes
+if (shopifyDomain) {
+  shopifyDomain = shopifyDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  console.log('🔧 Cleaned Shopify domain:', shopifyDomain);
+}
 
 async function getLatestOrderByEmail(email) {
   const url = `https://${shopifyDomain}/admin/api/2023-07/orders.json?email=${email}&status=any`;
