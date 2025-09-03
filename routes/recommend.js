@@ -8,11 +8,14 @@ router.get('/', async (req, res) => {
   if (!theme) return res.status(400).json({ error: 'Theme is required' });
 
   try {
+    console.log(`🎯 Recommend API called with theme: "${theme}", budget: "${budget}"`);
     const products = await getProductsByTheme(theme, budget, 60);
+    console.log(`✅ Returning ${products.length} products`);
     res.json({ products });
   } catch (err) {
-    console.error('Recommend API error:', err.message);
-    res.status(500).json({ error: 'Recommendation failed' });
+    console.error('❌ Recommend API error:', err.message);
+    console.error('❌ Error stack:', err.stack);
+    res.status(500).json({ error: 'Recommendation failed', details: err.message });
   }
 });
 
