@@ -19,6 +19,11 @@
   const budgetLabel = budget==='under-80' ? 'Under $80' : budget==='under-150' ? 'Under $150' : 'No limit';
   const prettyTheme = theme.replace(/-/g,' ');
 
+  function onReady(fn){
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn, { once:true });
+    else fn();
+  }
+
   // Create our own container if the theme doesn't provide one
   function ensureContainer(){
     let label = document.getElementById('juns-theme-label');
@@ -47,7 +52,7 @@
     label.textContent = `Theme: "${prettyTheme}" · Budget: ${budgetLabel}`;
     return { label, grid };
   }
-  ensureContainer();
+  onReady(() => { ensureContainer(); });
 
   // STRICT matching: only products explicitly tagged with the exact theme slug
   // Example: if theme=wedding, product must have the tag 'wedding' (case-insensitive)
@@ -57,7 +62,7 @@
     decodedTheme.replace(/-/g,' ')
   ].filter(Boolean)));
 
-  waitFor('juns-products-grid', async (grid) => {
+  async function renderInto(grid) {
   // Lock container and render inside an isolated Shadow DOM to avoid theme scripts injecting extra products
   grid.setAttribute('data-juns-lock','1');
   grid.innerHTML = '';
@@ -76,11 +81,12 @@
     .product-grid{display:grid;grid-template-columns:repeat(2,minmax(240px,1fr));gap:24px;}
     .product-card{background:#fff;border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,.08);padding:14px;display:flex;flex-direction:column;transition:transform .2s ease, box-shadow .2s ease}
     .product-card:hover{transform:translateY(-2px);box-shadow:0 16px 34px rgba(0,0,0,.12)}
-    .product-card img{width:100%;height:auto;border-radius:10px;object-fit:cover}
+    .product-card img{width:100%;height:auto;border-radius:10px;object-fit:cover;aspect-ratio:4/5;background:#f6f6f6}
     .pc-title{margin-top:10px;font-size:16px;font-weight:700;letter-spacing:.2px;line-height:1.35;color:#111}
     .pc-price{margin-top:6px;color:#444;font-weight:600;font-size:14px}
     @media (max-width:960px){.product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}}
-    @media (max-width:520px){.product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.pc-title{font-size:14px}.pc-price{font-size:13px}}
+    @media (max-width:560px){.product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.pc-title{font-size:14px}.pc-price{font-size:13px}}
+    @media (max-width:360px){.product-grid{grid-template-columns:1fr;gap:12px}}
   `;
   const setLoading = () => {
     const html = '<div style="padding:12px;color:#666">Loading recommendations…</div>';
@@ -228,7 +234,14 @@
     const html = '<div style="padding:12px;color:#666">No matching dresses found.</div>';
     if (shadow) shadow.innerHTML = `<style>${baseStyles}</style>${html}`; else host.innerHTML = html;
   }
+
+  // Render immediately once DOM is ready, without requiring a manual refresh
+  onReady(() => {
+    const grid = document.getElementById('juns-products-grid');
+    if (grid && !grid.getAttribute('data-juns-lock')) renderInto(grid);
   });
+  // Fallback if container is injected later
+  waitFor('juns-products-grid', (grid) => { if (!grid.getAttribute('data-juns-lock')) renderInto(grid); });
 })();
 
 
