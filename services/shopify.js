@@ -62,18 +62,6 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
   const themeSlug = String(theme || '').toLowerCase();
   const themeSpaced = themeSlug.replace(/-/g, ' ');
 
-  // Theme synonyms mapping
-  const themeSynonyms = {
-    'wedding': ['wedding', 'bridal', 'elegant', 'formal', 'evening', 'cocktail', 'luxury', 'satin', 'gift idea'],
-    'cocktail': ['cocktail', 'evening', 'party', 'night-out', 'elegant', 'formal', 'gift idea'],
-    'casual': ['casual', 'everyday', 'comfortable', 'simple'],
-    'business': ['business', 'professional', 'formal', 'office'],
-    'night-out': ['night-out', 'evening', 'party', 'cocktail', 'elegant', 'gift idea'],
-    'graduation': ['graduation', 'formal', 'elegant', 'dressy'],
-    'summer': ['summer', 'light', 'breathable'],
-    'winter': ['winter', 'warm', 'cozy']
-  };
-
   function normalizeTags(value) {
     if (!value) return [];
     if (Array.isArray(value)) return value.map(t => String(t).toLowerCase().trim());
@@ -94,18 +82,18 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
     return true;
   }
 
-  console.log(`🔍 Filtering ${out.length} products for theme: "${themeSlug}" (spaced: "${themeSpaced}")`);
+  console.log(`🔍 Filtering ${out.length} products for exact theme tag: "${themeSlug}" (spaced: "${themeSpaced}")`);
   
-  // Use theme synonyms for better matching
-  const synonyms = themeSynonyms[themeSlug] || [themeSlug, themeSpaced];
-  console.log(`🔍 Using synonyms for "${themeSlug}": [${synonyms.join(', ')}]`);
+  // Use exact theme tag matching - no synonyms
+  const exactThemeTags = [themeSlug, themeSpaced];
+  console.log(`🔍 Looking for exact theme tags: [${exactThemeTags.join(', ')}]`);
   
   const filtered = out.filter(p => {
     const tags = normalizeTags(p.tags);
-    const themed = synonyms.some(synonym => tags.includes(synonym));
+    const themed = exactThemeTags.some(exactTag => tags.includes(exactTag));
     
     if (!themed) {
-      console.log(`❌ ${p.title} - No theme match. Tags: [${tags.join(', ')}]`);
+      console.log(`❌ ${p.title} - No exact theme match. Tags: [${tags.join(', ')}]`);
       return false;
     }
     
@@ -134,11 +122,11 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
     return true;
   }).slice(0, limit);
   
-  console.log(`📊 Final result: ${filtered.length} products match theme "${themeSlug}" and budget "${budget}"`);
+  console.log(`📊 Final result: ${filtered.length} products match exact theme tag "${themeSlug}" and budget "${budget}"`);
 
   // If no products match, return some products for debugging (remove this later)
   if (filtered.length === 0) {
-    console.log(`⚠️ No products match theme "${themeSlug}". Showing first 5 products for debugging:`);
+    console.log(`⚠️ No products have exact theme tag "${themeSlug}". Showing first 5 products for debugging:`);
     const debugProducts = out.slice(0, 5).map(p => {
       const tags = normalizeTags(p.tags);
       console.log(`🔍 ${p.title} - Tags: [${tags.join(', ')}]`);
