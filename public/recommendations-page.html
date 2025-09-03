@@ -1,0 +1,167 @@
+<!-- Recommendations Section -->
+<div id="recommendation-section" style="padding: 40px 20px; max-width: 1200px; margin: 0 auto;">
+  <h2 id="juns-heading" style="text-align:center; font-size: 34px; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.2px; font-family: 'Playfair Display', 'Times New Roman', Georgia, serif; font-style: italic;">
+    Curated looks — dresses + matching accessories
+  </h2>
+  <p id="juns-theme-label" style="text-align:center; font-size: 16px; margin-bottom: 30px; color: #555;"></p>
+
+  <style>
+    #juns-products-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(240px, 1fr));
+      gap: 24px;
+    }
+    @media (max-width: 960px) {
+      #juns-products-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+    }
+    @media (max-width: 560px) {
+      #juns-products-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+    }
+    @media (max-width: 360px) {
+      #juns-products-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+    }
+    .j-card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.08);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+    .j-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 34px rgba(0,0,0,.12);
+    }
+    .j-card img {
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      object-fit: cover;
+      aspect-ratio: 4/5;
+      background: #f6f6f6;
+    }
+    .j-title {
+      margin-top: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: .2px;
+      line-height: 1.35;
+      color: #111;
+    }
+    .j-price {
+      margin-top: 6px;
+      color: #444;
+      font-weight: 600;
+      font-size: 14px;
+    }
+  </style>
+
+  <div id="juns-products-grid"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+  const params = new URLSearchParams(window.location.search);
+  const rawTheme = (params.get('theme') || '').toLowerCase().trim();
+  const budgetParam = (params.get('budget') || 'no-limit').toLowerCase().trim();
+
+  const headingEl = document.getElementById('juns-heading');
+  const labelEl = document.getElementById('juns-theme-label');
+  const gridEl = document.getElementById('juns-products-grid');
+
+  // Update UI
+  if (headingEl) {
+    headingEl.textContent = rawTheme
+      ? `Curated ${rawTheme} looks — dresses + matching accessories`
+      : `Curated looks — dresses + matching accessories`;
+  }
+
+  const prettyBudget = budgetParam === 'no-limit'
+    ? 'No limit'
+    : budgetParam.startsWith('under-')
+      ? 'Under $' + budgetParam.replace('under-', '')
+      : budgetParam;
+
+  labelEl.textContent = rawTheme
+    ? `Theme: "${rawTheme}" · Budget: ${prettyBudget}`
+    : 'Start by typing your event theme.';
+
+  // Fetch products from server endpoint
+  async function fetchProducts() {
+    const qs = new URLSearchParams({ theme: rawTheme, budget: budgetParam }).toString();
+    console.log('🔍 Fetching from /recommend with:', qs);
+    
+    try {
+      const res = await fetch(`/recommend?${qs}`, { cache: 'no-store' });
+      console.log('📡 Response status:', res.status);
+      
+      if (res.ok) {
+        const data = await res.json();
+        console.log('📦 Server returned:', data);
+        return Array.isArray(data.products) ? data.products : [];
+      } else {
+        console.log('❌ Server error:', res.status, await res.text());
+        return [];
+      }
+    } catch (e) {
+      console.log('❌ Fetch error:', e.message);
+      return [];
+    }
+  }
+
+  // Render products
+  function renderProducts(products) {
+    if (!products.length) {
+      gridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1;'>No matching dresses found.</p>";
+      return;
+    }
+
+    const currency = (window.Shopify && (Shopify.currency?.active || Shopify.currency || '')) || 'CAD';
+    
+    gridEl.innerHTML = products.map(p => {
+      const img = p.image || 'https://via.placeholder.com/600x800?text=JUN%27S';
+      const price = p.price ? `$${p.price} ${currency}` : '';
+      
+      return `
+        <a href="${p.url}" style="text-decoration:none; color:#000; display:block">
+          <div class="j-card">
+            <img src="${img}" alt="${p.title}" loading="lazy"/>
+            <div class="j-title">${p.title}</div>
+            <div class="j-price">${price}</div>
+          </div>
+        </a>`;
+    }).join('');
+  }
+
+  // Load and render
+  try {
+    gridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1;'>Loading looks…</p>";
+    
+    const products = await fetchProducts();
+    console.log('✅ Found', products.length, 'products');
+    renderProducts(products);
+
+    // Optional chatbot upsell
+    if (window.JUNS?.chat?.message) {
+      setTimeout(() => {
+        window.JUNS.chat.message("Want me to add a matching clutch & heels to complete your look?");
+        if (window.JUNS?.chat?.setBadge) window.JUNS.chat.setBadge(true);
+      }, 15000);
+    }
+
+  } catch (err) {
+    console.error('❌ Error:', err);
+    gridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1;'>Failed to load products.</p>";
+  }
+});
+</script>

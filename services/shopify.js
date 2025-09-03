@@ -66,10 +66,17 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
     return true;
   }
 
+  // Only return products that have the exact theme tag
   const filtered = out.filter(p => {
     const tags = normalizeTags(p.tags);
     const themed = tags.includes(themeSlug) || tags.includes(themeSpaced);
     if (!themed) return false;
+    
+    // Additional dress-only filter
+    const isDress = tags.includes('dress') || tags.includes('gown') || tags.includes('robe') || 
+                   /dress|gown|robe/i.test(p.title) || /dress|gown|robe/i.test(p.product_type || '');
+    if (!isDress) return false;
+    
     const price = minVariantPrice(p);
     return priceOk(price);
   }).slice(0, limit);
