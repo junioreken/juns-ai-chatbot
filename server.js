@@ -35,9 +35,14 @@ const testRecommendRouter = require('./routes/test-recommend');
 // Mount enhanced routes
 app.use('/api', enhancedChatRouter);
 
-// Use test recommend router for now (temporary for debugging)
-console.log('⚠️  Using test recommend endpoint with mock data for debugging');
-app.use('/recommend', testRecommendRouter);
+// Use real Shopify products
+if (!SHOPIFY_DOMAIN || !SHOPIFY_API_TOKEN) {
+  console.log('⚠️  Shopify credentials missing, using test recommend endpoint with mock data');
+  app.use('/recommend', testRecommendRouter);
+} else {
+  console.log('✅ Using real Shopify products from', SHOPIFY_DOMAIN);
+  app.use('/recommend', recommendRouter);
+}
 
 app.get('/', (req, res) => {
   res.send("✅ JUN'S AI Chatbot Server is Running with Enhanced Features!");
