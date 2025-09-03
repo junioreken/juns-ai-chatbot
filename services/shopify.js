@@ -64,11 +64,11 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
 
   // Theme synonyms mapping
   const themeSynonyms = {
-    'wedding': ['wedding', 'bridal', 'elegant', 'formal', 'evening', 'cocktail', 'luxury', 'satin'],
-    'cocktail': ['cocktail', 'evening', 'party', 'night-out', 'elegant', 'formal'],
+    'wedding': ['wedding', 'bridal', 'elegant', 'formal', 'evening', 'cocktail', 'luxury', 'satin', 'gift idea'],
+    'cocktail': ['cocktail', 'evening', 'party', 'night-out', 'elegant', 'formal', 'gift idea'],
     'casual': ['casual', 'everyday', 'comfortable', 'simple'],
     'business': ['business', 'professional', 'formal', 'office'],
-    'night-out': ['night-out', 'evening', 'party', 'cocktail', 'elegant'],
+    'night-out': ['night-out', 'evening', 'party', 'cocktail', 'elegant', 'gift idea'],
     'graduation': ['graduation', 'formal', 'elegant', 'dressy'],
     'summer': ['summer', 'light', 'breathable'],
     'winter': ['winter', 'warm', 'cozy']
@@ -109,12 +109,16 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
       return false;
     }
     
-    // Additional dress-only filter
+    // Include dresses AND matching accessories
     const isDress = tags.includes('dress') || tags.includes('gown') || tags.includes('robe') || 
                    /dress|gown|robe/i.test(p.title) || /dress|gown|robe/i.test(p.product_type || '');
     
-    if (!isDress) {
-      console.log(`❌ ${p.title} - Not a dress. Tags: [${tags.join(', ')}]`);
+    const isAccessory = tags.includes('bag') || tags.includes('clutch') || tags.includes('purse') || 
+                       tags.includes('accessory') || tags.includes('accessories') ||
+                       /bag|clutch|purse|accessory/i.test(p.title) || /bag|clutch|purse|accessory/i.test(p.product_type || '');
+    
+    if (!isDress && !isAccessory) {
+      console.log(`❌ ${p.title} - Not a dress or accessory. Tags: [${tags.join(', ')}]`);
       return false;
     }
     
