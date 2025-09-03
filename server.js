@@ -31,9 +31,13 @@ const openai = new OpenAI({
 const enhancedChatRouter = require('./routes/enhanced-chat');
 const recommendRouter = require('./routes/recommend');
 const testRecommendRouter = require('./routes/test-recommend');
+const debugShopifyRouter = require('./routes/debug-shopify');
 
 // Mount enhanced routes
 app.use('/api', enhancedChatRouter);
+
+// Debug endpoint
+app.use('/debug-shopify', debugShopifyRouter);
 
 // Use real Shopify products
 if (!SHOPIFY_DOMAIN || !SHOPIFY_API_TOKEN) {
