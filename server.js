@@ -32,12 +32,14 @@ const enhancedChatRouter = require('./routes/enhanced-chat');
 const recommendRouter = require('./routes/recommend');
 const testRecommendRouter = require('./routes/test-recommend');
 const debugShopifyRouter = require('./routes/debug-shopify');
+const listProductsRouter = require('./routes/list-products');
 
 // Mount enhanced routes
 app.use('/api', enhancedChatRouter);
 
-// Debug endpoint
+// Debug endpoints
 app.use('/debug-shopify', debugShopifyRouter);
+app.use('/list-products', listProductsRouter);
 
 // Use real Shopify products
 if (!SHOPIFY_DOMAIN || !SHOPIFY_API_TOKEN) {
