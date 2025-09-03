@@ -31,34 +31,32 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
 
   const out = [];
   const seen = new Set();
-  // Paginate defensively (max 1000 items)
-  for (let page = 1; page <= 5; page++) {
-    const url = `${base}?limit=250&page=${page}`;
-    try {
-      console.log(`🔍 Fetching products page ${page} from Shopify...`);
-      const { data } = await axios.get(url, {
-        headers: {
-          'X-Shopify-Access-Token': accessToken,
-          'Content-Type': 'application/json'
-        },
-        timeout: 12000
-      });
-      const arr = data?.products || [];
-      console.log(`📦 Got ${arr.length} products from page ${page}`);
-      if (!arr.length) break;
-      for (const p of arr) {
-        if (seen.has(p.handle)) continue;
-        seen.add(p.handle);
-        out.push(p);
-      }
-    } catch (error) {
-      console.error(`❌ Error fetching products page ${page}:`, error.message);
-      if (error.response) {
-        console.error(`❌ Response status: ${error.response.status}`);
-        console.error(`❌ Response data:`, error.response.data);
-      }
-      throw error;
+  
+  // Start with just the first page to debug
+  const url = `${base}?limit=50`;
+  try {
+    console.log(`🔍 Fetching products from Shopify: ${url}`);
+    const { data } = await axios.get(url, {
+      headers: {
+        'X-Shopify-Access-Token': accessToken,
+        'Content-Type': 'application/json'
+      },
+      timeout: 12000
+    });
+    const arr = data?.products || [];
+    console.log(`📦 Got ${arr.length} products from Shopify`);
+    for (const p of arr) {
+      if (seen.has(p.handle)) continue;
+      seen.add(p.handle);
+      out.push(p);
     }
+  } catch (error) {
+    console.error(`❌ Error fetching products:`, error.message);
+    if (error.response) {
+      console.error(`❌ Response status: ${error.response.status}`);
+      console.error(`❌ Response data:`, error.response.data);
+    }
+    throw error;
   }
 
   const themeSlug = String(theme || '').toLowerCase();
