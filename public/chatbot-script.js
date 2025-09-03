@@ -1,9 +1,8 @@
 // Prevent multiple script loads
 if (window.JUNS_CHATBOT_LOADED) {
   console.log('JUNS Chatbot already loaded, skipping...');
-  return;
-}
-window.JUNS_CHATBOT_LOADED = true;
+} else {
+  window.JUNS_CHATBOT_LOADED = true;
 
 // Resolve API base from the script's own src so it works cross-origin when embedded in Shopify
 function getAssetInfo() {
@@ -483,3 +482,5 @@ function createLauncher() {
 window.addEventListener("load", () => {
   createLauncher();
 });
+
+} // Close the else block for preventing multiple loads
