@@ -32,8 +32,8 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
   const out = [];
   const seen = new Set();
   
-  // Start with just the first page to debug
-  const url = `${base}?limit=1`;
+  // Fetch products from Shopify
+  const url = `${base}?limit=50`;
   try {
     console.log(`🔍 Fetching products from Shopify: ${url}`);
     const { data } = await axios.get(url, {
