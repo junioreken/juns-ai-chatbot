@@ -16,9 +16,10 @@ async function getLatestOrderByEmail(email) {
 }
 
 async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
-  if (!shopifyDomain || !accessToken) {
-    throw new Error('Shopify credentials missing');
-  }
+  try {
+    if (!shopifyDomain || !accessToken) {
+      throw new Error('Shopify credentials missing');
+    }
   const ADMIN_API_VERSION = '2023-07';
   const base = `https://${shopifyDomain}/admin/api/${ADMIN_API_VERSION}/products.json`;
 
@@ -151,6 +152,12 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
     handle: p.handle,
     url: `/products/${p.handle}`
   }));
+  
+  } catch (error) {
+    console.error('❌ getProductsByTheme error:', error.message);
+    console.error('❌ Error stack:', error.stack);
+    throw error;
+  }
 }
 
 module.exports = { getLatestOrderByEmail, getProductsByTheme };
