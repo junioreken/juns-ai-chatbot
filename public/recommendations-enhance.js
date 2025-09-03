@@ -276,14 +276,14 @@
     });
     mo.observe(grid, { childList:true });
 
-    // Attempt to hide large theme collection blocks that might also render products on the page
+    // Attempt to hide other large product sections, but NEVER our own grid or its ancestors/descendants
     setTimeout(() => {
-      const candidates = Array.from(document.querySelectorAll('main section, main div')).filter(el => !el.closest('#juns-reco-wrapper'));
+      const mainEl = document.querySelector('main') || document.body;
+      const all = Array.from(mainEl.children);
+      const candidates = all.filter(el => el !== grid && !el.contains(grid) && !grid.contains(el));
       for (const el of candidates) {
-        if (el.id === 'juns-reco-wrapper') continue;
-        if (el.querySelector('#juns-reco-wrapper')) continue;
         const links = el.querySelectorAll('a[href*="/products/"]');
-        if (links.length >= 6) {
+        if (links.length >= 12) { // higher threshold to avoid false positives
           el.setAttribute('data-juns-hide','1');
           el.style.display = 'none';
         }
