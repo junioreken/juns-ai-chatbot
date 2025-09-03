@@ -57,6 +57,18 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
   const themeSlug = String(theme || '').toLowerCase();
   const themeSpaced = themeSlug.replace(/-/g, ' ');
 
+  // Theme synonyms mapping
+  const themeSynonyms = {
+    'wedding': ['wedding', 'bridal', 'elegant', 'formal', 'evening', 'cocktail', 'luxury', 'satin'],
+    'cocktail': ['cocktail', 'evening', 'party', 'night-out', 'elegant', 'formal'],
+    'casual': ['casual', 'everyday', 'comfortable', 'simple'],
+    'business': ['business', 'professional', 'formal', 'office'],
+    'night-out': ['night-out', 'evening', 'party', 'cocktail', 'elegant'],
+    'graduation': ['graduation', 'formal', 'elegant', 'dressy'],
+    'summer': ['summer', 'light', 'breathable'],
+    'winter': ['winter', 'warm', 'cozy']
+  };
+
   function normalizeTags(value) {
     if (!value) return [];
     if (Array.isArray(value)) return value.map(t => String(t).toLowerCase().trim());
@@ -79,10 +91,13 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
 
   console.log(`🔍 Filtering ${out.length} products for theme: "${themeSlug}" (spaced: "${themeSpaced}")`);
   
-  // Only return products that have the exact theme tag
+  // Use theme synonyms for better matching
+  const synonyms = themeSynonyms[themeSlug] || [themeSlug, themeSpaced];
+  console.log(`🔍 Using synonyms for "${themeSlug}": [${synonyms.join(', ')}]`);
+  
   const filtered = out.filter(p => {
     const tags = normalizeTags(p.tags);
-    const themed = tags.includes(themeSlug) || tags.includes(themeSpaced);
+    const themed = synonyms.some(synonym => tags.includes(synonym));
     
     if (!themed) {
       console.log(`❌ ${p.title} - No theme match. Tags: [${tags.join(', ')}]`);
