@@ -256,15 +256,31 @@
   try {
     const all = await fetchAllProducts();
     const anyStrict = all.some(p => themeStrict(p));
-    const filtered = all.filter(p => {
-      if (isClearlyNotDress(p)) return false; // fast reject
+
+    // Primary: themed + dress-only + budget
+    let filtered = all.filter(p => {
+      if (isClearlyNotDress(p)) return false;
       const passTheme = anyStrict ? themeStrict(p) : themeHeuristic(p);
       if (!passTheme) return false;
       if (!(isDressStrict(p) || isDressHeuristic(p))) return false;
       return priceOk(p);
     });
+
+    // Fallback A: themed + budget (no dress gating) if none
     if (!filtered.length) {
-      grid.innerHTML = '<div style="padding:12px;color:#666">No matching dresses found.</div>';
+      filtered = all.filter(p => {
+        const passTheme = anyStrict ? themeStrict(p) : themeHeuristic(p);
+        return passTheme && priceOk(p);
+      });
+    }
+
+    // Fallback B: budget-only if still none (ensure page never blank)
+    if (!filtered.length) {
+      filtered = all.filter(p => priceOk(p));
+    }
+
+    if (!filtered.length) {
+      grid.innerHTML = '<div style="padding:12px;color:#666">No matching items found.</div>';
       return;
     }
     // Stable deterministic ordering
