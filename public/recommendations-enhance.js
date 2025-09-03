@@ -204,10 +204,29 @@
     return /\b(dress|gown|robe)\b/.test(t) || /\b(dress|gown|robe)\b/.test(pt);
   }
 
+  // Hard exclude obvious non-dress categories (bags, shoes, jewelry, jackets, skirts, tops, etc.)
+  function isClearlyNotDress(p){
+    const hay = [sanitize(p.title), sanitize(p.handle), sanitize(p.body_html), sanitize(Array.isArray(p.tags)?p.tags.join(','):p.tags), sanitize(p.product_type||'')].join(' ');
+    const banned = [
+      'bag','purse','wallet','clutch','handbag','tote','shoulder bag','crossbody',
+      'shoe','shoes','heel','heels','sandal','sandals','boot','boots','sneaker','sneakers',
+      'jewelry','jewelery','necklace','earring','earrings','bracelet','ring','rings','pendant',
+      'jacket','jackets','coat','coats','blazer','outerwear','sweater','hoodie','sweatshirt',
+      'shirt','blouse','top','tops','tee','t-shirt','trousers','pants','jeans','shorts','skirt','skirts','set '
+    ];
+    return banned.some(w => new RegExp(`(^|\b)${w}(s)?(\b|$)`).test(hay));
+  }
+
   try {
     const all = await fetchAllProducts();
     const anyStrict = all.some(p => themeStrict(p));
-    const filtered = all.filter(p => (anyStrict ? themeStrict(p) : themeHeuristic(p)) && isDressStrict(p) && priceOk(p));
+    const filtered = all.filter(p => {
+      if (isClearlyNotDress(p)) return false; // fast reject
+      const passTheme = anyStrict ? themeStrict(p) : themeHeuristic(p);
+      if (!passTheme) return false;
+      if (!(isDressStrict(p) || isDressHeuristic(p))) return false;
+      return priceOk(p);
+    });
     if (!filtered.length) {
       grid.innerHTML = '<div style="padding:12px;color:#666">No matching dresses found.</div>';
       return;
