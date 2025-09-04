@@ -206,11 +206,40 @@ class IntentClassifier {
       };
     }
 
-    // Shipping patterns
+    // Shipping label patterns (high priority)
+    if (this.matchesSemanticPatterns(lowerMessage, [
+      'shipping label', 'need a label', 'print label', 'get label',
+      'label for my order', 'shipping label for', 'return label',
+      'label please', 'need label', 'want label'
+    ])) {
+      return {
+        intent: 'shipping_label',
+        confidence: 0.95,
+        handler: 'shippingLabelHandler',
+        reason: 'Semantic analysis detected shipping label request'
+      };
+    }
+
+    // Representative/agent patterns (high priority)
+    if (this.matchesSemanticPatterns(lowerMessage, [
+      'connect me to', 'speak to', 'talk to', 'representative', 'agent',
+      'human', 'person', 'manager', 'supervisor', 'customer service',
+      'live person', 'real person', 'help desk', 'support agent'
+    ])) {
+      return {
+        intent: 'representative_request',
+        confidence: 0.95,
+        handler: 'representativeHandler',
+        reason: 'Semantic analysis detected representative request'
+      };
+    }
+
+    // Shipping information patterns (lower priority)
     if (this.matchesSemanticPatterns(lowerMessage, [
       'shipping cost', 'delivery cost', 'shipping time', 'delivery time',
       'how long to ship', 'shipping options', 'delivery options',
-      'free shipping', 'express shipping', 'standard shipping'
+      'free shipping', 'express shipping', 'standard shipping',
+      'when will it arrive', 'delivery estimate', 'shipping estimate'
     ])) {
       return {
         intent: 'shipping_info',

@@ -124,8 +124,42 @@ router.post('/enhanced-chat', async (req, res) => {
       } catch (_) {}
     }
 
-    // 8b. Shipping ETA (country/city-aware) before generic policies
-    if (/(ship|shipping|deliver|delivery|arrive|receive)/i.test(lower)) {
+    // 8b. Shipping label requests (high priority)
+    if (intentResult.intent === 'shipping_label') {
+      const labelReply = lang === 'fr' 
+        ? "Je comprends que vous avez besoin d'une étiquette d'expédition pour votre commande. Pour obtenir une étiquette d'expédition, vous devez contacter notre service client directement. Je vais vous connecter à un représentant qui pourra vous aider avec cela immédiatement."
+        : "I understand you need a shipping label for your order. To get a shipping label, you'll need to contact our customer service directly. Let me connect you to a representative who can help you with this right away.";
+      
+      await session.addMessage(currentSessionId, labelReply, false);
+      await analytics.trackMessage(currentSessionId, labelReply, false);
+      return res.json({ 
+        reply: labelReply, 
+        intent: 'shipping_label', 
+        confidence: 0.95, 
+        sessionId: currentSessionId, 
+        escalation: { required: true, reason: 'Shipping label request requires human assistance' }
+      });
+    }
+
+    // 8c. Representative requests (high priority)
+    if (intentResult.intent === 'representative_request') {
+      const repReply = lang === 'fr'
+        ? "Bien sûr ! Je vais vous connecter immédiatement à un représentant de notre service client qui pourra vous aider personnellement. Un instant s'il vous plaît..."
+        : "Of course! I'll connect you immediately to a customer service representative who can help you personally. One moment please...";
+      
+      await session.addMessage(currentSessionId, repReply, false);
+      await analytics.trackMessage(currentSessionId, repReply, false);
+      return res.json({ 
+        reply: repReply, 
+        intent: 'representative_request', 
+        confidence: 0.95, 
+        sessionId: currentSessionId, 
+        escalation: { required: true, reason: 'Customer requested human representative' }
+      });
+    }
+
+    // 8d. Shipping ETA (only for general shipping questions, not labels)
+    if (intentResult.intent === 'shipping_info' && /(ship|shipping|deliver|delivery|arrive|receive)/i.test(lower)) {
       const eta = buildShippingEtaReply(lower, lang);
       if (eta) {
         await session.addMessage(currentSessionId, eta, false);
@@ -343,7 +377,13 @@ INSTRUCTIONS DE RÉPONSE:
 5. Fournis des réponses détaillées et utiles (5-8 phrases)
 6. Suggère des produits pertinents avec des justifications
 7. Anticipe les questions de suivi possibles
-8. Sois naturel et conversationnel, pas robotique`
+8. Sois naturel et conversationnel, pas robotique
+
+GESTION SPÉCIALE:
+- Pour les demandes d'étiquettes d'expédition: Reconnais la demande et explique qu'une assistance humaine est nécessaire
+- Pour les demandes de représentant: Offre immédiatement de connecter à un agent humain
+- Pour les problèmes de commande: Fournis une aide spécifique ou escalade vers le support humain
+- Pour les demandes complexes: Décompose la réponse en étapes claires et actionables`
     : `You are JUN'S AI – an expert and intelligent fashion assistant for the JUN'S dress store. You understand natural language, nuances, and can adapt your responses to the complete context of the conversation.
 
 ADVANCED CAPABILITIES:
@@ -367,7 +407,13 @@ RESPONSE INSTRUCTIONS:
 5. Provide detailed and helpful responses (5-8 sentences)
 6. Suggest relevant products with justifications
 7. Anticipate possible follow-up questions
-8. Be natural and conversational, not robotic`;
+8. Be natural and conversational, not robotic
+
+SPECIAL HANDLING:
+- For shipping label requests: Acknowledge the request and explain that human assistance is needed
+- For representative requests: Immediately offer to connect to a human agent
+- For order issues: Provide specific help or escalate to human support
+- For complex requests: Break down the response into clear, actionable steps`;
 
   // Add comprehensive store data context
   if (storeData.products.length > 0) {
