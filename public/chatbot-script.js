@@ -151,14 +151,17 @@ async function openLiveChat() {
       } catch(_) {}
       // Position Tawk widget to center-right when closed
       try {
-        // Add CSS to position Tawk widget
+        // Add CSS to position Tawk widget - more specific selectors to override theme
         const style = document.createElement('style');
         style.id = 'tawk-positioning';
         style.textContent = `
-          /* Position Tawk widget to middle-right, smaller size */
+          /* Position Tawk widget to middle-right, smaller size - override theme positioning */
           .tawk-widget-container,
           [data-tawk-widget],
-          #tawk-widget {
+          #tawk-widget,
+          iframe[src*="tawk"],
+          div[id*="tawk"],
+          div[class*="tawk"] {
             position: fixed !important;
             right: 30px !important;
             top: 50% !important;
@@ -166,12 +169,16 @@ async function openLiveChat() {
             z-index: 999999 !important;
             width: 60px !important;
             height: 60px !important;
+            bottom: auto !important;
           }
           
           /* Make Tawk button smaller and properly positioned */
           .tawk-widget-container .tawk-button,
           [data-tawk-widget] .tawk-button,
-          #tawk-widget .tawk-button {
+          #tawk-widget .tawk-button,
+          iframe[src*="tawk"] + div,
+          div[id*="tawk"] .tawk-button,
+          div[class*="tawk"] .tawk-button {
             position: relative !important;
             right: 0 !important;
             bottom: 0 !important;
@@ -185,7 +192,9 @@ async function openLiveChat() {
           /* Make Tawk button icon smaller */
           .tawk-widget-container .tawk-button svg,
           [data-tawk-widget] .tawk-button svg,
-          #tawk-widget .tawk-button svg {
+          #tawk-widget .tawk-button svg,
+          div[id*="tawk"] .tawk-button svg,
+          div[class*="tawk"] .tawk-button svg {
             width: 24px !important;
             height: 24px !important;
           }
@@ -193,9 +202,21 @@ async function openLiveChat() {
           /* Ensure Tawk chat window opens in correct position */
           .tawk-widget-container .tawk-chat,
           [data-tawk-widget] .tawk-chat,
-          #tawk-widget .tawk-chat {
+          #tawk-widget .tawk-chat,
+          iframe[src*="tawk"] + div .tawk-chat {
             right: 30px !important;
             bottom: 80px !important;
+          }
+          
+          /* Override any theme positioning */
+          body .tawk-widget-container,
+          body [data-tawk-widget],
+          body #tawk-widget {
+            position: fixed !important;
+            right: 30px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            bottom: auto !important;
           }
         `;
         
@@ -403,10 +424,13 @@ window.testPositionTawk = function() {
     const style = document.createElement('style');
     style.id = 'tawk-positioning-test';
     style.textContent = `
-      /* Position Tawk widget to middle-right, smaller size */
+      /* Position Tawk widget to middle-right, smaller size - override theme positioning */
       .tawk-widget-container,
       [data-tawk-widget],
-      #tawk-widget {
+      #tawk-widget,
+      iframe[src*="tawk"],
+      div[id*="tawk"],
+      div[class*="tawk"] {
         position: fixed !important;
         right: 30px !important;
         top: 50% !important;
@@ -414,12 +438,16 @@ window.testPositionTawk = function() {
         z-index: 999999 !important;
         width: 60px !important;
         height: 60px !important;
+        bottom: auto !important;
       }
       
       /* Make Tawk button smaller and properly positioned */
       .tawk-widget-container .tawk-button,
       [data-tawk-widget] .tawk-button,
-      #tawk-widget .tawk-button {
+      #tawk-widget .tawk-button,
+      iframe[src*="tawk"] + div,
+      div[id*="tawk"] .tawk-button,
+      div[class*="tawk"] .tawk-button {
         position: relative !important;
         right: 0 !important;
         bottom: 0 !important;
@@ -433,7 +461,9 @@ window.testPositionTawk = function() {
       /* Make Tawk button icon smaller */
       .tawk-widget-container .tawk-button svg,
       [data-tawk-widget] .tawk-button svg,
-      #tawk-widget .tawk-button svg {
+      #tawk-widget .tawk-button svg,
+      div[id*="tawk"] .tawk-button svg,
+      div[class*="tawk"] .tawk-button svg {
         width: 24px !important;
         height: 24px !important;
       }
@@ -441,9 +471,21 @@ window.testPositionTawk = function() {
       /* Ensure Tawk chat window opens in correct position */
       .tawk-widget-container .tawk-chat,
       [data-tawk-widget] .tawk-chat,
-      #tawk-widget .tawk-chat {
+      #tawk-widget .tawk-chat,
+      iframe[src*="tawk"] + div .tawk-chat {
         right: 30px !important;
         bottom: 80px !important;
+      }
+      
+      /* Override any theme positioning */
+      body .tawk-widget-container,
+      body [data-tawk-widget],
+      body #tawk-widget {
+        position: fixed !important;
+        right: 30px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        bottom: auto !important;
       }
     `;
     
