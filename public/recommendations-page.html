@@ -162,17 +162,22 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     const currency = (window.Shopify && (Shopify.currency?.active || Shopify.currency || '')) || 'CAD';
     
-    // Separate dresses and accessories
+    // Separate dresses and accessories based on TAGS, not titles
     const dresses = products.filter(p => {
-      const title = p.title.toLowerCase();
-      const isDress = title.includes('dress') || title.includes('gown') || title.includes('robe') || title.includes('skirt');
+      const tags = p.tags || [];
+      const productType = (p.product_type || '').toLowerCase();
+      const isDress = tags.includes('dress') || tags.includes('gown') || tags.includes('robe') || tags.includes('skirt') ||
+                     productType.includes('dress') || productType.includes('gown') || productType.includes('robe') || productType.includes('skirt');
       return isDress;
     });
     
     const accessories = products.filter(p => {
-      const title = p.title.toLowerCase();
-      const isAccessory = title.includes('bag') || title.includes('clutch') || title.includes('purse') || 
-                         title.includes('veil') || title.includes('necklace') || title.includes('accessory');
+      const tags = p.tags || [];
+      const productType = (p.product_type || '').toLowerCase();
+      const isAccessory = tags.includes('bag') || tags.includes('clutch') || tags.includes('purse') || 
+                         tags.includes('veil') || tags.includes('necklace') || tags.includes('accessory') || tags.includes('accessories') ||
+                         productType.includes('bag') || productType.includes('clutch') || productType.includes('purse') || 
+                         productType.includes('accessory') || productType.includes('accessories');
       return isAccessory;
     });
 
