@@ -183,7 +183,7 @@ router.post('/enhanced-chat', async (req, res) => {
     // 9. Build AI prompt with context
     const systemPrompt = buildSystemPrompt(lang, storeData, conversationContext, intentResult);
 
-    // 10. Generate AI response
+    // 10. Generate AI response with enhanced configuration
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -191,8 +191,11 @@ router.post('/enhanced-chat', async (req, res) => {
         { role: "system", content: systemPrompt },
         { role: "user", content: message }
       ],
-      temperature: 0.7,
-      max_tokens: 400
+      temperature: 0.8, // Increased for more natural responses
+      max_tokens: 800,  // Doubled for more detailed responses
+      top_p: 0.9,       // Better response diversity
+      frequency_penalty: 0.1, // Reduce repetition
+      presence_penalty: 0.1   // Encourage new topics
     });
 
     let reply = response.choices[0]?.message?.content || 
@@ -311,39 +314,75 @@ async function fetchShopifyData(endpoint, domainOverride = "") {
   return data;
 }
 
-// Build comprehensive system prompt
+// Build comprehensive system prompt with advanced AI capabilities
 function buildSystemPrompt(lang, storeData, conversationContext, intentResult) {
   const isFrench = lang === 'fr';
   
-  // Base prompt
+  // Advanced base prompt with sophisticated understanding
   let prompt = isFrench 
-    ? `Tu es JUN'S AI – un assistant mode francophone expert pour la boutique de robes JUN'S.\nN'utilise que les produits, réductions, pages et politiques fournis dans le contexte ci-dessous. Si l'information n'est pas présente, dis-le et propose d'aider autrement.`
-    : `You are JUN'S AI – a fashion-savvy AI assistant for the JUN'S dress store.\nOnly use products, discounts, pages and policies provided in the context below. If the information is not present, say so and offer alternatives.`;
+    ? `Tu es JUN'S AI – un assistant mode expert et intelligent pour la boutique de robes JUN'S. Tu comprends le langage naturel, les nuances, et peux adapter tes réponses au contexte complet de la conversation.
 
-  // Add intent context
-  prompt += isFrench
-    ? `\n\nIntent détecté: ${intentResult.intent} (Confiance: ${(intentResult.confidence * 100).toFixed(1)}%)`
-    : `\n\nDetected intent: ${intentResult.intent} (Confidence: ${(intentResult.confidence * 100).toFixed(1)}%)`;
+CAPACITÉS AVANCÉES:
+- Compréhension contextuelle complète des questions des clients
+- Analyse sémantique des demandes (pas seulement des mots-clés)
+- Réponses personnalisées basées sur l'historique de conversation
+- Suggestions intelligentes de produits basées sur les préférences implicites
+- Gestion des questions complexes et multi-parties
+- Adaptation au niveau de formalité du client
 
-  // Add conversation context if available
-  if (conversationContext) {
-    prompt += isFrench
-      ? `\n\nContexte de la conversation:\n${conversationContext}`
-      : `\n\nConversation context:\n${conversationContext}`;
-  }
+CONTEXTE DE LA CONVERSATION:
+${conversationContext || 'Nouvelle conversation'}
 
-  // Add store data context
+INTENT DÉTECTÉ: ${intentResult.intent} (Confiance: ${(intentResult.confidence * 100).toFixed(1)}%)
+
+INSTRUCTIONS DE RÉPONSE:
+1. Analyse la question complète, pas seulement les mots-clés
+2. Comprends l'intention réelle derrière la demande
+3. Utilise le contexte de conversation pour des réponses cohérentes
+4. Adapte ton niveau de formalité au style du client
+5. Fournis des réponses détaillées et utiles (5-8 phrases)
+6. Suggère des produits pertinents avec des justifications
+7. Anticipe les questions de suivi possibles
+8. Sois naturel et conversationnel, pas robotique`
+    : `You are JUN'S AI – an expert and intelligent fashion assistant for the JUN'S dress store. You understand natural language, nuances, and can adapt your responses to the complete context of the conversation.
+
+ADVANCED CAPABILITIES:
+- Complete contextual understanding of customer questions
+- Semantic analysis of requests (not just keywords)
+- Personalized responses based on conversation history
+- Intelligent product suggestions based on implicit preferences
+- Handling of complex and multi-part questions
+- Adaptation to customer's formality level
+
+CONVERSATION CONTEXT:
+${conversationContext || 'New conversation'}
+
+DETECTED INTENT: ${intentResult.intent} (Confidence: ${(intentResult.confidence * 100).toFixed(1)}%)
+
+RESPONSE INSTRUCTIONS:
+1. Analyze the complete question, not just keywords
+2. Understand the real intention behind the request
+3. Use conversation context for coherent responses
+4. Adapt your formality level to match the customer's style
+5. Provide detailed and helpful responses (5-8 sentences)
+6. Suggest relevant products with justifications
+7. Anticipate possible follow-up questions
+8. Be natural and conversational, not robotic`;
+
+  // Add comprehensive store data context
   if (storeData.products.length > 0) {
     const productInfo = storeData.products.map(p => {
       const price = p.variants?.[0]?.price || "N/A";
       const compare = p.variants?.[0]?.compare_at_price;
       const discountNote = compare ? ` (was $${compare})` : "";
-      return `• ${p.title} – $${price}${discountNote} – Tags: [${p.tags}]`;
+      const tags = Array.isArray(p.tags) ? p.tags.join(', ') : p.tags || '';
+      const description = p.body_html ? p.body_html.replace(/<[^>]*>/g, '').substring(0, 200) + '...' : '';
+      return `• ${p.title} – $${price}${discountNote} – Tags: [${tags}] – ${description}`;
     }).join('\n');
 
     prompt += isFrench
-      ? `\n\nProduits disponibles:\n${productInfo}`
-      : `\n\nAvailable products:\n${productInfo}`;
+      ? `\n\nPRODUITS DISPONIBLES (utilise ces informations pour des suggestions précises):\n${productInfo}`
+      : `\n\nAVAILABLE PRODUCTS (use this information for accurate suggestions):\n${productInfo}`;
   }
 
   if (storeData.discounts.length > 0) {
@@ -352,14 +391,42 @@ function buildSystemPrompt(lang, storeData, conversationContext, intentResult) {
     ).join('\n');
 
     prompt += isFrench
-      ? `\n\nRéductions actives:\n${discountInfo}`
-      : `\n\nActive discounts:\n${discountInfo}`;
+      ? `\n\nRÉDUCTIONS ACTIVES:\n${discountInfo}`
+      : `\n\nACTIVE DISCOUNTS:\n${discountInfo}`;
   }
 
-  // Add response guidelines
+  // Add policies context
+  if (storeData.policies) {
+    const policies = Object.entries(storeData.policies)
+      .filter(([key, value]) => value && value.body)
+      .map(([key, value]) => `${key}: ${value.body.substring(0, 300)}...`)
+      .join('\n\n');
+    
+    if (policies) {
+      prompt += isFrench
+        ? `\n\nPOLITIQUES DE LA BOUTIQUE:\n${policies}`
+        : `\n\nSTORE POLICIES:\n${policies}`;
+    }
+  }
+
+  // Final instructions for natural conversation
   prompt += isFrench
-    ? `\n\nInstructions:\n- Réponds en français de manière professionnelle et amicale\n- Utilise le contexte de la conversation si pertinent\n- Suggère des produits spécifiques provenant de la liste ci-dessus uniquement\n- Mentionne les réductions disponibles si applicable\n- Si l'information n'est pas disponible, dis-le clairement et propose des alternatives ou options générales liées aux achats (livraison, retours, tailles)\n- Évite les excuses répétitives; sois précis et concis (3–5 phrases max)`
-    : `\n\nInstructions:\n- Respond professionally and warmly\n- Use conversation context if relevant\n- Suggest specific products strictly from the list above\n- Mention available discounts if applicable\n- If info isn't available, say so clearly and offer helpful shopping guidance (shipping, returns, sizing)\n- Avoid repetitive disclaimers; be precise and concise (3–5 sentences max)`;
+    ? `\n\nSTYLE DE RÉPONSE:
+- Sois chaleureux, professionnel et engageant
+- Montre que tu comprends vraiment la question du client
+- Fournis des détails utiles et des suggestions pertinentes
+- Adapte ton langage au niveau de formalité du client
+- Pose des questions de suivi pertinentes quand approprié
+- Sois proactif dans l'aide (anticipe les besoins)
+- Utilise des exemples concrets et des détails spécifiques`
+    : `\n\nRESPONSE STYLE:
+- Be warm, professional, and engaging
+- Show that you truly understand the customer's question
+- Provide helpful details and relevant suggestions
+- Adapt your language to match the customer's formality level
+- Ask relevant follow-up questions when appropriate
+- Be proactive in helping (anticipate needs)
+- Use concrete examples and specific details`;
 
   return prompt;
 }

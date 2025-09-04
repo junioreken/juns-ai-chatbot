@@ -88,7 +88,7 @@ class IntentClassifier {
     });
   }
 
-  // Classify user intent
+  // Classify user intent with enhanced semantic understanding
   async classifyIntent(message, sessionId = null) {
     try {
       // Check cache first
@@ -98,10 +98,17 @@ class IntentClassifier {
         return cachedIntent;
       }
 
-      // Pattern matching (highest confidence)
+      // Enhanced semantic analysis (highest priority)
+      const semanticMatch = this.analyzeSemanticIntent(message);
+      if (semanticMatch && semanticMatch.confidence > 0.7) {
+        await cache.set(cacheKey, semanticMatch, 3600);
+        return semanticMatch;
+      }
+
+      // Pattern matching (high confidence)
       const patternMatch = this.matchPatterns(message);
       if (patternMatch && patternMatch.confidence > 0.8) {
-        await cache.set(cacheKey, patternMatch, 3600); // Cache for 1 hour
+        await cache.set(cacheKey, patternMatch, 3600);
         return patternMatch;
       }
 
@@ -112,30 +119,118 @@ class IntentClassifier {
         return tfidfMatch;
       }
 
-      // Keyword matching
+      // Keyword matching (lower priority)
       const keywordMatch = this.matchKeywords(message);
       if (keywordMatch && keywordMatch.confidence > 0.5) {
         await cache.set(cacheKey, keywordMatch, 3600);
         return keywordMatch;
       }
 
-      // Fallback to general help
+      // Fallback to general help with higher confidence for AI processing
       return {
         intent: 'general_help',
-        confidence: 0.4,
+        confidence: 0.6, // Increased confidence for AI processing
         handler: 'generalHandler',
-        reason: 'No specific intent detected, defaulting to general help'
+        reason: 'Complex query requiring full AI analysis'
       };
 
     } catch (error) {
       console.error('❌ Intent classification error:', error);
       return {
         intent: 'general_help',
-        confidence: 0.3,
+        confidence: 0.5,
         handler: 'generalHandler',
-        reason: 'Classification failed, defaulting to general help'
+        reason: 'Classification failed, using AI for full analysis'
       };
     }
+  }
+
+  // Enhanced semantic analysis for natural language understanding
+  analyzeSemanticIntent(message) {
+    const lowerMessage = message.toLowerCase();
+    
+    // Product inquiry patterns (more sophisticated)
+    if (this.matchesSemanticPatterns(lowerMessage, [
+      'looking for', 'need help finding', 'recommend', 'suggest', 'what would you suggest',
+      'best option', 'perfect dress', 'something for', 'suitable for', 'appropriate for',
+      'what do you have', 'show me', 'find me', 'help me choose', 'what should i wear',
+      'dress for', 'outfit for', 'what works', 'what fits', 'what matches'
+    ])) {
+      return {
+        intent: 'product_inquiry',
+        confidence: 0.85,
+        handler: 'productHandler',
+        reason: 'Semantic analysis detected product recommendation request'
+      };
+    }
+
+    // Order tracking patterns
+    if (this.matchesSemanticPatterns(lowerMessage, [
+      'where is my order', 'order status', 'track my order', 'when will it arrive',
+      'shipping status', 'delivery update', 'order tracking', 'package status',
+      'when did you ship', 'is it shipped', 'delivery time', 'arrival time'
+    ])) {
+      return {
+        intent: 'order_tracking',
+        confidence: 0.9,
+        handler: 'orderHandler',
+        reason: 'Semantic analysis detected order tracking request'
+      };
+    }
+
+    // Size help patterns
+    if (this.matchesSemanticPatterns(lowerMessage, [
+      'what size', 'size help', 'size guide', 'measurements', 'sizing chart',
+      'how to measure', 'size recommendation', 'fit guide', 'size advice',
+      'too big', 'too small', 'doesn\'t fit', 'size issue', 'measurement help'
+    ])) {
+      return {
+        intent: 'size_help',
+        confidence: 0.85,
+        handler: 'sizeHandler',
+        reason: 'Semantic analysis detected sizing assistance request'
+      };
+    }
+
+    // Return/exchange patterns
+    if (this.matchesSemanticPatterns(lowerMessage, [
+      'return policy', 'how to return', 'exchange policy', 'refund policy',
+      'return process', 'exchange process', 'return item', 'send back',
+      'not satisfied', 'change my mind', 'swap size', 'return for refund'
+    ])) {
+      return {
+        intent: 'return_exchange',
+        confidence: 0.9,
+        handler: 'returnHandler',
+        reason: 'Semantic analysis detected return/exchange request'
+      };
+    }
+
+    // Shipping patterns
+    if (this.matchesSemanticPatterns(lowerMessage, [
+      'shipping cost', 'delivery cost', 'shipping time', 'delivery time',
+      'how long to ship', 'shipping options', 'delivery options',
+      'free shipping', 'express shipping', 'standard shipping'
+    ])) {
+      return {
+        intent: 'shipping_info',
+        confidence: 0.85,
+        handler: 'shippingHandler',
+        reason: 'Semantic analysis detected shipping information request'
+      };
+    }
+
+    return null;
+  }
+
+  // Helper method for semantic pattern matching
+  matchesSemanticPatterns(message, patterns) {
+    return patterns.some(pattern => {
+      if (typeof pattern === 'string') {
+        return message.includes(pattern);
+      }
+      return pattern.test(message);
+    });
   }
 
   // Pattern matching for high-confidence classification
