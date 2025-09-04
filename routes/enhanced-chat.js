@@ -124,11 +124,11 @@ router.post('/enhanced-chat', async (req, res) => {
       } catch (_) {}
     }
 
-    // 8b. Shipping label requests (high priority)
+    // 8b. Shipping label requests (high priority) - trigger live chat
     if (intentResult.intent === 'shipping_label') {
       const labelReply = lang === 'fr' 
-        ? "Je comprends que vous avez besoin d'une étiquette d'expédition pour votre commande. Pour obtenir une étiquette d'expédition, vous devez contacter notre service client directement. Je vais vous connecter à un représentant qui pourra vous aider avec cela immédiatement."
-        : "I understand you need a shipping label for your order. To get a shipping label, you'll need to contact our customer service directly. Let me connect you to a representative who can help you with this right away.";
+        ? "Je comprends que vous avez besoin d'une étiquette d'expédition pour votre commande. Je vous connecte immédiatement à un représentant qui pourra vous aider avec cela."
+        : "I understand you need a shipping label for your order. I'm connecting you immediately to a representative who can help you with this.";
       
       await session.addMessage(currentSessionId, labelReply, false);
       await analytics.trackMessage(currentSessionId, labelReply, false);
@@ -137,15 +137,16 @@ router.post('/enhanced-chat', async (req, res) => {
         intent: 'shipping_label', 
         confidence: 0.95, 
         sessionId: currentSessionId, 
-        escalation: { required: true, reason: 'Shipping label request requires human assistance' }
+        escalation: { required: true, reason: 'Shipping label request requires human assistance' },
+        triggerLiveChat: true // Special flag to trigger live chat
       });
     }
 
-    // 8c. Representative requests (high priority)
+    // 8c. Representative requests (high priority) - trigger live chat
     if (intentResult.intent === 'representative_request') {
       const repReply = lang === 'fr'
-        ? "Bien sûr ! Je vais vous connecter immédiatement à un représentant de notre service client qui pourra vous aider personnellement. Un instant s'il vous plaît..."
-        : "Of course! I'll connect you immediately to a customer service representative who can help you personally. One moment please...";
+        ? "Bien sûr ! Je vous connecte immédiatement à un représentant de notre service client. Un instant s'il vous plaît..."
+        : "Of course! I'm connecting you immediately to a customer service representative. One moment please...";
       
       await session.addMessage(currentSessionId, repReply, false);
       await analytics.trackMessage(currentSessionId, repReply, false);
@@ -154,7 +155,8 @@ router.post('/enhanced-chat', async (req, res) => {
         intent: 'representative_request', 
         confidence: 0.95, 
         sessionId: currentSessionId, 
-        escalation: { required: true, reason: 'Customer requested human representative' }
+        escalation: { required: true, reason: 'Customer requested human representative' },
+        triggerLiveChat: true // Special flag to trigger live chat
       });
     }
 

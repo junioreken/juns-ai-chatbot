@@ -224,7 +224,11 @@ class IntentClassifier {
     if (this.matchesSemanticPatterns(lowerMessage, [
       'connect me to', 'speak to', 'talk to', 'representative', 'agent',
       'human', 'person', 'manager', 'supervisor', 'customer service',
-      'live person', 'real person', 'help desk', 'support agent'
+      'live person', 'real person', 'help desk', 'support agent',
+      'customer support', 'support team', 'service team', 'help team',
+      'get help', 'need help', 'want to speak', 'contact support',
+      'call support', 'reach out', 'get in touch', 'speak with someone',
+      'talk to someone', 'human help', 'live chat', 'live support'
     ])) {
       return {
         intent: 'representative_request',

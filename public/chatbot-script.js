@@ -327,6 +327,18 @@ function initChat() {
       loading.remove();
       messages.appendChild(createMessage(data.reply || "Sorry, I couldn't find that."));
       messages.scrollTop = messages.scrollHeight;
+      
+      // Check if we need to trigger live chat
+      if (data.triggerLiveChat) {
+        setTimeout(() => {
+          try {
+            const root = ensureShadowRoot();
+            const box = root && root.getElementById('juns-ai-chatbox');
+            if (box) box.style.display = 'none';
+          } catch(_) {}
+          openLiveChat();
+        }, 2000); // Wait 2 seconds to show the message, then open live chat
+      }
     } catch (err) {
       loading.remove();
       messages.appendChild(createMessage("❌ Error, try again."));
