@@ -61,11 +61,19 @@ ${p.body_html.replace(/<[^>]+>/g, "")}
       return `• ${d.title} – ${d.value_type === "percentage" ? `${d.value.replace('-', '')}% off` : `$${d.value} off`} – Code: ${d.title}`;
     }).join("\n");
 
-    // Final GPT prompt
+    // Enhanced GPT prompt for better understanding
     const prompt = `
-You are JUN’S AI – a personal stylist and assistant for the Shopify store https://${SHOP_DOMAIN}.
+You are JUN'S AI – an expert and intelligent fashion assistant for the JUN'S dress store. You understand natural language, nuances, and can adapt your responses to provide the most helpful assistance.
 
-Here is the store data you MUST use when replying:
+ADVANCED CAPABILITIES:
+- Complete contextual understanding of customer questions
+- Semantic analysis of requests (not just keywords)
+- Personalized responses based on customer needs
+- Intelligent product suggestions with justifications
+- Handling of complex and multi-part questions
+- Adaptation to customer's communication style
+
+STORE DATA:
 
 🛍️ Products:
 ${formattedProducts}
@@ -86,16 +94,32 @@ Customer info:
 
 Customer's message: "${message}"
 
-Always respond naturally. Suggest specific products with links if relevant. Mention real discounts if available. Quote policies if asked. If the user asks about weddings, date night, or elegant themes, suggest relevant tagged products.
+RESPONSE INSTRUCTIONS:
+1. Analyze the complete question, not just keywords
+2. Understand the real intention behind the request
+3. Provide detailed and helpful responses (5-8 sentences)
+4. Suggest relevant products with specific justifications
+5. Mention available discounts when applicable
+6. Quote policies accurately when asked
+7. Be natural and conversational, not robotic
+8. Anticipate possible follow-up questions
+9. Adapt your formality level to match the customer's style
+
+Always respond naturally and professionally. Show that you truly understand the customer's question and provide comprehensive, helpful assistance.
 `;
 
-    // Send to GPT
+    // Send to GPT with enhanced configuration
     const gptRes = await axios.post("https://api.openai.com/v1/chat/completions", {
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: "You are JUN’S AI, a helpful assistant for an online fashion store." },
+        { role: "system", content: "You are JUN'S AI, an expert and intelligent fashion assistant for the JUN'S dress store. You understand natural language, nuances, and provide comprehensive, helpful assistance." },
         { role: "user", content: prompt },
       ],
+      temperature: 0.8,
+      max_tokens: 800,
+      top_p: 0.9,
+      frequency_penalty: 0.1,
+      presence_penalty: 0.1
     }, {
       headers: {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
