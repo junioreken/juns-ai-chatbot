@@ -205,7 +205,7 @@
     const closeAll = (doSoftOpen) => { 
       host.remove(); 
       if (hiddenBubble && bubbleEl) bubbleEl.style.display = '';
-      if (doSoftOpen && !greeted) setTimeout(()=>{ if (ls.getItem('juns_dnd')==='1') return; greeted=true; Chat.openSoft(T.greet); }, 7000);
+      if (doSoftOpen && !greeted) setTimeout(()=>{ if (ls.getItem('juns_dnd')==='1') return; greeted=true; Chat.openSoft(T.greet); }, 15000);
       // After closing, show a temporary pill to reopen the stylist (unless DND)
       if (ls.getItem('juns_dnd')!=='1') {
         showStylistPill();
@@ -252,26 +252,13 @@
   window.JUNS.stylist = window.JUNS.stylist || {};
   window.JUNS.stylist.open = () => showPopup(true);
 
-  // scroll nudge
-  function installScrollNudge() {
-    if (!allowPopup) return;
-    let fired = false;
-    window.addEventListener('scroll', () => {
-      if (fired) return;
-      const progress = (window.scrollY) / (document.body.scrollHeight - window.innerHeight);
-      if (progress > 0.55) {
-        fired = true;
-        if (ls.getItem('juns_dnd')==='1') return;
-        Chat.tooltip('Not sure what to wear? I can suggest 3 bestsellers for this theme.');
-      }
-    }, { passive:true });
-  }
+  // Removed: Scroll nudge was redundant and annoying
 
   // Product page soft helper if popup suppressed
   function productPageHelper() {
     if (!isProduct || isCartOrCheckout) return;
     if (ss.getItem('juns_popup_shown')==='1') return;
-    setTimeout(()=>{ if (ls.getItem('juns_dnd')==='1') return; ensureChat(); Chat.openSoft("Hi 👋 I’m your JUN’S Stylist. Need sizing, delivery, or outfit ideas?"); }, 12000);
+    setTimeout(()=>{ if (ls.getItem('juns_dnd')==='1') return; ensureChat(); Chat.openSoft("Hi 👋 I'm your JUN'S Stylist. Need sizing, delivery, or outfit ideas?"); }, 30000);
   }
 
   // Boot
@@ -280,7 +267,6 @@
     const open = () => { if (ls.getItem('juns_dnd')==='1') return; showPopup(); };
     if ('requestIdleCallback' in window) window.requestIdleCallback(open, { timeout: 1600 });
     else setTimeout(open, 1600);
-    installScrollNudge();
     productPageHelper();
   }
 

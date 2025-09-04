@@ -233,13 +233,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log('✅ Found', products.length, 'products');
     renderProducts(products);
 
-    // Optional chatbot upsell
-    if (window.JUNS?.chat?.message) {
-      setTimeout(() => {
-        window.JUNS.chat.message("Want me to add a matching clutch & heels to complete your look?");
-        if (window.JUNS?.chat?.setBadge) window.JUNS.chat.setBadge(true);
-      }, 15000);
-    }
+    // Removed: Upsell message was too pushy for customers
 
   } catch (err) {
     console.error('❌ Error:', err);
