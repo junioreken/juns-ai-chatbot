@@ -133,15 +133,19 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
     return debugProducts;
   }
 
-  return filtered.map(p => ({
-    title: p.title,
-    image: (p.image && p.image.src) || (Array.isArray(p.images) && p.images[0] && p.images[0].src) || '',
-    price: p.variants && p.variants[0] ? p.variants[0].price : '',
-    handle: p.handle,
-    url: `/products/${p.handle}`,
-    tags: normalizeTags(p.tags),
-    product_type: p.product_type || ''
-  }));
+  return filtered.map(p => {
+    const normalizedTags = normalizeTags(p.tags);
+    console.log(`🔍 Mapping product: ${p.title}, original tags: "${p.tags}", normalized: [${normalizedTags.join(', ')}]`);
+    return {
+      title: p.title,
+      image: (p.image && p.image.src) || (Array.isArray(p.images) && p.images[0] && p.images[0].src) || '',
+      price: p.variants && p.variants[0] ? p.variants[0].price : '',
+      handle: p.handle,
+      url: `/products/${p.handle}`,
+      tags: normalizedTags,
+      product_type: p.product_type || ''
+    };
+  });
   
   } catch (error) {
     console.error('❌ getProductsByTheme error:', error.message);
