@@ -125,7 +125,9 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
         image: (p.image && p.image.src) || (Array.isArray(p.images) && p.images[0] && p.images[0].src) || '',
         price: p.variants && p.variants[0] ? p.variants[0].price : '',
         handle: p.handle,
-        url: `/products/${p.handle}`
+        url: `/products/${p.handle}`,
+        tags: tags,
+        product_type: p.product_type || ''
       };
     });
     return debugProducts;
