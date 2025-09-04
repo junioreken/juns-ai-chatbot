@@ -149,8 +149,46 @@ async function openLiveChat() {
           if (++repeat > 20) clearInterval(ensureOpen);
         }, 50);
       } catch(_) {}
-      // Hide entire JUN'S AI chatbot (bubble + chatbox) when Tawk opens
+      // Position Tawk widget to center-right when closed
       try {
+        // Add CSS to position Tawk widget
+        const style = document.createElement('style');
+        style.id = 'tawk-positioning';
+        style.textContent = `
+          /* Position Tawk widget to center-right when closed */
+          .tawk-widget-container,
+          [data-tawk-widget],
+          #tawk-widget {
+            position: fixed !important;
+            right: 20px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            z-index: 999999 !important;
+          }
+          
+          /* Ensure Tawk button is visible and properly positioned */
+          .tawk-widget-container .tawk-button,
+          [data-tawk-widget] .tawk-button,
+          #tawk-widget .tawk-button {
+            position: relative !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            top: auto !important;
+            transform: none !important;
+          }
+        `;
+        
+        // Remove existing positioning style if it exists
+        const existingStyle = document.getElementById('tawk-positioning');
+        if (existingStyle) {
+          existingStyle.remove();
+        }
+        
+        // Add the new positioning style
+        document.head.appendChild(style);
+        console.log('✅ Tawk widget positioned to center-right');
+        
+        // Hide JUN'S AI chatbot
         const root = ensureShadowRoot();
         const bubble = root && root.getElementById('juns-ai-button');
         const box = root && root.getElementById('juns-ai-chatbox');
@@ -171,7 +209,7 @@ async function openLiveChat() {
         window.JUNS_AI_HIDDEN = true;
         console.log('🔒 JUN\'S AI hidden state set to true');
       } catch(e) {
-        console.log('❌ Error hiding JUN\'S AI:', e);
+        console.log('❌ Error positioning Tawk and hiding JUN\'S AI:', e);
       }
       break;
     }
@@ -286,6 +324,13 @@ function setupTawkEventListeners() {
 function showJunsAI() {
   console.log('🔄 Attempting to show JUN\'S AI...');
   try {
+    // Remove Tawk positioning CSS to restore original position
+    const tawkStyle = document.getElementById('tawk-positioning');
+    if (tawkStyle) {
+      tawkStyle.remove();
+      console.log('✅ Tawk positioning CSS removed');
+    }
+    
     const root = ensureShadowRoot();
     if (!root) {
       console.log('❌ No shadow root found');
@@ -328,6 +373,50 @@ window.testHideJunsAI = function() {
 window.testShowJunsAI = function() {
   console.log('🧪 Testing show JUN\'S AI...');
   showJunsAI();
+};
+
+window.testPositionTawk = function() {
+  console.log('🧪 Testing Tawk positioning...');
+  try {
+    // Add CSS to position Tawk widget
+    const style = document.createElement('style');
+    style.id = 'tawk-positioning-test';
+    style.textContent = `
+      /* Position Tawk widget to center-right when closed */
+      .tawk-widget-container,
+      [data-tawk-widget],
+      #tawk-widget {
+        position: fixed !important;
+        right: 20px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        z-index: 999999 !important;
+      }
+      
+      /* Ensure Tawk button is visible and properly positioned */
+      .tawk-widget-container .tawk-button,
+      [data-tawk-widget] .tawk-button,
+      #tawk-widget .tawk-button {
+        position: relative !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        top: auto !important;
+        transform: none !important;
+      }
+    `;
+    
+    // Remove existing test style if it exists
+    const existingStyle = document.getElementById('tawk-positioning-test');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+    
+    // Add the new positioning style
+    document.head.appendChild(style);
+    console.log('✅ Tawk widget positioned to center-right for testing');
+  } catch(e) {
+    console.log('❌ Error positioning Tawk:', e);
+  }
 };
 
 function isSupportIntent(text) {
