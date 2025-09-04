@@ -155,18 +155,20 @@ async function openLiveChat() {
         const style = document.createElement('style');
         style.id = 'tawk-positioning';
         style.textContent = `
-          /* Position Tawk widget to center-right when closed */
+          /* Position Tawk widget to middle-right, smaller size */
           .tawk-widget-container,
           [data-tawk-widget],
           #tawk-widget {
             position: fixed !important;
-            right: 20px !important;
+            right: 30px !important;
             top: 50% !important;
             transform: translateY(-50%) !important;
             z-index: 999999 !important;
+            width: 60px !important;
+            height: 60px !important;
           }
           
-          /* Ensure Tawk button is visible and properly positioned */
+          /* Make Tawk button smaller and properly positioned */
           .tawk-widget-container .tawk-button,
           [data-tawk-widget] .tawk-button,
           #tawk-widget .tawk-button {
@@ -175,6 +177,25 @@ async function openLiveChat() {
             bottom: 0 !important;
             top: auto !important;
             transform: none !important;
+            width: 60px !important;
+            height: 60px !important;
+            border-radius: 50% !important;
+          }
+          
+          /* Make Tawk button icon smaller */
+          .tawk-widget-container .tawk-button svg,
+          [data-tawk-widget] .tawk-button svg,
+          #tawk-widget .tawk-button svg {
+            width: 24px !important;
+            height: 24px !important;
+          }
+          
+          /* Ensure Tawk chat window opens in correct position */
+          .tawk-widget-container .tawk-chat,
+          [data-tawk-widget] .tawk-chat,
+          #tawk-widget .tawk-chat {
+            right: 30px !important;
+            bottom: 80px !important;
           }
         `;
         
@@ -382,18 +403,20 @@ window.testPositionTawk = function() {
     const style = document.createElement('style');
     style.id = 'tawk-positioning-test';
     style.textContent = `
-      /* Position Tawk widget to center-right when closed */
+      /* Position Tawk widget to middle-right, smaller size */
       .tawk-widget-container,
       [data-tawk-widget],
       #tawk-widget {
         position: fixed !important;
-        right: 20px !important;
+        right: 30px !important;
         top: 50% !important;
         transform: translateY(-50%) !important;
         z-index: 999999 !important;
+        width: 60px !important;
+        height: 60px !important;
       }
       
-      /* Ensure Tawk button is visible and properly positioned */
+      /* Make Tawk button smaller and properly positioned */
       .tawk-widget-container .tawk-button,
       [data-tawk-widget] .tawk-button,
       #tawk-widget .tawk-button {
@@ -402,6 +425,25 @@ window.testPositionTawk = function() {
         bottom: 0 !important;
         top: auto !important;
         transform: none !important;
+        width: 60px !important;
+        height: 60px !important;
+        border-radius: 50% !important;
+      }
+      
+      /* Make Tawk button icon smaller */
+      .tawk-widget-container .tawk-button svg,
+      [data-tawk-widget] .tawk-button svg,
+      #tawk-widget .tawk-button svg {
+        width: 24px !important;
+        height: 24px !important;
+      }
+      
+      /* Ensure Tawk chat window opens in correct position */
+      .tawk-widget-container .tawk-chat,
+      [data-tawk-widget] .tawk-chat,
+      #tawk-widget .tawk-chat {
+        right: 30px !important;
+        bottom: 80px !important;
       }
     `;
     
