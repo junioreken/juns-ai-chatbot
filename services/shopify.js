@@ -97,18 +97,9 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
       return false;
     }
     
-    // Include dresses AND matching accessories
-    const isDress = tags.includes('dress') || tags.includes('gown') || tags.includes('robe') || 
-                   /dress|gown|robe/i.test(p.title) || /dress|gown|robe/i.test(p.product_type || '');
-    
-    const isAccessory = tags.includes('bag') || tags.includes('clutch') || tags.includes('purse') || 
-                       tags.includes('accessory') || tags.includes('accessories') ||
-                       /bag|clutch|purse|accessory/i.test(p.title) || /bag|clutch|purse|accessory/i.test(p.product_type || '');
-    
-    if (!isDress && !isAccessory) {
-      console.log(`❌ ${p.title} - Not a dress or accessory. Tags: [${tags.join(', ')}]`);
-      return false;
-    }
+    // If it has the theme tag, include it regardless of other tags
+    // The frontend will categorize it based on title and product type
+    console.log(`✅ ${p.title} - Has theme tag "${themeSlug}". Tags: [${tags.join(', ')}]`);
     
     const price = minVariantPrice(p);
     const pricePass = priceOk(price);
@@ -118,7 +109,6 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
       return false;
     }
     
-    console.log(`✅ ${p.title} - MATCH! Tags: [${tags.join(', ')}], Price: $${price}`);
     return true;
   }).slice(0, limit);
   
