@@ -154,11 +154,25 @@ async function openLiveChat() {
         const root = ensureShadowRoot();
         const bubble = root && root.getElementById('juns-ai-button');
         const box = root && root.getElementById('juns-ai-chatbox');
-        if (bubble) bubble.style.display = 'none';
-        if (box) box.style.display = 'none';
+        
+        if (bubble) {
+          bubble.style.display = 'none';
+          bubble.style.visibility = 'hidden';
+          bubble.style.opacity = '0';
+          console.log('✅ JUN\'S AI bubble hidden');
+        }
+        
+        if (box) {
+          box.style.display = 'none';
+          console.log('✅ JUN\'S AI chatbox hidden');
+        }
+        
         // Store state for restoration
         window.JUNS_AI_HIDDEN = true;
-      } catch(_) {}
+        console.log('🔒 JUN\'S AI hidden state set to true');
+      } catch(e) {
+        console.log('❌ Error hiding JUN\'S AI:', e);
+      }
       break;
     }
     await new Promise(r => setTimeout(r, 100));
@@ -170,70 +184,151 @@ async function openLiveChat() {
 }
 
 function setupTawkEventListeners() {
-  // Check if Tawk is available and set up event listeners
+  console.log('🔧 Setting up Tawk event listeners...');
+  
+  // Method 1: Try Tawk API events
   if (window.Tawk_API) {
-    // Listen for Tawk widget events
-    window.Tawk_API.onLoad = function() {
-      // Set up event listeners when Tawk loads
-      if (window.Tawk_API.setAttributes) {
+    console.log('📡 Tawk API found, setting up events...');
+    
+    // Set up event listeners when Tawk loads
+    if (window.Tawk_API.setAttributes) {
+      try {
         window.Tawk_API.setAttributes({
           'onChatMinimized': function() {
-            // Show JUN'S AI when Tawk is minimized
+            console.log('📱 Tawk minimized - showing JUN\'S AI');
             showJunsAI();
           },
           'onChatHidden': function() {
-            // Show JUN'S AI when Tawk is hidden
+            console.log('👁️ Tawk hidden - showing JUN\'S AI');
             showJunsAI();
           },
           'onChatEnded': function() {
-            // Show JUN'S AI when chat ends
+            console.log('🔚 Tawk chat ended - showing JUN\'S AI');
             showJunsAI();
           }
         });
+        console.log('✅ Tawk events configured');
+      } catch(e) {
+        console.log('❌ Failed to set Tawk attributes:', e);
       }
-    };
+    }
   }
   
-  // Fallback: Check periodically if Tawk is closed
-  let checkInterval = setInterval(() => {
+  // Method 2: Enhanced periodic checking with multiple selectors
+  let checkCount = 0;
+  const maxChecks = 150; // Check for 5 minutes (150 * 2 seconds)
+  
+  const checkInterval = setInterval(() => {
     if (window.JUNS_AI_HIDDEN) {
+      checkCount++;
+      console.log(`🔍 Checking Tawk visibility (${checkCount}/${maxChecks})...`);
+      
       try {
-        // Check if Tawk widget is visible
-        const tawkWidget = document.querySelector('[data-tawk-widget]') || 
-                          document.querySelector('#tawk-widget') ||
-                          document.querySelector('.tawk-widget');
+        // Multiple ways to detect Tawk widget
+        const tawkSelectors = [
+          '[data-tawk-widget]',
+          '#tawk-widget', 
+          '.tawk-widget',
+          '#tawk-widget-container',
+          '.tawk-widget-container',
+          'iframe[src*="tawk"]',
+          'div[id*="tawk"]',
+          'div[class*="tawk"]'
+        ];
         
-        if (!tawkWidget || tawkWidget.style.display === 'none' || 
-            tawkWidget.style.visibility === 'hidden' ||
-            !tawkWidget.offsetParent) {
+        let tawkVisible = false;
+        
+        for (const selector of tawkSelectors) {
+          const element = document.querySelector(selector);
+          if (element) {
+            const style = window.getComputedStyle(element);
+            const isVisible = style.display !== 'none' && 
+                            style.visibility !== 'hidden' && 
+                            style.opacity !== '0' &&
+                            element.offsetParent !== null;
+            
+            if (isVisible) {
+              tawkVisible = true;
+              console.log(`✅ Tawk widget found and visible: ${selector}`);
+              break;
+            }
+          }
+        }
+        
+        if (!tawkVisible) {
+          console.log('👁️ Tawk widget not visible - showing JUN\'S AI');
           showJunsAI();
           clearInterval(checkInterval);
         }
-      } catch(_) {
-        // If we can't check, show JUN'S AI after 30 seconds as fallback
-        setTimeout(() => {
-          if (window.JUNS_AI_HIDDEN) {
-            showJunsAI();
-          }
-        }, 30000);
-        clearInterval(checkInterval);
+        
+        // Fallback: show JUN'S AI after max checks
+        if (checkCount >= maxChecks) {
+          console.log('⏰ Max checks reached - showing JUN\'S AI as fallback');
+          showJunsAI();
+          clearInterval(checkInterval);
+        }
+        
+      } catch(e) {
+        console.log('❌ Error checking Tawk visibility:', e);
+        // Show JUN'S AI on error after a few attempts
+        if (checkCount > 10) {
+          showJunsAI();
+          clearInterval(checkInterval);
+        }
       }
     } else {
+      console.log('✅ JUN\'S AI not hidden - stopping checks');
       clearInterval(checkInterval);
     }
   }, 2000); // Check every 2 seconds
 }
 
 function showJunsAI() {
+  console.log('🔄 Attempting to show JUN\'S AI...');
+  try {
+    const root = ensureShadowRoot();
+    if (!root) {
+      console.log('❌ No shadow root found');
+      return;
+    }
+    
+    const bubble = root.getElementById('juns-ai-button');
+    if (bubble) {
+      bubble.style.display = 'block';
+      bubble.style.visibility = 'visible';
+      bubble.style.opacity = '1';
+      window.JUNS_AI_HIDDEN = false;
+      console.log('✅ JUN\'S AI bubble shown successfully');
+    } else {
+      console.log('❌ JUN\'S AI bubble element not found');
+    }
+  } catch(e) {
+    console.log('❌ Error showing JUN\'S AI:', e);
+  }
+}
+
+// Test functions for debugging (available in console)
+window.testHideJunsAI = function() {
+  console.log('🧪 Testing hide JUN\'S AI...');
   try {
     const root = ensureShadowRoot();
     const bubble = root && root.getElementById('juns-ai-button');
     if (bubble) {
-      bubble.style.display = 'block';
-      window.JUNS_AI_HIDDEN = false;
+      bubble.style.display = 'none';
+      bubble.style.visibility = 'hidden';
+      bubble.style.opacity = '0';
+      window.JUNS_AI_HIDDEN = true;
+      console.log('✅ JUN\'S AI hidden for testing');
     }
-  } catch(_) {}
-}
+  } catch(e) {
+    console.log('❌ Error hiding JUN\'S AI:', e);
+  }
+};
+
+window.testShowJunsAI = function() {
+  console.log('🧪 Testing show JUN\'S AI...');
+  showJunsAI();
+};
 
 function isSupportIntent(text) {
   const t = String(text).toLowerCase();
