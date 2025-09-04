@@ -149,17 +149,90 @@ async function openLiveChat() {
           if (++repeat > 20) clearInterval(ensureOpen);
         }, 50);
       } catch(_) {}
-      // Close/minimize our chatbot UI so only Tawk remains visible
+      // Hide entire JUN'S AI chatbot (bubble + chatbox) when Tawk opens
       try {
         const root = ensureShadowRoot();
+        const bubble = root && root.getElementById('juns-ai-button');
         const box = root && root.getElementById('juns-ai-chatbox');
+        if (bubble) bubble.style.display = 'none';
         if (box) box.style.display = 'none';
+        // Store state for restoration
+        window.JUNS_AI_HIDDEN = true;
       } catch(_) {}
       break;
     }
     await new Promise(r => setTimeout(r, 100));
     tries++;
   }
+  
+  // Set up Tawk event listeners to show JUN'S AI when Tawk closes
+  setupTawkEventListeners();
+}
+
+function setupTawkEventListeners() {
+  // Check if Tawk is available and set up event listeners
+  if (window.Tawk_API) {
+    // Listen for Tawk widget events
+    window.Tawk_API.onLoad = function() {
+      // Set up event listeners when Tawk loads
+      if (window.Tawk_API.setAttributes) {
+        window.Tawk_API.setAttributes({
+          'onChatMinimized': function() {
+            // Show JUN'S AI when Tawk is minimized
+            showJunsAI();
+          },
+          'onChatHidden': function() {
+            // Show JUN'S AI when Tawk is hidden
+            showJunsAI();
+          },
+          'onChatEnded': function() {
+            // Show JUN'S AI when chat ends
+            showJunsAI();
+          }
+        });
+      }
+    };
+  }
+  
+  // Fallback: Check periodically if Tawk is closed
+  let checkInterval = setInterval(() => {
+    if (window.JUNS_AI_HIDDEN) {
+      try {
+        // Check if Tawk widget is visible
+        const tawkWidget = document.querySelector('[data-tawk-widget]') || 
+                          document.querySelector('#tawk-widget') ||
+                          document.querySelector('.tawk-widget');
+        
+        if (!tawkWidget || tawkWidget.style.display === 'none' || 
+            tawkWidget.style.visibility === 'hidden' ||
+            !tawkWidget.offsetParent) {
+          showJunsAI();
+          clearInterval(checkInterval);
+        }
+      } catch(_) {
+        // If we can't check, show JUN'S AI after 30 seconds as fallback
+        setTimeout(() => {
+          if (window.JUNS_AI_HIDDEN) {
+            showJunsAI();
+          }
+        }, 30000);
+        clearInterval(checkInterval);
+      }
+    } else {
+      clearInterval(checkInterval);
+    }
+  }, 2000); // Check every 2 seconds
+}
+
+function showJunsAI() {
+  try {
+    const root = ensureShadowRoot();
+    const bubble = root && root.getElementById('juns-ai-button');
+    if (bubble) {
+      bubble.style.display = 'block';
+      window.JUNS_AI_HIDDEN = false;
+    }
+  } catch(_) {}
 }
 
 function isSupportIntent(text) {
@@ -289,13 +362,8 @@ function initChat() {
       const connecting = I18N[detectLang()].connecting;
       messages.appendChild(createMessage(connecting));
       messages.scrollTop = messages.scrollHeight;
-      // Wait ~4s so the user sees the confirmation, then close and open Tawk
+      // Wait ~4s so the user sees the confirmation, then open Tawk
       setTimeout(() => {
-        try {
-          const root = ensureShadowRoot();
-          const box = root && root.getElementById('juns-ai-chatbox');
-          if (box) box.style.display = 'none';
-        } catch(_) {}
         openLiveChat();
       }, 4000);
       return;
@@ -331,11 +399,6 @@ function initChat() {
       // Check if we need to trigger live chat
       if (data.triggerLiveChat) {
         setTimeout(() => {
-          try {
-            const root = ensureShadowRoot();
-            const box = root && root.getElementById('juns-ai-chatbox');
-            if (box) box.style.display = 'none';
-          } catch(_) {}
           openLiveChat();
         }, 2000); // Wait 2 seconds to show the message, then open live chat
       }
