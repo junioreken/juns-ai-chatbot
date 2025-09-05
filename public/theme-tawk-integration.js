@@ -32,17 +32,20 @@
   }
 
   function setupTawkPositioning() {
-    // Add CSS to position Tawk widget to middle-right when closed
+    // Add CSS to position Tawk widget to middle-right when closed - ULTRA AGGRESSIVE
     const style = document.createElement('style');
     style.id = 'theme-tawk-positioning';
     style.textContent = `
-      /* Position Tawk widget to middle-right, smaller size - override default positioning */
+      /* ULTRA AGGRESSIVE Tawk positioning - override everything */
       .tawk-widget-container,
       [data-tawk-widget],
       #tawk-widget,
       iframe[src*="tawk"],
       div[id*="tawk"],
-      div[class*="tawk"] {
+      div[class*="tawk"],
+      div[style*="position: fixed"],
+      div[style*="bottom"],
+      div[style*="right"] {
         position: fixed !important;
         right: 30px !important;
         top: 50% !important;
@@ -51,6 +54,7 @@
         width: 60px !important;
         height: 60px !important;
         bottom: auto !important;
+        left: auto !important;
       }
       
       /* Make Tawk button smaller and properly positioned */
@@ -59,7 +63,9 @@
       #tawk-widget .tawk-button,
       iframe[src*="tawk"] + div,
       div[id*="tawk"] .tawk-button,
-      div[class*="tawk"] .tawk-button {
+      div[class*="tawk"] .tawk-button,
+      div[style*="position: fixed"] .tawk-button,
+      div[style*="bottom"] .tawk-button {
         position: relative !important;
         right: 0 !important;
         bottom: 0 !important;
@@ -68,6 +74,7 @@
         width: 60px !important;
         height: 60px !important;
         border-radius: 50% !important;
+        left: auto !important;
       }
       
       /* Make Tawk button icon smaller */
@@ -75,7 +82,8 @@
       [data-tawk-widget] .tawk-button svg,
       #tawk-widget .tawk-button svg,
       div[id*="tawk"] .tawk-button svg,
-      div[class*="tawk"] .tawk-button svg {
+      div[class*="tawk"] .tawk-button svg,
+      div[style*="position: fixed"] .tawk-button svg {
         width: 24px !important;
         height: 24px !important;
       }
@@ -89,15 +97,28 @@
         bottom: 80px !important;
       }
       
-      /* Override any default positioning */
-      body .tawk-widget-container,
-      body [data-tawk-widget],
-      body #tawk-widget {
+      /* Override any theme positioning with maximum specificity */
+      html body .tawk-widget-container,
+      html body [data-tawk-widget],
+      html body #tawk-widget,
+      html body div[style*="position: fixed"],
+      html body div[style*="bottom"] {
         position: fixed !important;
         right: 30px !important;
         top: 50% !important;
         transform: translateY(-50%) !important;
         bottom: auto !important;
+        left: auto !important;
+      }
+      
+      /* Force override any inline styles */
+      div[style*="position: fixed"][style*="bottom"] {
+        position: fixed !important;
+        right: 30px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        bottom: auto !important;
+        left: auto !important;
       }
     `;
     
@@ -110,6 +131,50 @@
     // Add the new positioning style
     document.head.appendChild(style);
     console.log('✅ Theme Tawk widget positioned to center-right');
+    
+    // Also directly modify any existing Tawk elements immediately
+    setTimeout(() => {
+      const tawkElements = document.querySelectorAll('[data-tawk-widget], #tawk-widget, iframe[src*="tawk"], div[id*="tawk"], div[class*="tawk"], div[style*="position: fixed"]');
+      tawkElements.forEach(el => {
+        if (el) {
+          el.style.position = 'fixed';
+          el.style.right = '30px';
+          el.style.top = '50%';
+          el.style.transform = 'translateY(-50%)';
+          el.style.bottom = 'auto';
+          el.style.left = 'auto';
+          el.style.width = '60px';
+          el.style.height = '60px';
+          el.style.zIndex = '999999';
+          console.log('✅ Directly positioned Tawk element:', el);
+        }
+      });
+    }, 1000);
+    
+    // Set up continuous monitoring to catch Tawk widget whenever it appears
+    let tawkMonitor = setInterval(() => {
+      const tawkElements = document.querySelectorAll('[data-tawk-widget], #tawk-widget, iframe[src*="tawk"], div[id*="tawk"], div[class*="tawk"], div[style*="position: fixed"]');
+      tawkElements.forEach(el => {
+        if (el && (el.style.bottom || el.style.right === '20px' || el.style.right === '10px')) {
+          el.style.position = 'fixed';
+          el.style.right = '30px';
+          el.style.top = '50%';
+          el.style.transform = 'translateY(-50%)';
+          el.style.bottom = 'auto';
+          el.style.left = 'auto';
+          el.style.width = '60px';
+          el.style.height = '60px';
+          el.style.zIndex = '999999';
+          console.log('🔄 Continuously repositioned Tawk element:', el);
+        }
+      });
+    }, 500); // Check every 500ms
+    
+    // Stop monitoring after 30 seconds
+    setTimeout(() => {
+      clearInterval(tawkMonitor);
+      console.log('⏹️ Stopped Tawk monitoring');
+    }, 30000);
   }
 
   window.JUNS.support = {
