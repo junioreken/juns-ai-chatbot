@@ -1,16 +1,62 @@
-<!-- Recommendations Section -->
-<div id="recommendation-section" style="padding: clamp(20px, 5vw, 40px) clamp(10px, 3vw, 20px); max-width: 1200px; margin: 0 auto;">
-  <h2 id="juns-heading" style="text-align:center; font-size: clamp(24px, 6vw, 34px); font-weight: 700; margin-bottom: 8px; letter-spacing: 0.2px; font-family: 'Playfair Display', 'Times New Roman', Georgia, serif; font-style: italic; line-height: 1.2;">
-    Curated looks — dresses + matching accessories
-  </h2>
-  <p id="juns-theme-label" style="text-align:center; font-size: clamp(14px, 3.5vw, 16px); margin-bottom: clamp(20px, 4vw, 30px); color: #555; line-height: 1.4;"></p>
+<!-- Recommendations Section - Shopify Compatible -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<div id="recommendation-section" style="
+  padding: clamp(15px, 4vw, 30px) clamp(15px, 4vw, 20px);
+  max-width: 100%;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+">
+  <div style="
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0 clamp(10px, 3vw, 20px);
+    box-sizing: border-box;
+  ">
+    <h2 id="juns-heading" style="
+      text-align: center;
+      font-size: clamp(20px, 5vw, 32px);
+      font-weight: 700;
+      margin-bottom: clamp(8px, 2vw, 12px);
+      letter-spacing: 0.2px;
+      font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
+      font-style: italic;
+      line-height: 1.2;
+      color: #333;
+    ">
+      Curated looks — dresses + matching accessories
+    </h2>
+    <p id="juns-theme-label" style="
+      text-align: center;
+      font-size: clamp(13px, 3vw, 15px);
+      margin-bottom: clamp(15px, 3vw, 25px);
+      color: #555;
+      line-height: 1.4;
+    "></p>
+  </div>
 
   <style>
+    /* Reset and base styles for Shopify compatibility */
+    #recommendation-section * {
+      box-sizing: border-box;
+    }
+    
+    #recommendation-section {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6;
+    }
+
     /* Base grid styles */
     #juns-products-grid, #juns-dresses-grid, #juns-accessories-grid {
       display: grid;
       gap: clamp(12px, 3vw, 24px);
       width: 100%;
+      margin: 0;
+      padding: 0;
     }
 
     /* Desktop: 3 columns */
@@ -241,22 +287,102 @@
       border-radius: 6px;
       border: 1px dashed #ccc;
     }
+
+    /* Shopify theme compatibility */
+    @media (max-width: 767px) {
+      #recommendation-section {
+        padding-top: 20px;
+        padding-bottom: 20px;
+      }
+      
+      /* Ensure proper spacing with Shopify header */
+      body {
+        padding-top: 0 !important;
+      }
+      
+      /* Override any theme margins that might cause issues */
+      .page-width, .container, .wrapper {
+        max-width: 100% !important;
+        padding-left: 15px !important;
+        padding-right: 15px !important;
+      }
+    }
+
+    /* Ensure full width on mobile */
+    @media (max-width: 479px) {
+      #recommendation-section {
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+      
+      #dresses-section, #accessories-section {
+        padding-left: 0;
+        padding-right: 0;
+      }
+    }
+
+    /* Fix any overflow issues */
+    #recommendation-section {
+      overflow-x: hidden;
+    }
+
+    /* Ensure cards don't break layout */
+    .j-card {
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    /* Mobile-first responsive images */
+    .j-card img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
   </style>
 
   <!-- Dresses Section -->
-  <div id="dresses-section">
-    <h3 id="dresses-heading" style="text-align:center; font-size: 24px; font-weight: 600; margin-bottom: 20px; color: #333; font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;">
+  <div id="dresses-section" style="
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0 clamp(10px, 3vw, 20px);
+    box-sizing: border-box;
+    margin-bottom: clamp(30px, 6vw, 50px);
+  ">
+    <h3 id="dresses-heading" style="
+      text-align: center;
+      font-size: clamp(18px, 4.5vw, 24px);
+      font-weight: 600;
+      margin-bottom: clamp(15px, 3vw, 20px);
+      color: #333;
+      font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
+      line-height: 1.3;
+    ">
       Dresses & Skirts
     </h3>
-    <div id="juns-dresses-grid" style="display: grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap: 24px; margin-bottom: 40px;"></div>
+    <div id="juns-dresses-grid"></div>
   </div>
 
   <!-- Accessories Section -->
-  <div id="accessories-section">
-    <h3 id="accessories-heading" style="text-align:center; font-size: 24px; font-weight: 600; margin-bottom: 20px; color: #333; font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;">
+  <div id="accessories-section" style="
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0 clamp(10px, 3vw, 20px);
+    box-sizing: border-box;
+  ">
+    <h3 id="accessories-heading" style="
+      text-align: center;
+      font-size: clamp(18px, 4.5vw, 24px);
+      font-weight: 600;
+      margin-bottom: clamp(15px, 3vw, 20px);
+      color: #333;
+      font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
+      line-height: 1.3;
+    ">
       Matching Accessories
     </h3>
-    <div id="juns-accessories-grid" style="display: grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap: 24px;"></div>
+    <div id="juns-accessories-grid"></div>
   </div>
 
   <!-- Fallback grid for backward compatibility -->
@@ -265,6 +391,33 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
+  // Ensure Shopify theme compatibility
+  const ensureShopifyCompatibility = () => {
+    // Remove any conflicting styles from theme
+    const conflictingStyles = document.querySelectorAll('style[data-shopify]');
+    conflictingStyles.forEach(style => {
+      if (style.textContent.includes('max-width') || style.textContent.includes('container')) {
+        style.remove();
+      }
+    });
+    
+    // Ensure body has proper styling
+    document.body.style.margin = '0';
+    document.body.style.padding = '0';
+    document.body.style.overflowX = 'hidden';
+    
+    // Fix any container width issues
+    const containers = document.querySelectorAll('.page-width, .container, .wrapper');
+    containers.forEach(container => {
+      container.style.maxWidth = '100%';
+      container.style.paddingLeft = '15px';
+      container.style.paddingRight = '15px';
+    });
+  };
+
+  // Run compatibility fixes
+  ensureShopifyCompatibility();
+
   const params = new URLSearchParams(window.location.search);
   const rawTheme = (params.get('theme') || '').toLowerCase().trim();
   const budgetParam = (params.get('budget') || 'no-limit').toLowerCase().trim();
@@ -432,10 +585,16 @@ document.addEventListener('DOMContentLoaded', async function() {
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => {
+      // Re-run compatibility fixes
+      ensureShopifyCompatibility();
+      
       if (allProducts.length > 0) {
         renderProducts(allProducts);
       }
     }, 250); // Debounce resize events
   });
+
+  // Also run compatibility fixes after a short delay to catch any late-loading theme styles
+  setTimeout(ensureShopifyCompatibility, 1000);
 });
 </script>
