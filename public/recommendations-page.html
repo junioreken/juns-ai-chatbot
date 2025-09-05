@@ -44,6 +44,77 @@
       }
     }
 
+    /* Extra small screens - optimize for many products */
+    @media (max-width: 375px) {
+      #juns-products-grid, #juns-dresses-grid, #juns-accessories-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      
+      .j-card {
+        padding: 8px;
+        border-radius: 8px;
+      }
+      
+      .j-card img {
+        aspect-ratio: 3/4;
+        border-radius: 6px;
+      }
+      
+      .j-title {
+        font-size: 13px;
+        margin-top: 6px;
+      }
+      
+      .j-price {
+        font-size: 11px;
+        margin-top: 4px;
+      }
+    }
+
+    /* Very small screens - ultra compact */
+    @media (max-width: 320px) {
+      #recommendation-section {
+        padding: 10px 8px;
+      }
+      
+      #juns-heading {
+        font-size: 20px;
+        margin-bottom: 6px;
+      }
+      
+      #juns-theme-label {
+        font-size: 12px;
+        margin-bottom: 15px;
+      }
+      
+      #dresses-heading, #accessories-heading {
+        font-size: 16px;
+        margin-bottom: 12px;
+      }
+      
+      .j-card {
+        padding: 6px;
+        border-radius: 6px;
+      }
+      
+      .j-card img {
+        aspect-ratio: 2/3;
+        border-radius: 4px;
+      }
+      
+      .j-title {
+        font-size: 12px;
+        margin-top: 4px;
+        line-height: 1.2;
+      }
+      
+      .j-price {
+        font-size: 10px;
+        margin-top: 2px;
+      }
+    }
+
     /* Card styles with mobile optimization */
     .j-card {
       background: #fff;
@@ -156,6 +227,20 @@
         gap: 12px;
       }
     }
+
+    /* Show more message styling */
+    .show-more-message {
+      text-align: center;
+      grid-column: 1 / -1;
+      color: #666;
+      font-size: clamp(12px, 3vw, 14px);
+      font-style: italic;
+      margin-top: 10px;
+      padding: 8px;
+      background: #f8f8f8;
+      border-radius: 6px;
+      border: 1px dashed #ccc;
+    }
   </style>
 
   <!-- Dresses Section -->
@@ -261,9 +346,13 @@ document.addEventListener('DOMContentLoaded', async function() {
       return isAccessory;
     });
 
-    // Render dresses
+    // Render dresses - limit on mobile for better UX
     if (dresses.length > 0) {
-      dressesGridEl.innerHTML = dresses.map(p => {
+      const isMobile = window.innerWidth <= 767;
+      const maxDresses = isMobile ? 6 : dresses.length; // Show max 6 on mobile
+      const dressesToShow = dresses.slice(0, maxDresses);
+      
+      dressesGridEl.innerHTML = dressesToShow.map(p => {
         const img = p.image || 'https://via.placeholder.com/600x800?text=JUN%27S';
         const price = p.price ? `$${p.price} ${currency}` : '';
         
@@ -276,13 +365,22 @@ document.addEventListener('DOMContentLoaded', async function() {
             </div>
           </a>`;
       }).join('');
+      
+      // Show "show more" message on mobile if there are more products
+      if (isMobile && dresses.length > maxDresses) {
+        dressesGridEl.innerHTML += `<p class="show-more-message">+ ${dresses.length - maxDresses} more dresses available</p>`;
+      }
     } else {
       dressesGridEl.innerHTML = "<p class='empty-state'>No matching dresses found.</p>";
     }
 
-    // Render accessories
+    // Render accessories - limit on mobile for better UX
     if (accessories.length > 0) {
-      accessoriesGridEl.innerHTML = accessories.map(p => {
+      const isMobile = window.innerWidth <= 767;
+      const maxAccessories = isMobile ? 4 : accessories.length; // Show max 4 on mobile
+      const accessoriesToShow = accessories.slice(0, maxAccessories);
+      
+      accessoriesGridEl.innerHTML = accessoriesToShow.map(p => {
         const img = p.image || 'https://via.placeholder.com/600x800?text=JUN%27S';
         const price = p.price ? `$${p.price} ${currency}` : '';
         
@@ -295,6 +393,11 @@ document.addEventListener('DOMContentLoaded', async function() {
             </div>
           </a>`;
       }).join('');
+      
+      // Show "show more" message on mobile if there are more products
+      if (isMobile && accessories.length > maxAccessories) {
+        accessoriesGridEl.innerHTML += `<p class="show-more-message">+ ${accessories.length - maxAccessories} more accessories available</p>`;
+      }
     } else {
       accessoriesGridEl.innerHTML = "<p class='empty-state'>No matching accessories found.</p>";
     }
@@ -304,14 +407,17 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('accessories-section').style.display = accessories.length > 0 ? 'block' : 'none';
   }
 
+  // Store products globally for re-rendering on resize
+  let allProducts = [];
+
   // Load and render
   try {
     dressesGridEl.innerHTML = "<p class='loading-state'>Loading dresses…</p>";
     accessoriesGridEl.innerHTML = "<p class='loading-state'>Loading accessories…</p>";
     
-    const products = await fetchProducts();
-    console.log('✅ Found', products.length, 'products');
-    renderProducts(products);
+    allProducts = await fetchProducts();
+    console.log('✅ Found', allProducts.length, 'products');
+    renderProducts(allProducts);
 
     // Removed: Upsell message was too pushy for customers
 
@@ -320,5 +426,16 @@ document.addEventListener('DOMContentLoaded', async function() {
     dressesGridEl.innerHTML = "<p class='error-state'>Failed to load products.</p>";
     accessoriesGridEl.innerHTML = "<p class='error-state'>Failed to load products.</p>";
   }
+
+  // Handle window resize for responsive re-rendering
+  let resizeTimeout;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      if (allProducts.length > 0) {
+        renderProducts(allProducts);
+      }
+    }, 250); // Debounce resize events
+  });
 });
 </script>
