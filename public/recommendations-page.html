@@ -1,466 +1,97 @@
-<!-- Recommendations Section - Shopify Compatible -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<div id="recommendation-section" style="
-  padding: clamp(15px, 4vw, 30px) clamp(15px, 4vw, 20px);
-  max-width: 100%;
-  margin: 0 auto;
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-">
-  <div style="
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
-    padding: 0 clamp(10px, 3vw, 20px);
-    box-sizing: border-box;
-  ">
-    <h2 id="juns-heading" style="
-      text-align: center;
-      font-size: clamp(20px, 5vw, 32px);
-      font-weight: 700;
-      margin-bottom: clamp(8px, 2vw, 12px);
-      letter-spacing: 0.2px;
-      font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
-      font-style: italic;
-      line-height: 1.2;
-      color: #333;
-    ">
-      Curated looks — dresses + matching accessories
-    </h2>
-    <p id="juns-theme-label" style="
-      text-align: center;
-      font-size: clamp(13px, 3vw, 15px);
-      margin-bottom: clamp(15px, 3vw, 25px);
-      color: #555;
-      line-height: 1.4;
-    "></p>
-  </div>
+<!-- Recommendations Section -->
+<div id="recommendation-section" style="padding: 40px 20px; max-width: 1200px; margin: 0 auto;">
+  <h2 id="juns-heading" style="text-align:center; font-size: 34px; font-weight: 700; margin-bottom: 8px; letter-spacing: 0.2px; font-family: 'Playfair Display', 'Times New Roman', Georgia, serif; font-style: italic;">
+    Curated looks — dresses + matching accessories
+  </h2>
+  <p id="juns-theme-label" style="text-align:center; font-size: 16px; margin-bottom: 30px; color: #555;"></p>
 
   <style>
-    /* Reset and base styles for Shopify compatibility */
-    #recommendation-section * {
-      box-sizing: border-box;
-    }
-    
-    #recommendation-section {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      line-height: 1.6;
-    }
-
-    /* Base grid styles */
-    #juns-products-grid, #juns-dresses-grid, #juns-accessories-grid {
+    #juns-products-grid {
       display: grid;
-      gap: clamp(12px, 3vw, 24px);
-      width: 100%;
-      margin: 0;
-      padding: 0;
+      grid-template-columns: repeat(2, minmax(240px, 1fr));
+      gap: 24px;
     }
-
-    /* Desktop: 3 columns */
-    @media (min-width: 1024px) {
-      #juns-products-grid, #juns-dresses-grid, #juns-accessories-grid {
-        grid-template-columns: repeat(3, 1fr);
+    @media (max-width: 960px) {
+      #juns-products-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
       }
     }
-
-    /* Tablet: 2 columns */
-    @media (min-width: 768px) and (max-width: 1023px) {
-      #juns-products-grid, #juns-dresses-grid, #juns-accessories-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: clamp(16px, 2.5vw, 20px);
+    @media (max-width: 560px) {
+      #juns-products-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
       }
     }
-
-    /* Mobile: 2 columns for larger screens */
-    @media (min-width: 480px) and (max-width: 767px) {
-      #juns-products-grid, #juns-dresses-grid, #juns-accessories-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: clamp(12px, 2vw, 16px);
-      }
-    }
-
-    /* Mobile: 1 column for small screens */
-    @media (max-width: 479px) {
+    @media (max-width: 360px) {
       #juns-products-grid, #juns-dresses-grid, #juns-accessories-grid {
         grid-template-columns: 1fr;
-        gap: clamp(10px, 2vw, 14px);
+        gap: 12px;
       }
     }
-
-    /* Mobile: 2 columns for better space usage */
-    @media (max-width: 767px) {
-      #juns-products-grid, #juns-dresses-grid, #juns-accessories-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: clamp(8px, 2vw, 12px);
-      }
-      
-      .j-card {
-        padding: clamp(6px, 1.5vw, 10px);
-        border-radius: clamp(6px, 1.5vw, 10px);
-        min-height: auto;
-      }
-      
-      .j-card img {
-        aspect-ratio: 3/4;
-        border-radius: clamp(4px, 1vw, 8px);
-        max-height: 200px;
-      }
-      
-      .j-title {
-        font-size: clamp(11px, 2.5vw, 13px);
-        margin-top: clamp(4px, 1vw, 6px);
-        line-height: 1.2;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-      }
-      
-      .j-price {
-        font-size: clamp(10px, 2vw, 12px);
-        margin-top: clamp(2px, 0.5vw, 4px);
+    @media (max-width: 960px) {
+      #juns-dresses-grid, #juns-accessories-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
       }
     }
-
-    /* Extra small screens - ultra compact */
-    @media (max-width: 480px) {
-      #juns-products-grid, #juns-dresses-grid, #juns-accessories-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 6px;
-      }
-      
-      .j-card {
-        padding: 6px;
-        border-radius: 6px;
-      }
-      
-      .j-card img {
-        aspect-ratio: 2/3;
-        border-radius: 4px;
-        max-height: 150px;
-      }
-      
-      .j-title {
-        font-size: 11px;
-        margin-top: 4px;
-        line-height: 1.1;
-        -webkit-line-clamp: 2;
-      }
-      
-      .j-price {
-        font-size: 9px;
-        margin-top: 2px;
+    @media (max-width: 560px) {
+      #juns-dresses-grid, #juns-accessories-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
       }
     }
-
-    /* Very small screens - minimal */
-    @media (max-width: 375px) {
-      #recommendation-section {
-        padding: 10px 8px;
-      }
-      
-      #juns-heading {
-        font-size: 18px;
-        margin-bottom: 6px;
-      }
-      
-      #juns-theme-label {
-        font-size: 12px;
-        margin-bottom: 15px;
-      }
-      
-      #dresses-heading, #accessories-heading {
-        font-size: 16px;
-        margin-bottom: 12px;
-      }
-      
-      .j-card {
-        padding: 5px;
-        border-radius: 5px;
-      }
-      
-      .j-card img {
-        aspect-ratio: 2/3;
-        border-radius: 3px;
-        max-height: 120px;
-      }
-      
-      .j-title {
-        font-size: 10px;
-        margin-top: 3px;
-        line-height: 1.1;
-        -webkit-line-clamp: 2;
-      }
-      
-      .j-price {
-        font-size: 8px;
-        margin-top: 2px;
-      }
-    }
-
-    /* Ultra small screens - single column */
-    @media (max-width: 320px) {
-      #juns-products-grid, #juns-dresses-grid, #juns-accessories-grid {
-        grid-template-columns: 1fr;
-        gap: 8px;
-      }
-      
-      .j-card {
-        padding: 8px;
-        border-radius: 6px;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        gap: 10px;
-      }
-      
-      .j-card img {
-        width: 80px;
-        height: 100px;
-        aspect-ratio: 4/5;
-        border-radius: 4px;
-        flex-shrink: 0;
-      }
-      
-      .j-title {
-        font-size: 12px;
-        margin-top: 0;
-        line-height: 1.2;
-        -webkit-line-clamp: 3;
-        flex: 1;
-      }
-      
-      .j-price {
-        font-size: 10px;
-        margin-top: 4px;
-      }
-    }
-
-    /* Card styles with mobile optimization */
     .j-card {
       background: #fff;
-      border-radius: clamp(8px, 2vw, 14px);
-      box-shadow: 0 clamp(4px, 1vw, 10px) clamp(8px, 2vw, 28px) rgba(0,0,0,.08);
-      padding: clamp(8px, 2vw, 14px);
+      border-radius: 14px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.08);
+      padding: 14px;
       display: flex;
       flex-direction: column;
       transition: transform .2s ease, box-shadow .2s ease;
-      width: 100%;
-      min-height: 0;
     }
-
     .j-card:hover {
       transform: translateY(-2px);
-      box-shadow: 0 clamp(8px, 2vw, 16px) clamp(12px, 3vw, 34px) rgba(0,0,0,.12);
+      box-shadow: 0 16px 34px rgba(0,0,0,.12);
     }
-
-    /* Mobile: disable hover effects on touch devices */
-    @media (hover: none) {
-      .j-card:hover {
-        transform: none;
-        box-shadow: 0 clamp(4px, 1vw, 10px) clamp(8px, 2vw, 28px) rgba(0,0,0,.08);
-      }
-    }
-
     .j-card img {
       width: 100%;
       height: auto;
-      border-radius: clamp(6px, 1.5vw, 10px);
+      border-radius: 10px;
       object-fit: cover;
       aspect-ratio: 4/5;
       background: #f6f6f6;
-      display: block;
     }
-
     .j-title {
-      margin-top: clamp(8px, 2vw, 10px);
-      font-size: clamp(14px, 3.5vw, 16px);
+      margin-top: 10px;
+      font-size: 16px;
       font-weight: 700;
       letter-spacing: .2px;
       line-height: 1.35;
       color: #111;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-      hyphens: auto;
     }
-
     .j-price {
-      margin-top: clamp(4px, 1vw, 6px);
+      margin-top: 6px;
       color: #444;
       font-weight: 600;
-      font-size: clamp(12px, 3vw, 14px);
-    }
-
-    /* Section headings responsive */
-    #dresses-heading, #accessories-heading {
-      text-align: center;
-      font-size: clamp(18px, 4.5vw, 24px);
-      font-weight: 600;
-      margin-bottom: clamp(15px, 3vw, 20px);
-      color: #333;
-      font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
-      line-height: 1.3;
-    }
-
-    /* Loading and empty states responsive */
-    .loading-state, .empty-state {
-      text-align: center;
-      grid-column: 1 / -1;
-      color: #666;
-      font-size: clamp(14px, 3.5vw, 16px);
-      padding: clamp(20px, 5vw, 40px);
-      line-height: 1.4;
-    }
-
-    .error-state {
-      text-align: center;
-      grid-column: 1 / -1;
-      color: #d32f2f;
-      font-size: clamp(14px, 3.5vw, 16px);
-      padding: clamp(20px, 5vw, 40px);
-      line-height: 1.4;
-    }
-
-    /* Ensure proper spacing on mobile */
-    @media (max-width: 767px) {
-      #recommendation-section {
-        padding-left: 15px;
-        padding-right: 15px;
-      }
-    }
-
-    /* Very small screens */
-    @media (max-width: 360px) {
-      #recommendation-section {
-        padding-left: 10px;
-        padding-right: 10px;
-      }
-      
-      .j-card {
-        padding: 10px;
-      }
-    }
-
-    /* Landscape mobile optimization */
-    @media (max-width: 767px) and (orientation: landscape) {
-      #juns-products-grid, #juns-dresses-grid, #juns-accessories-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-      }
-    }
-
-    /* Show more message styling */
-    .show-more-message {
-      text-align: center;
-      grid-column: 1 / -1;
-      color: #666;
-      font-size: clamp(12px, 3vw, 14px);
-      font-style: italic;
-      margin-top: 10px;
-      padding: 8px;
-      background: #f8f8f8;
-      border-radius: 6px;
-      border: 1px dashed #ccc;
-    }
-
-    /* Shopify theme compatibility */
-    @media (max-width: 767px) {
-      #recommendation-section {
-        padding-top: 20px;
-        padding-bottom: 20px;
-      }
-      
-      /* Ensure proper spacing with Shopify header */
-      body {
-        padding-top: 0 !important;
-      }
-      
-      /* Override any theme margins that might cause issues */
-      .page-width, .container, .wrapper {
-        max-width: 100% !important;
-        padding-left: 15px !important;
-        padding-right: 15px !important;
-      }
-    }
-
-    /* Ensure full width on mobile */
-    @media (max-width: 479px) {
-      #recommendation-section {
-        padding-left: 10px;
-        padding-right: 10px;
-      }
-      
-      #dresses-section, #accessories-section {
-        padding-left: 0;
-        padding-right: 0;
-      }
-    }
-
-    /* Fix any overflow issues */
-    #recommendation-section {
-      overflow-x: hidden;
-    }
-
-    /* Ensure cards don't break layout */
-    .j-card {
-      max-width: 100%;
-      overflow: hidden;
-    }
-
-    /* Mobile-first responsive images */
-    .j-card img {
-      max-width: 100%;
-      height: auto;
-      display: block;
+      font-size: 14px;
     }
   </style>
 
   <!-- Dresses Section -->
-  <div id="dresses-section" style="
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
-    padding: 0 clamp(10px, 3vw, 20px);
-    box-sizing: border-box;
-    margin-bottom: clamp(30px, 6vw, 50px);
-  ">
-    <h3 id="dresses-heading" style="
-      text-align: center;
-      font-size: clamp(18px, 4.5vw, 24px);
-      font-weight: 600;
-      margin-bottom: clamp(15px, 3vw, 20px);
-      color: #333;
-      font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
-      line-height: 1.3;
-    ">
+  <div id="dresses-section">
+    <h3 id="dresses-heading" style="text-align:center; font-size: 24px; font-weight: 600; margin-bottom: 20px; color: #333; font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;">
       Dresses & Skirts
     </h3>
-    <div id="juns-dresses-grid"></div>
+    <div id="juns-dresses-grid" style="display: grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap: 24px; margin-bottom: 40px;"></div>
   </div>
 
   <!-- Accessories Section -->
-  <div id="accessories-section" style="
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
-    padding: 0 clamp(10px, 3vw, 20px);
-    box-sizing: border-box;
-  ">
-    <h3 id="accessories-heading" style="
-      text-align: center;
-      font-size: clamp(18px, 4.5vw, 24px);
-      font-weight: 600;
-      margin-bottom: clamp(15px, 3vw, 20px);
-      color: #333;
-      font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;
-      line-height: 1.3;
-    ">
+  <div id="accessories-section">
+    <h3 id="accessories-heading" style="text-align:center; font-size: 24px; font-weight: 600; margin-bottom: 20px; color: #333; font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;">
       Matching Accessories
     </h3>
-    <div id="juns-accessories-grid"></div>
+    <div id="juns-accessories-grid" style="display: grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap: 24px;"></div>
   </div>
 
   <!-- Fallback grid for backward compatibility -->
@@ -469,33 +100,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
-  // Ensure Shopify theme compatibility
-  const ensureShopifyCompatibility = () => {
-    // Remove any conflicting styles from theme
-    const conflictingStyles = document.querySelectorAll('style[data-shopify]');
-    conflictingStyles.forEach(style => {
-      if (style.textContent.includes('max-width') || style.textContent.includes('container')) {
-        style.remove();
-      }
-    });
-    
-    // Ensure body has proper styling
-    document.body.style.margin = '0';
-    document.body.style.padding = '0';
-    document.body.style.overflowX = 'hidden';
-    
-    // Fix any container width issues
-    const containers = document.querySelectorAll('.page-width, .container, .wrapper');
-    containers.forEach(container => {
-      container.style.maxWidth = '100%';
-      container.style.paddingLeft = '15px';
-      container.style.paddingRight = '15px';
-    });
-  };
-
-  // Run compatibility fixes
-  ensureShopifyCompatibility();
-
   const params = new URLSearchParams(window.location.search);
   const rawTheme = (params.get('theme') || '').toLowerCase().trim();
   const budgetParam = (params.get('budget') || 'no-limit').toLowerCase().trim();
@@ -551,8 +155,8 @@ document.addEventListener('DOMContentLoaded', async function() {
   // Render products in separate sections
   function renderProducts(products) {
     if (!products.length) {
-      dressesGridEl.innerHTML = "<p class='empty-state'>No matching dresses found.</p>";
-      accessoriesGridEl.innerHTML = "<p class='empty-state'>No matching accessories found.</p>";
+      dressesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #666;'>No matching dresses found.</p>";
+      accessoriesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #666;'>No matching accessories found.</p>";
       return;
     }
 
@@ -577,14 +181,9 @@ document.addEventListener('DOMContentLoaded', async function() {
       return isAccessory;
     });
 
-    // Render dresses - limit on mobile for better UX
+    // Render dresses
     if (dresses.length > 0) {
-      const isMobile = window.innerWidth <= 767;
-      const isSmallMobile = window.innerWidth <= 480;
-      const maxDresses = isSmallMobile ? 4 : isMobile ? 6 : dresses.length; // Show max 4 on small mobile, 6 on larger mobile
-      const dressesToShow = dresses.slice(0, maxDresses);
-      
-      dressesGridEl.innerHTML = dressesToShow.map(p => {
+      dressesGridEl.innerHTML = dresses.map(p => {
         const img = p.image || 'https://via.placeholder.com/600x800?text=JUN%27S';
         const price = p.price ? `$${p.price} ${currency}` : '';
         
@@ -597,23 +196,13 @@ document.addEventListener('DOMContentLoaded', async function() {
             </div>
           </a>`;
       }).join('');
-      
-      // Show "show more" message on mobile if there are more products
-      if (isMobile && dresses.length > maxDresses) {
-        dressesGridEl.innerHTML += `<p class="show-more-message">+ ${dresses.length - maxDresses} more dresses available</p>`;
-      }
     } else {
-      dressesGridEl.innerHTML = "<p class='empty-state'>No matching dresses found.</p>";
+      dressesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #666;'>No matching dresses found.</p>";
     }
 
-    // Render accessories - limit on mobile for better UX
+    // Render accessories
     if (accessories.length > 0) {
-      const isMobile = window.innerWidth <= 767;
-      const isSmallMobile = window.innerWidth <= 480;
-      const maxAccessories = isSmallMobile ? 2 : isMobile ? 4 : accessories.length; // Show max 2 on small mobile, 4 on larger mobile
-      const accessoriesToShow = accessories.slice(0, maxAccessories);
-      
-      accessoriesGridEl.innerHTML = accessoriesToShow.map(p => {
+      accessoriesGridEl.innerHTML = accessories.map(p => {
         const img = p.image || 'https://via.placeholder.com/600x800?text=JUN%27S';
         const price = p.price ? `$${p.price} ${currency}` : '';
         
@@ -626,13 +215,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             </div>
           </a>`;
       }).join('');
-      
-      // Show "show more" message on mobile if there are more products
-      if (isMobile && accessories.length > maxAccessories) {
-        accessoriesGridEl.innerHTML += `<p class="show-more-message">+ ${accessories.length - maxAccessories} more accessories available</p>`;
-      }
     } else {
-      accessoriesGridEl.innerHTML = "<p class='empty-state'>No matching accessories found.</p>";
+      accessoriesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #666;'>No matching accessories found.</p>";
     }
 
     // Show/hide sections based on content
@@ -640,41 +224,28 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('accessories-section').style.display = accessories.length > 0 ? 'block' : 'none';
   }
 
-  // Store products globally for re-rendering on resize
-  let allProducts = [];
-
   // Load and render
   try {
-    dressesGridEl.innerHTML = "<p class='loading-state'>Loading dresses…</p>";
-    accessoriesGridEl.innerHTML = "<p class='loading-state'>Loading accessories…</p>";
+    dressesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #666;'>Loading dresses…</p>";
+    accessoriesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #666;'>Loading accessories…</p>";
     
-    allProducts = await fetchProducts();
-    console.log('✅ Found', allProducts.length, 'products');
-    renderProducts(allProducts);
+    const products = await fetchProducts();
+    console.log('✅ Found', products.length, 'products');
+    renderProducts(products);
 
-    // Removed: Upsell message was too pushy for customers
+    // Optional chatbot upsell
+    if (window.JUNS?.chat?.message) {
+      setTimeout(() => {
+        window.JUNS.chat.message("Want me to add a matching clutch & heels to complete your look?");
+        if (window.JUNS?.chat?.setBadge) window.JUNS.chat.setBadge(true);
+      }, 15000);
+    }
 
   } catch (err) {
     console.error('❌ Error:', err);
-    dressesGridEl.innerHTML = "<p class='error-state'>Failed to load products.</p>";
-    accessoriesGridEl.innerHTML = "<p class='error-state'>Failed to load products.</p>";
+    dressesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #d32f2f;'>Failed to load products.</p>";
+    accessoriesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #d32f2f;'>Failed to load products.</p>";
   }
-
-  // Handle window resize for responsive re-rendering
-  let resizeTimeout;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-      // Re-run compatibility fixes
-      ensureShopifyCompatibility();
-      
-      if (allProducts.length > 0) {
-        renderProducts(allProducts);
-      }
-    }, 250); // Debounce resize events
-  });
-
-  // Also run compatibility fixes after a short delay to catch any late-loading theme styles
-  setTimeout(ensureShopifyCompatibility, 1000);
 });
 </script>
+
