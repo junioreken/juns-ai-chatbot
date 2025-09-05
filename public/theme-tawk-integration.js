@@ -23,6 +23,17 @@
       loaded = true;
       try { 
         Tawk_API.hideWidget(); 
+        // Configure Tawk API with custom positioning
+        Tawk_API.setAttributes({
+          'position': 'fixed',
+          'right': '30px',
+          'top': '50%',
+          'transform': 'translateY(-50%)',
+          'bottom': 'auto',
+          'width': '60px',
+          'height': '60px',
+          'zIndex': '999999'
+        });
         // Set up positioning when Tawk loads
         setupTawkPositioning();
       } catch (e) {}
@@ -32,11 +43,18 @@
   }
 
   function setupTawkPositioning() {
-    // Add CSS to position Tawk widget to middle-right when closed - ULTRA AGGRESSIVE
+    // Add CSS to position Tawk widget to middle-right when closed - NUCLEAR OPTION
     const style = document.createElement('style');
     style.id = 'theme-tawk-positioning';
     style.textContent = `
-      /* ULTRA AGGRESSIVE Tawk positioning - override everything */
+      /* NUCLEAR OPTION - Override everything with maximum force */
+      * {
+        --tawk-right: 30px !important;
+        --tawk-top: 50% !important;
+        --tawk-transform: translateY(-50%) !important;
+      }
+      
+      /* Target every possible Tawk element */
       .tawk-widget-container,
       [data-tawk-widget],
       #tawk-widget,
@@ -45,7 +63,10 @@
       div[class*="tawk"],
       div[style*="position: fixed"],
       div[style*="bottom"],
-      div[style*="right"] {
+      div[style*="right"],
+      div[style*="z-index"],
+      div[style*="width"],
+      div[style*="height"] {
         position: fixed !important;
         right: 30px !important;
         top: 50% !important;
@@ -55,6 +76,25 @@
         height: 60px !important;
         bottom: auto !important;
         left: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      
+      /* Target any element that looks like a chat widget */
+      div[style*="position: fixed"][style*="bottom"],
+      div[style*="position: fixed"][style*="right"],
+      div[style*="z-index: 999"],
+      div[style*="z-index: 9999"],
+      div[style*="z-index: 99999"] {
+        position: fixed !important;
+        right: 30px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        bottom: auto !important;
+        left: auto !important;
+        width: 60px !important;
+        height: 60px !important;
+        z-index: 999999 !important;
       }
       
       /* Make Tawk button smaller and properly positioned */
@@ -65,7 +105,8 @@
       div[id*="tawk"] .tawk-button,
       div[class*="tawk"] .tawk-button,
       div[style*="position: fixed"] .tawk-button,
-      div[style*="bottom"] .tawk-button {
+      div[style*="bottom"] .tawk-button,
+      div[style*="right"] .tawk-button {
         position: relative !important;
         right: 0 !important;
         bottom: 0 !important;
@@ -75,6 +116,8 @@
         height: 60px !important;
         border-radius: 50% !important;
         left: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
       
       /* Make Tawk button icon smaller */
@@ -83,7 +126,8 @@
       #tawk-widget .tawk-button svg,
       div[id*="tawk"] .tawk-button svg,
       div[class*="tawk"] .tawk-button svg,
-      div[style*="position: fixed"] .tawk-button svg {
+      div[style*="position: fixed"] .tawk-button svg,
+      div[style*="bottom"] .tawk-button svg {
         width: 24px !important;
         height: 24px !important;
       }
@@ -102,23 +146,31 @@
       html body [data-tawk-widget],
       html body #tawk-widget,
       html body div[style*="position: fixed"],
-      html body div[style*="bottom"] {
+      html body div[style*="bottom"],
+      html body div[style*="right"] {
         position: fixed !important;
         right: 30px !important;
         top: 50% !important;
         transform: translateY(-50%) !important;
         bottom: auto !important;
         left: auto !important;
+        width: 60px !important;
+        height: 60px !important;
+        z-index: 999999 !important;
       }
       
       /* Force override any inline styles */
-      div[style*="position: fixed"][style*="bottom"] {
+      div[style*="position: fixed"][style*="bottom"],
+      div[style*="position: fixed"][style*="right"] {
         position: fixed !important;
         right: 30px !important;
         top: 50% !important;
         transform: translateY(-50%) !important;
         bottom: auto !important;
         left: auto !important;
+        width: 60px !important;
+        height: 60px !important;
+        z-index: 999999 !important;
       }
     `;
     
@@ -189,6 +241,17 @@
 
       ensureTawk(function () {
         try { 
+          // Force positioning before showing
+          Tawk_API.setAttributes({
+            'position': 'fixed',
+            'right': '30px',
+            'top': '50%',
+            'transform': 'translateY(-50%)',
+            'bottom': 'auto',
+            'width': '60px',
+            'height': '60px',
+            'zIndex': '999999'
+          });
           Tawk_API.showWidget(); 
           Tawk_API.maximize(); 
         } catch (e) {}
