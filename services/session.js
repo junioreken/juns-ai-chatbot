@@ -82,7 +82,7 @@ class SessionService {
     return session.context;
   }
 
-  // Get conversation history for AI context
+  // Get conversation history for AI context with enhanced formatting
   async getConversationContext(sessionId, maxMessages = 10) {
     const session = await this.getSession(sessionId);
     
@@ -90,16 +90,82 @@ class SessionService {
 
     const recentMessages = session.messages.slice(-maxMessages);
     
-    return recentMessages.map(msg => {
+    // Build enhanced context with conversation flow
+    let context = 'CONVERSATION HISTORY:\n';
+    context += recentMessages.map((msg, index) => {
       const role = msg.isUser ? 'Customer' : 'JUN\'S AI';
-      return `${role}: ${msg.content}`;
+      const timestamp = new Date(msg.timestamp).toLocaleTimeString();
+      return `${index + 1}. [${timestamp}] ${role}: ${msg.content}`;
     }).join('\n');
+    
+    // Add session context information
+    if (session.context) {
+      context += '\n\nSESSION CONTEXT:';
+      if (session.context.language) {
+        context += `\n- Language: ${session.context.language}`;
+      }
+      if (session.context.currentIntent) {
+        context += `\n- Current Topic: ${session.context.currentIntent}`;
+      }
+      if (session.context.lastProductViewed) {
+        context += `\n- Last Product Viewed: ${session.context.lastProductViewed}`;
+      }
+      if (session.context.preferences && Object.keys(session.context.preferences).length > 0) {
+        context += `\n- Customer Preferences: ${JSON.stringify(session.context.preferences)}`;
+      }
+    }
+    
+    return context;
   }
 
   // Get customer preferences
   async getCustomerPreferences(sessionId) {
     const session = await this.getSession(sessionId);
     return session.context.preferences || {};
+  }
+
+  // Extract and update customer preferences from conversation
+  async extractPreferences(sessionId, message) {
+    const session = await this.getSession(sessionId);
+    const lowerMessage = message.toLowerCase();
+    
+    // Extract size preferences
+    if (lowerMessage.includes('size') || lowerMessage.includes('measurement')) {
+      const sizeMatch = lowerMessage.match(/(\d+)\s*(cm|kg|lb|lbs|ft|foot|'|")/g);
+      if (sizeMatch) {
+        session.context.preferences.measurements = sizeMatch;
+      }
+    }
+    
+    // Extract color preferences
+    const colors = ['black', 'white', 'red', 'blue', 'green', 'yellow', 'pink', 'purple', 'orange', 'brown', 'gray', 'grey', 'navy', 'beige', 'cream'];
+    const mentionedColors = colors.filter(color => lowerMessage.includes(color));
+    if (mentionedColors.length > 0) {
+      session.context.preferences.preferredColors = mentionedColors;
+    }
+    
+    // Extract style preferences
+    const styles = ['casual', 'formal', 'elegant', 'chic', 'vintage', 'modern', 'classic', 'trendy', 'minimalist', 'bohemian'];
+    const mentionedStyles = styles.filter(style => lowerMessage.includes(style));
+    if (mentionedStyles.length > 0) {
+      session.context.preferences.preferredStyles = mentionedStyles;
+    }
+    
+    // Extract occasion preferences
+    const occasions = ['work', 'party', 'wedding', 'date', 'casual', 'formal', 'business', 'evening', 'day', 'night'];
+    const mentionedOccasions = occasions.filter(occasion => lowerMessage.includes(occasion));
+    if (mentionedOccasions.length > 0) {
+      session.context.preferences.preferredOccasions = mentionedOccasions;
+    }
+    
+    // Extract budget preferences
+    const budgetMatch = lowerMessage.match(/\$(\d+)/g);
+    if (budgetMatch) {
+      session.context.preferences.budget = budgetMatch.map(b => parseInt(b.replace('$', '')));
+    }
+    
+    await cache.set(`session:${sessionId}`, session, this.sessionTTL);
+    return session.context.preferences;
   }
 
   // Set customer preferences

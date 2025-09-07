@@ -149,18 +149,28 @@ class IntentClassifier {
   analyzeSemanticIntent(message) {
     const lowerMessage = message.toLowerCase();
     
-    // Product inquiry patterns (more sophisticated)
+    // Product inquiry patterns (more sophisticated and comprehensive)
     if (this.matchesSemanticPatterns(lowerMessage, [
       'looking for', 'need help finding', 'recommend', 'suggest', 'what would you suggest',
       'best option', 'perfect dress', 'something for', 'suitable for', 'appropriate for',
       'what do you have', 'show me', 'find me', 'help me choose', 'what should i wear',
-      'dress for', 'outfit for', 'what works', 'what fits', 'what matches'
+      'dress for', 'outfit for', 'what works', 'what fits', 'what matches',
+      'outfit recommendation', 'style advice', 'fashion help', 'what to wear',
+      'complete my look', 'styling help', 'outfit ideas', 'dress suggestions',
+      'what would look good', 'help me style', 'fashion tips', 'outfit inspiration',
+      'what goes with', 'how to style', 'outfit combination', 'dress for occasion',
+      'what size should i get', 'size recommendation', 'fit advice', 'sizing help',
+      'measurement guide', 'size chart', 'how to measure', 'size question',
+      'what color', 'color recommendation', 'color advice', 'color suggestions',
+      'what material', 'fabric advice', 'material help', 'fabric suggestions',
+      'price range', 'budget options', 'affordable', 'expensive', 'cost',
+      'quality', 'durability', 'long lasting', 'well made', 'good quality'
     ])) {
       return {
         intent: 'product_inquiry',
-        confidence: 0.85,
+        confidence: 0.9,
         handler: 'productHandler',
-        reason: 'Semantic analysis detected product recommendation request'
+        reason: 'Semantic analysis detected comprehensive product recommendation request'
       };
     }
 
@@ -178,17 +188,24 @@ class IntentClassifier {
       };
     }
 
-    // Size help patterns
+    // Size help patterns (enhanced)
     if (this.matchesSemanticPatterns(lowerMessage, [
       'what size', 'size help', 'size guide', 'measurements', 'sizing chart',
       'how to measure', 'size recommendation', 'fit guide', 'size advice',
-      'too big', 'too small', 'doesn\'t fit', 'size issue', 'measurement help'
+      'too big', 'too small', 'doesn\'t fit', 'size issue', 'measurement help',
+      'size question', 'fit question', 'measurement question', 'sizing question',
+      'what size am i', 'which size', 'size me', 'fit me', 'measure me',
+      'size calculator', 'fit calculator', 'measurement calculator', 'size finder',
+      'size chart', 'measurement chart', 'sizing chart', 'fit chart',
+      'bust measurement', 'waist measurement', 'hip measurement', 'height weight',
+      'size conversion', 'size comparison', 'size difference', 'size variation',
+      'petite size', 'plus size', 'regular size', 'size range', 'size options'
     ])) {
       return {
         intent: 'size_help',
-        confidence: 0.85,
+        confidence: 0.9,
         handler: 'sizeHandler',
-        reason: 'Semantic analysis detected sizing assistance request'
+        reason: 'Semantic analysis detected comprehensive sizing assistance request'
       };
     }
 
@@ -250,6 +267,27 @@ class IntentClassifier {
         confidence: 0.85,
         handler: 'shippingHandler',
         reason: 'Semantic analysis detected shipping information request'
+      };
+    }
+
+    // Complex questions that need detailed AI analysis
+    if (this.matchesSemanticPatterns(lowerMessage, [
+      'tell me about', 'explain', 'how does', 'what is', 'why', 'when should',
+      'can you help me understand', 'i need advice', 'i have a question',
+      'i\'m confused about', 'help me understand', 'what do you think',
+      'give me your opinion', 'what would you do', 'how would you',
+      'i\'m looking for', 'i want to know', 'i need to know', 'i\'m wondering',
+      'could you explain', 'can you tell me more', 'i\'d like to know',
+      'help me with', 'i need help with', 'i\'m having trouble',
+      'i don\'t understand', 'i\'m not sure', 'i\'m confused',
+      'what\'s the difference', 'compare', 'which is better',
+      'pros and cons', 'advantages', 'disadvantages', 'benefits'
+    ])) {
+      return {
+        intent: 'detailed_help',
+        confidence: 0.95,
+        handler: 'detailedHandler',
+        reason: 'Semantic analysis detected complex question requiring detailed AI analysis'
       };
     }
 

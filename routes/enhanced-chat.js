@@ -30,8 +30,9 @@ router.post('/enhanced-chat', async (req, res) => {
       await analytics.trackConversationStart(currentSessionId, { name, email, lang });
     }
 
-    // 3. Track user message
+    // 3. Track user message and extract preferences
     await session.addMessage(currentSessionId, message, true);
+    await session.extractPreferences(currentSessionId, message);
     await analytics.trackMessage(currentSessionId, message, true);
 
     // 4. Intent classification (cost optimization)
@@ -219,7 +220,7 @@ router.post('/enhanced-chat', async (req, res) => {
     // 9. Build AI prompt with context
     const systemPrompt = buildSystemPrompt(lang, storeData, conversationContext, intentResult);
 
-    // 10. Generate AI response with enhanced configuration
+    // 10. Generate AI response with enhanced configuration for detailed understanding
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -227,11 +228,12 @@ router.post('/enhanced-chat', async (req, res) => {
         { role: "system", content: systemPrompt },
         { role: "user", content: message }
       ],
-      temperature: 0.8, // Increased for more natural responses
-      max_tokens: 800,  // Doubled for more detailed responses
-      top_p: 0.9,       // Better response diversity
-      frequency_penalty: 0.1, // Reduce repetition
-      presence_penalty: 0.1   // Encourage new topics
+      temperature: 0.7, // Balanced for natural yet focused responses
+      max_tokens: 1200, // Increased for comprehensive responses
+      top_p: 0.95,      // High diversity for creative responses
+      frequency_penalty: 0.2, // Reduce repetition
+      presence_penalty: 0.1,  // Encourage new topics
+      stop: null        // No early stopping for complete responses
     });
 
     let reply = response.choices[0]?.message?.content || 
@@ -372,14 +374,18 @@ ${conversationContext || 'Nouvelle conversation'}
 INTENT DÉTECTÉ: ${intentResult.intent} (Confiance: ${(intentResult.confidence * 100).toFixed(1)}%)
 
 INSTRUCTIONS DE RÉPONSE:
-1. Analyse la question complète, pas seulement les mots-clés
-2. Comprends l'intention réelle derrière la demande
-3. Utilise le contexte de conversation pour des réponses cohérentes
-4. Adapte ton niveau de formalité au style du client
-5. Fournis des réponses détaillées et utiles (5-8 phrases)
-6. Suggère des produits pertinents avec des justifications
-7. Anticipe les questions de suivi possibles
-8. Sois naturel et conversationnel, pas robotique
+1. Analyse la question complète avec une compréhension contextuelle complète
+2. Comprends l'intention réelle et les besoins sous-jacents derrière la demande
+3. Utilise le contexte de conversation pour des réponses cohérentes et personnalisées
+4. Adapte ton niveau de formalité au style de communication du client
+5. Fournis des réponses complètes et détaillées (8-12 phrases pour les questions complexes)
+6. Suggère des produits pertinents avec des justifications et raisonnements spécifiques
+7. Anticipe les questions de suivi possibles et traite-les de manière proactive
+8. Sois naturel, conversationnel et vraiment utile - pas robotique
+9. Montre de l'empathie et de la compréhension de la situation du client
+10. Fournis des conseils actionables et des étapes claires
+11. Utilise des exemples spécifiques et des détails concrets de l'inventaire de la boutique
+12. Pose des questions de clarification quand nécessaire pour mieux comprendre la demande
 
 GESTION SPÉCIALE:
 - Pour les demandes d'étiquettes d'expédition: Reconnais la demande et explique qu'une assistance humaine est nécessaire
@@ -402,14 +408,18 @@ ${conversationContext || 'New conversation'}
 DETECTED INTENT: ${intentResult.intent} (Confidence: ${(intentResult.confidence * 100).toFixed(1)}%)
 
 RESPONSE INSTRUCTIONS:
-1. Analyze the complete question, not just keywords
-2. Understand the real intention behind the request
-3. Use conversation context for coherent responses
-4. Adapt your formality level to match the customer's style
-5. Provide detailed and helpful responses (5-8 sentences)
-6. Suggest relevant products with justifications
-7. Anticipate possible follow-up questions
-8. Be natural and conversational, not robotic
+1. Analyze the complete question with full context understanding
+2. Understand the real intention and underlying needs behind the request
+3. Use conversation context for coherent, personalized responses
+4. Adapt your formality level to match the customer's communication style
+5. Provide comprehensive, detailed responses (8-12 sentences for complex questions)
+6. Suggest relevant products with specific justifications and reasoning
+7. Anticipate possible follow-up questions and address them proactively
+8. Be natural, conversational, and genuinely helpful - not robotic
+9. Show empathy and understanding of the customer's situation
+10. Provide actionable advice and clear next steps
+11. Use specific examples and concrete details from the store inventory
+12. Ask clarifying questions when needed to better understand the request
 
 SPECIAL HANDLING:
 - For shipping label requests: Acknowledge the request and explain that human assistance is needed
@@ -468,13 +478,18 @@ SPECIAL HANDLING:
 - Sois proactif dans l'aide (anticipe les besoins)
 - Utilise des exemples concrets et des détails spécifiques`
     : `\n\nRESPONSE STYLE:
-- Be warm, professional, and engaging
-- Show that you truly understand the customer's question
-- Provide helpful details and relevant suggestions
-- Adapt your language to match the customer's formality level
-- Ask relevant follow-up questions when appropriate
-- Be proactive in helping (anticipate needs)
-- Use concrete examples and specific details`;
+- Be warm, professional, and genuinely engaging
+- Show that you truly understand the customer's question and underlying needs
+- Provide comprehensive, helpful details and highly relevant suggestions
+- Adapt your language to match the customer's communication style and formality level
+- Ask thoughtful follow-up questions to better understand their needs
+- Be proactive in helping and anticipate their next questions or concerns
+- Use concrete examples, specific details, and real product information
+- Demonstrate expertise and knowledge about fashion, styling, and the store
+- Show empathy and understanding of their situation and preferences
+- Provide clear, actionable advice with step-by-step guidance when appropriate
+- Be conversational and natural while maintaining professionalism
+- Address all aspects of their question, not just the surface level`;
 
   return prompt;
 }
