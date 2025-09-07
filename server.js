@@ -23,9 +23,16 @@ app.use(bodyParser.json());
 const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN; // e.g., https://j1ncvb-1b.myshopify.com
 const SHOPIFY_API_TOKEN = process.env.SHOPIFY_API_TOKEN;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Initialize OpenAI only if API key is available
+let openai = null;
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+  });
+  console.log('✅ OpenAI configured');
+} else {
+  console.log('⚠️  OpenAI API key missing - AI features will be limited');
+}
 
 // Import enhanced routes
 const enhancedChatRouter = require('./routes/enhanced-chat');

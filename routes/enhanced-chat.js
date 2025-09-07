@@ -221,23 +221,38 @@ router.post('/enhanced-chat', async (req, res) => {
     const systemPrompt = buildSystemPrompt(lang, storeData, conversationContext, intentResult);
 
     // 10. Generate AI response with enhanced configuration for detailed understanding
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: message }
-      ],
-      temperature: 0.7, // Balanced for natural yet focused responses
-      max_tokens: 1200, // Increased for comprehensive responses
-      top_p: 0.95,      // High diversity for creative responses
-      frequency_penalty: 0.2, // Reduce repetition
-      presence_penalty: 0.1,  // Encourage new topics
-      stop: null        // No early stopping for complete responses
-    });
+    let reply;
+    
+    if (process.env.OPENAI_API_KEY) {
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: message }
+        ],
+        temperature: 0.7, // Balanced for natural yet focused responses
+        max_tokens: 1200, // Increased for comprehensive responses
+        top_p: 0.95,      // High diversity for creative responses
+        frequency_penalty: 0.2, // Reduce repetition
+        presence_penalty: 0.1,  // Encourage new topics
+        stop: null        // No early stopping for complete responses
+      });
 
-    let reply = response.choices[0]?.message?.content || 
-      (lang === 'fr' ? "Désolé, je ne sais pas comment répondre à cela." : "Sorry, I don't know how to answer that.");
+      reply = response.choices[0]?.message?.content || 
+        (lang === 'fr' ? "Désolé, je ne sais pas comment répondre à cela." : "Sorry, I don't know how to answer that.");
+    } else {
+      // Fallback response when OpenAI is not available
+      if (intentResult.intent === 'product_inquiry') {
+        reply = lang === 'fr' 
+          ? "Je comprends que vous cherchez des conseils mode. Pouvez-vous me donner plus de détails sur le style ou l'occasion que vous recherchez ?"
+          : "I understand you're looking for fashion advice. Could you give me more details about the style or occasion you're looking for?";
+      } else {
+        reply = lang === 'fr' 
+          ? "Comment puis-je vous aider aujourd'hui ?"
+          : "How can I help you today?";
+      }
+    }
 
     // Removed auto-append of product examples to keep responses concise and natural
 
