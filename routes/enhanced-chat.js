@@ -183,7 +183,9 @@ router.post('/enhanced-chat', async (req, res) => {
 
     // 8d. Size advice (also trigger on raw measurements like "168 cm, 60 kg, 88/70/95")
     const measurementLike = /(\d{2,3}\s*cm)|(\d{2,3}\s*(kg|lb|lbs))|(\b\d\s*(?:ft|foot|')\s*\d{1,2}\b)|(\b\d{2,3}\s*[\/\-]\s*\d{2,3}\s*[\/\-]\s*\d{2,3}\b)/i;
-    if (/size|fit|measurement|measure|waist|hip|bust|height|weight/i.test(lower) || measurementLike.test(lower)) {
+    // More specific size patterns to avoid matching "outfit" -> "fit"
+    const sizePattern = /\b(size|sizing|measurement|measure|waist|hip|bust|height|weight|fit\s+(guide|chart|help|advice))\b/i;
+    if (sizePattern.test(lower) || measurementLike.test(lower)) {
       const sizeAdvice = buildSizeAdviceReply(storeData, message, lang);
       if (sizeAdvice) {
         await session.addMessage(currentSessionId, sizeAdvice, false);
