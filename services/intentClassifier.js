@@ -164,11 +164,15 @@ class IntentClassifier {
       'what color', 'color recommendation', 'color advice', 'color suggestions',
       'what material', 'fabric advice', 'material help', 'fabric suggestions',
       'price range', 'budget options', 'affordable', 'expensive', 'cost',
-      'quality', 'durability', 'long lasting', 'well made', 'good quality'
+      'quality', 'durability', 'long lasting', 'well made', 'good quality',
+      'recommend me', 'suggest me', 'help me find', 'what can you recommend',
+      'outfit', 'outfits', 'look', 'looks', 'ensemble', 'style', 'styles',
+      'fashion', 'clothing', 'clothes', 'wear', 'wearing', 'dress up',
+      'get dressed', 'put together', 'coordinate', 'matching', 'coordinated'
     ])) {
       return {
         intent: 'product_inquiry',
-        confidence: 0.9,
+        confidence: 0.95,
         handler: 'productHandler',
         reason: 'Semantic analysis detected comprehensive product recommendation request'
       };

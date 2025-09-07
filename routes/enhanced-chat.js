@@ -801,6 +801,10 @@ function handleProductDiscovery(storeData, message, lang) {
   let desiredCategory = detectedCategories[0] || (/(accessory|accessories)/i.test(text) ? 'accessory' : '');
   // Default to dresses when user specifies only a theme (e.g., "casual", "wedding") with no category
   if (!desiredCategory && theme) desiredCategory = 'dress';
+  // Default to dresses for outfit recommendations without specific category
+  if (!desiredCategory && /(outfit|outfits|look|looks|ensemble|style|styles|fashion|clothing|clothes|wear|wearing|dress up|get dressed|put together|coordinate|matching|coordinated)/i.test(text)) {
+    desiredCategory = 'dress';
+  }
 
   // If theme not recognized, infer from merchant tags present in the user's message
   function allStoreTagsLower() {
@@ -838,7 +842,7 @@ function handleProductDiscovery(storeData, message, lang) {
   if (canonicalColor) needles.push(canonicalColor, ...(colorMap[canonicalColor]||[]));
   if (theme) needles.push(theme, theme.replace(/-/g,' '));
   if (wantAccessories) needles.push(...accessoryTerms);
-  const wantRecommend = /(recommend|suggest|show|looking|ideas?|best|bestsellers?|options?|complete my look)/i.test(text) || needles.length > 0;
+  const wantRecommend = /(recommend|suggest|show|looking|ideas?|best|bestsellers?|options?|complete my look|outfit|outfits|look|looks|ensemble|style|styles|fashion|clothing|clothes|wear|wearing|dress up|get dressed|put together|coordinate|matching|coordinated)/i.test(text) || needles.length > 0;
   if (!wantRecommend) return '';
 
   function lowestVariantPrice(p) {
