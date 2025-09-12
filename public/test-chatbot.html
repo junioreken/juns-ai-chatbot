@@ -1,280 +1,193 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JUN'S AI - Test Outfit Recommendations</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        
-        .chat-container {
-            max-width: 400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        
-        .chat-header {
-            background: #2c3e50;
-            color: white;
-            padding: 20px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 18px;
-        }
-        
-        .chat-messages {
-            height: 400px;
-            overflow-y: auto;
-            padding: 20px;
-            background: #f8f9fa;
-        }
-        
-        .message {
-            margin-bottom: 15px;
-            display: flex;
-        }
-        
-        .message.user {
-            justify-content: flex-end;
-        }
-        
-        .message.bot {
-            justify-content: flex-start;
-        }
-        
-        .message-bubble {
-            max-width: 80%;
-            padding: 12px 16px;
-            border-radius: 18px;
-            word-wrap: break-word;
-        }
-        
-        .message.user .message-bubble {
-            background: #007bff;
-            color: white;
-        }
-        
-        .message.bot .message-bubble {
-            background: white;
-            color: #333;
-            border: 1px solid #e9ecef;
-        }
-        
-        .chat-input {
-            display: flex;
-            padding: 20px;
-            background: white;
-            border-top: 1px solid #e9ecef;
-        }
-        
-        .chat-input input {
-            flex: 1;
-            padding: 12px 16px;
-            border: 1px solid #ddd;
-            border-radius: 25px;
-            outline: none;
-            font-size: 14px;
-        }
-        
-        .chat-input button {
-            margin-left: 10px;
-            padding: 12px 20px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .quick-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            padding: 15px 20px;
-            background: #f8f9fa;
-            border-top: 1px solid #e9ecef;
-        }
-        
-        .quick-action {
-            padding: 8px 16px;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 12px;
-            color: #666;
-            transition: all 0.2s;
-        }
-        
-        .quick-action:hover {
-            background: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
-        
-        .product-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin: 15px 0;
-        }
-        
-        .product-card {
-            border: 1px solid #e9ecef;
-            border-radius: 10px;
-            overflow: hidden;
-            background: white;
-        }
-        
-        .product-card img {
-            width: 100%;
-            height: 120px;
-            object-fit: cover;
-        }
-        
-        .pc-title {
-            padding: 8px;
-            font-size: 12px;
-            font-weight: bold;
-            color: #333;
-        }
-        
-        .pc-price {
-            padding: 0 8px 8px;
-            font-size: 14px;
-            color: #007bff;
-            font-weight: bold;
-        }
-        
-        .test-info {
-            background: #e3f2fd;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 10px;
-            border-left: 4px solid #2196f3;
-        }
-        
-        .test-info h3 {
-            margin: 0 0 10px 0;
-            color: #1976d2;
-        }
-        
-        .test-info p {
-            margin: 5px 0;
-            color: #424242;
-            font-size: 14px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JUN'S AI Chatbot - Test Page</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2.5em;
+    }
+    
+    .description {
+      text-align: center;
+      color: #666;
+      margin-bottom: 40px;
+      line-height: 1.6;
+      font-size: 1.1em;
+    }
+    
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+    
+    .feature {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 15px;
+      border-left: 4px solid #000;
+    }
+    
+    .feature h3 {
+      color: #333;
+      margin-top: 0;
+    }
+    
+    .feature p {
+      color: #666;
+      margin: 0;
+    }
+    
+    .test-info {
+      background: #e3f2fd;
+      padding: 20px;
+      border-radius: 15px;
+      border: 1px solid #2196f3;
+      margin-bottom: 30px;
+    }
+    
+    .test-info h3 {
+      color: #1976d2;
+      margin-top: 0;
+    }
+    
+    .test-info p {
+      color: #1565c0;
+      margin: 0;
+    }
+    
+    .chatbot-status {
+      text-align: center;
+      padding: 20px;
+      background: #f1f8e9;
+      border-radius: 15px;
+      border: 1px solid #4caf50;
+      margin-top: 30px;
+    }
+    
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #4caf50;
+      margin-right: 10px;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+  </style>
 </head>
 <body>
-    <div class="test-info">
-        <h3>🧪 Test Outfit Recommendations</h3>
-        <p><strong>Try these phrases:</strong></p>
-        <p>• "recommend me outfit"</p>
-        <p>• "show me outfits"</p>
-        <p>• "what outfit should I wear"</p>
-        <p>• "outfit ideas"</p>
-        <p>• "fashion help"</p>
+  <div class="container">
+    <h1>JUN'S AI Chatbot</h1>
+    
+    <div class="description">
+      Welcome to the test page for your JUN'S AI Chatbot! This page simulates your Shopify store 
+      to test the chatbot functionality before deploying it to your actual store.
     </div>
     
-    <div class="chat-container">
-        <div class="chat-header">
-            JUN'S AI
-        </div>
-        
-        <div class="chat-messages" id="chatMessages">
-            <div class="message bot">
-                <div class="message-bubble">
-                    Hi! I'm your JUN'S AI stylist. I can help you find the perfect outfit! Try asking me to "recommend me outfit" or "show me outfits".
-                </div>
-            </div>
-        </div>
-        
-        <div class="chat-input">
-            <input type="text" id="messageInput" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
-            <button onclick="sendMessage()">Send</button>
-        </div>
-        
-        <div class="quick-actions">
-            <div class="quick-action" onclick="sendQuickMessage('recommend me outfit')">Recommend me outfit</div>
-            <div class="quick-action" onclick="sendQuickMessage('show me outfits')">Show me outfits</div>
-            <div class="quick-action" onclick="sendQuickMessage('what outfit should I wear')">What outfit should I wear</div>
-            <div class="quick-action" onclick="sendQuickMessage('outfit ideas')">Outfit ideas</div>
-            <div class="quick-action" onclick="sendQuickMessage('fashion help')">Fashion help</div>
-        </div>
+    <div class="test-info">
+      <h3>🧪 Testing Instructions</h3>
+      <p>
+        <strong>1.</strong> The chatbot should appear as a floating bubble on the bottom right after 3 seconds<br>
+        <strong>2.</strong> Click on the bubble to open the chat interface<br>
+        <strong>3.</strong> Select your preferred language (English/French)<br>
+        <strong>4.</strong> Test asking questions about JUN'S store<br>
+        <strong>5.</strong> Check the browser console for any errors
+      </p>
     </div>
+    
+    <div class="features">
+      <div class="feature">
+        <h3>🌍 Bilingual Support</h3>
+        <p>Full English and French language support for your international customers</p>
+      </div>
+      
+      <div class="feature">
+        <h3>💬 Smart Responses</h3>
+        <p>AI-powered responses about your store, products, and policies</p>
+      </div>
+      
+      <div class="feature">
+        <h3>🎨 Customizable Design</h3>
+        <p>Matches your JUN'S brand colors and styling</p>
+      </div>
+      
+      <div class="feature">
+        <h3>📱 Mobile Friendly</h3>
+        <p>Responsive design that works perfectly on all devices</p>
+      </div>
+    </div>
+    
+    <div class="chatbot-status">
+      <span class="status-indicator"></span>
+      <strong>Chatbot Status:</strong> Loading... (should appear in 3 seconds)
+    </div>
+    
+    <div style="text-align: center; margin-top: 30px; color: #666;">
+      <p>This is a test environment. The chatbot will connect to your deployed server.</p>
+      <p>Make sure your server is running and accessible before testing.</p>
+    </div>
+  </div>
 
-    <script>
-        let sessionId = null;
-        
-        function addMessage(content, isUser = false) {
-            const chatMessages = document.getElementById('chatMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
-            
-            const bubbleDiv = document.createElement('div');
-            bubbleDiv.className = 'message-bubble';
-            bubbleDiv.innerHTML = content;
-            
-            messageDiv.appendChild(bubbleDiv);
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-        
-        function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const message = input.value.trim();
-            
-            if (!message) return;
-            
-            addMessage(message, true);
-            input.value = '';
-            
-            // Send to enhanced chat endpoint
-            fetch('/enhanced-chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message: message,
-                    name: 'Test User',
-                    email: 'test@example.com',
-                    lang: 'en',
-                    sessionId: sessionId
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                sessionId = data.sessionId;
-                addMessage(data.reply);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                addMessage('Sorry, there was an error processing your request.');
-            });
-        }
-        
-        function sendQuickMessage(message) {
-            document.getElementById('messageInput').value = message;
-            sendMessage();
-        }
-        
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
-            }
-        }
-    </script>
+  <!-- JUN'S AI Chatbot Script -->
+  <script src="shopify-integration.js"></script>
+  
+  <script>
+    // Update status when chatbot loads
+    setTimeout(() => {
+      const statusDiv = document.querySelector('.chatbot-status');
+      if (statusDiv) {
+        statusDiv.innerHTML = `
+          <span class="status-indicator"></span>
+          <strong>Chatbot Status:</strong> Active and running!
+        `;
+      }
+    }, 4000);
+    
+    // Test API connectivity
+    async function testAPI() {
+      try {
+        const response = await fetch('https://juns-ai-chatbot-production.up.railway.app/health');
+        const data = await response.json();
+        console.log('✅ API Health Check:', data);
+      } catch (error) {
+        console.error('❌ API Health Check Failed:', error);
+      }
+    }
+    
+    // Test API after page loads
+    window.addEventListener('load', () => {
+      setTimeout(testAPI, 2000);
+    });
+  </script>
 </body>
 </html>
