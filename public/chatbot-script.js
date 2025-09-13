@@ -117,11 +117,13 @@ function loadTawkOnce() {
       try { if (typeof Tawk_API !== 'undefined') { Tawk_API.hideWidget(); } } catch(_) {}
       // Keep hidden in case the widget tries to re-appear
       try {
-        let attempts = 0; const hideLoop = setInterval(() => {
+        // Optimized: Reduce frequency and use requestAnimationFrame
+        let attempts = 0; 
+        const hideLoop = setInterval(() => {
           attempts++;
           try { if (window.Tawk_API) window.Tawk_API.hideWidget(); } catch(_) {}
-          if (attempts > 60) clearInterval(hideLoop);
-        }, 100);
+          if (attempts > 20) clearInterval(hideLoop); // Reduced from 60 to 20 attempts
+        }, 500); // Reduced from 100ms to 500ms
       } catch(_) {}
     };
     if (s0 && s0.parentNode) s0.parentNode.insertBefore(s1, s0); else document.head.appendChild(s1);
@@ -144,10 +146,11 @@ async function openLiveChat() {
       try {
         window.Tawk_API.showWidget();
         // Call maximize repeatedly for first second to ensure full chat view opens
+        // Optimized: Reduce frequency
         let repeat = 0; const ensureOpen = setInterval(() => {
           try { window.Tawk_API.maximize(); } catch(_) {}
-          if (++repeat > 20) clearInterval(ensureOpen);
-        }, 50);
+          if (++repeat > 10) clearInterval(ensureOpen); // Reduced from 20 to 10
+        }, 200); // Increased from 50ms to 200ms
       } catch(_) {}
       // Position Tawk widget to center-right when closed
       try {
@@ -270,9 +273,10 @@ async function openLiveChat() {
           });
         }, 1000);
         
-        // Set up continuous monitoring to catch Tawk widget whenever it appears
+        // Optimized: Reduce monitoring frequency for better performance
         let tawkMonitor = setInterval(() => {
-          const tawkElements = document.querySelectorAll('[data-tawk-widget], #tawk-widget, iframe[src*="tawk"], div[id*="tawk"], div[class*="tawk"], div[style*="position: fixed"]');
+          // Use more efficient selector
+          const tawkElements = document.querySelectorAll('#tawk-widget, [data-tawk-widget], iframe[src*="tawk"]');
           tawkElements.forEach(el => {
             if (el && (el.style.bottom || el.style.right === '20px' || el.style.right === '10px')) {
               el.style.position = 'fixed';
@@ -287,7 +291,7 @@ async function openLiveChat() {
               console.log('🔄 Continuously repositioned Tawk element:', el);
             }
           });
-        }, 500); // Check every 500ms
+        }, 2000); // Increased from 500ms to 2s for better performance
         
         // Stop monitoring after 30 seconds
         setTimeout(() => {
@@ -363,54 +367,45 @@ function setupTawkEventListeners() {
   let checkCount = 0;
   const maxChecks = 150; // Check for 5 minutes (150 * 2 seconds)
   
-  const checkInterval = setInterval(() => {
+  // Performance optimized: Use requestAnimationFrame and longer intervals
+  let lastCheckTime = 0;
+  const CHECK_INTERVAL = 8000; // Increased from 2s to 8s for better performance
+  let checkIntervalId = null;
+  
+  function optimizedTawkCheck() {
+    const now = Date.now();
+    if (now - lastCheckTime < CHECK_INTERVAL) {
+      checkIntervalId = requestAnimationFrame(optimizedTawkCheck);
+      return;
+    }
+    lastCheckTime = now;
+    
     if (window.JUNS_AI_HIDDEN) {
       checkCount++;
       console.log(`🔍 Checking Tawk visibility (${checkCount}/${maxChecks})...`);
       
       try {
-        // Multiple ways to detect Tawk widget
-        const tawkSelectors = [
-          '[data-tawk-widget]',
-          '#tawk-widget', 
-          '.tawk-widget',
-          '#tawk-widget-container',
-          '.tawk-widget-container',
-          'iframe[src*="tawk"]',
-          'div[id*="tawk"]',
-          'div[class*="tawk"]'
-        ];
+        // Optimized: Use most common selector first, then fallback
+        const tawkWidget = document.querySelector('#tawk-widget iframe');
+        let tawkVisible = tawkWidget && tawkWidget.offsetParent !== null;
         
-        let tawkVisible = false;
-        
-        for (const selector of tawkSelectors) {
-          const element = document.querySelector(selector);
-          if (element) {
-            const style = window.getComputedStyle(element);
-            const isVisible = style.display !== 'none' && 
-                            style.visibility !== 'hidden' && 
-                            style.opacity !== '0' &&
-                            element.offsetParent !== null;
-            
-            if (isVisible) {
-              tawkVisible = true;
-              console.log(`✅ Tawk widget found and visible: ${selector}`);
-              break;
-            }
-          }
+        // Only check other selectors if first one fails
+        if (!tawkVisible) {
+          const altWidget = document.querySelector('[data-tawk-widget], iframe[src*="tawk"]');
+          tawkVisible = altWidget && altWidget.offsetParent !== null;
         }
         
         if (!tawkVisible) {
           console.log('👁️ Tawk widget not visible - showing JUN\'S AI');
           showJunsAI();
-          clearInterval(checkInterval);
+          return; // Exit function instead of clearing interval
         }
         
         // Fallback: show JUN'S AI after max checks
         if (checkCount >= maxChecks) {
           console.log('⏰ Max checks reached - showing JUN\'S AI as fallback');
           showJunsAI();
-          clearInterval(checkInterval);
+          return;
         }
         
       } catch(e) {
@@ -418,14 +413,19 @@ function setupTawkEventListeners() {
         // Show JUN'S AI on error after a few attempts
         if (checkCount > 10) {
           showJunsAI();
-          clearInterval(checkInterval);
+          return;
         }
       }
+      
+      // Continue checking if needed
+      checkIntervalId = requestAnimationFrame(optimizedTawkCheck);
     } else {
       console.log('✅ JUN\'S AI not hidden - stopping checks');
-      clearInterval(checkInterval);
     }
-  }, 2000); // Check every 2 seconds
+  }
+  
+  // Start optimized checking
+  checkIntervalId = requestAnimationFrame(optimizedTawkCheck);
 }
 
 function showJunsAI() {
@@ -907,9 +907,12 @@ function createLauncher() {
   // Removed: 2-minute nudge was too pushy for customers
 }
 
-// Always render launcher bubble (lightweight); chat opens on click
+// Performance optimized: Delay launcher creation to prevent blocking
 window.addEventListener("load", () => {
+  // Wait additional time to ensure page is fully stable
+  setTimeout(() => {
   createLauncher();
+  }, 1000); // Wait 1 second after page load
 });
 
 } // Close the else block for preventing multiple loads
