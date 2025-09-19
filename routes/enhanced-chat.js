@@ -521,10 +521,15 @@ async function getStoreDataWithCache(storeUrl) {
     // Fetch fresh data if not cached
     console.log('🔄 Fetching fresh store data');
     const [products, policies, pages, discounts] = await Promise.all([
-      fetchShopifyData('products.json?limit=250', domain),
-      fetchShopifyData('policies.json', domain),
-      fetchShopifyData('pages.json', domain),
-      fetchShopifyData('price_rules.json', domain)
+      fetchShopifyData('products.json?limit=250', domain).catch(async () => {
+        // Public storefront fallback
+        const base = domain.startsWith('http') ? domain : `https://${domain}`;
+        const { data } = await axios.get(`${base}/products.json?limit=250`, { timeout: 8000 });
+        return data;
+      }),
+      fetchShopifyData('policies.json', domain).catch(() => ({})),
+      fetchShopifyData('pages.json', domain).catch(() => ({ pages: [] })),
+      fetchShopifyData('price_rules.json', domain).catch(() => ({ price_rules: [] }))
     ]);
 
     const normalizedPolicies = normalizePolicies(policies, pages.pages || []);
