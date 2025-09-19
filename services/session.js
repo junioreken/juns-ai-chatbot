@@ -231,6 +231,27 @@ class SessionService {
       context: session.context
     };
   }
+
+  // Persist the last set of recommended products (for follow-up questions)
+  async setLastRecommendations(sessionId, items) {
+    const session = await this.getSession(sessionId);
+    const normalized = Array.isArray(items)
+      ? items.slice(0, 8).map(it => ({
+          id: it.id || null,
+          handle: String(it.handle || '').trim(),
+          title: String(it.title || '').trim(),
+          timestamp: new Date().toISOString()
+        }))
+      : [];
+    session.context.lastRecommendations = normalized;
+    await cache.set(`session:${sessionId}`, session, this.sessionTTL);
+    return session.context.lastRecommendations;
+  }
+
+  async getLastRecommendations(sessionId) {
+    const session = await this.getSession(sessionId);
+    return session?.context?.lastRecommendations || [];
+  }
 }
 
 module.exports = new SessionService();

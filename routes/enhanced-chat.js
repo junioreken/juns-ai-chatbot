@@ -94,6 +94,16 @@ router.post('/enhanced-chat', async (req, res) => {
     // 7. Get conversation context for AI
     const conversationContext = await session.getConversationContext(currentSessionId, 5);
 
+    // Helper: light HTML -> text sanitizer
+    const stripHtml = (html) => String(html || '')
+      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ')
+      .trim();
+
     // 8. Shortcut handlers for well-known intents before LLM
     const lower = message.toLowerCase();
     // 8a. Order tracking: require tracking number (or detect it directly)
@@ -177,6 +187,16 @@ router.post('/enhanced-chat', async (req, res) => {
       if (policiesReply) {
         await session.addMessage(currentSessionId, policiesReply, false);
         await analytics.trackMessage(currentSessionId, policiesReply, false);
+        // Track last policy kind in session for follow-ups
+        try {
+          let lastPolicyKind = '';
+          if (/shipping|delivery/i.test(lower)) lastPolicyKind = 'shipping';
+          else if (/refund|return|exchange/i.test(lower)) lastPolicyKind = 'returns';
+          else if (/privacy/i.test(lower)) lastPolicyKind = 'privacy';
+          if (lastPolicyKind) {
+            await session.updateContext(currentSessionId, { lastPolicyKind });
+          }
+        } catch (_) {}
         return res.json({ reply: policiesReply, intent: 'return_exchange', confidence: 0.9, sessionId: currentSessionId, escalation: { required: false } });
       }
     }
@@ -204,6 +224,18 @@ router.post('/enhanced-chat', async (req, res) => {
     // 8e. Product discovery (colors, themes, budget cues) before LLM
     const productDiscovery = handleProductDiscovery(storeData, message, lang);
     if (productDiscovery) {
+      // Capture product handles from the HTML grid so follow-up questions like
+      // "what colors does this dress come in" can be resolved
+      try {
+        const handleMatches = Array.from(productDiscovery.matchAll(/href=\"\/products\/([^\"\/]+)\"/g)).map(m => m[1]);
+        const recs = (Array.isArray(handleMatches) ? handleMatches : []).map(h => {
+          const p = (storeData.products || []).find(pp => String(pp.handle) === String(h));
+          return p ? { id: p.id, handle: p.handle, title: p.title } : { id: null, handle: h, title: '' };
+        });
+        if (recs.length) {
+          await session.setLastRecommendations(currentSessionId, recs);
+        }
+      } catch (_) {}
       await session.addMessage(currentSessionId, productDiscovery, false);
       await analytics.trackMessage(currentSessionId, productDiscovery, false);
       return res.json({ reply: productDiscovery, intent: 'product_inquiry', confidence: 0.85, sessionId: currentSessionId, escalation: { required: false } });
@@ -219,6 +251,169 @@ router.post('/enhanced-chat', async (req, res) => {
       }
     }
 
+    // Follow-up handler: attribute questions about last recommended products
+    const followUpColor = /(what|which)\s+(color|colors|colour|colours)\b|\bavailable\s+colors?\b/i.test(lower);
+    const followUpSize  = /(what|which)\s+(size|sizes)\b|\bavailable\s+sizes?\b/i.test(lower);
+    const followUpPrice = /(how\s+much|price|cost|\$\s*\??)\b/i.test(lower);
+    const followUpStock = /(in\s*stock|available\s+now|availability|is\s+it\s+available)/i.test(lower);
+    const followUpMaterial = /(material|fabric|made\s+of|composition)/i.test(lower);
+    const followUpLength = /(length|how\s+long|mini|midi|maxi|knee\s*length|floor\s*length)/i.test(lower);
+    const followUpLink = /(link|url|page|open\s+it|show\s+me\s+it|where\s+to\s+buy)/i.test(lower);
+    const anyProductFU = followUpColor || followUpSize || followUpPrice || followUpStock || followUpMaterial || followUpLength || followUpLink;
+    if (anyProductFU) {
+      const lastRecs = await session.getLastRecommendations(currentSessionId);
+      const products = Array.isArray(storeData.products) ? storeData.products : [];
+      const byHandle = (h) => products.find(p => String(p.handle) === String(h));
+      const ord = (() => {
+        if (/\bfirst\b/i.test(lower)) return 0;
+        if (/\bsecond\b/i.test(lower)) return 1;
+        if (/\bthird\b/i.test(lower)) return 2;
+        if (/\bfourth\b/i.test(lower)) return 3;
+        return -1;
+      })();
+      const explicitNameHit = (() => {
+        for (const r of lastRecs) {
+          if (!r || !r.title) continue;
+          const t = String(r.title).toLowerCase();
+          if (t && lower.includes(t.split(' ').slice(0,2).join(' '))) return r;
+        }
+        return null;
+      })();
+      let target = null;
+      if (explicitNameHit) target = explicitNameHit;
+      else if (ord >= 0 && lastRecs[ord]) target = lastRecs[ord];
+      else if (lastRecs.length === 1) target = lastRecs[0];
+
+      if (!target) {
+        if (lastRecs.length > 1) {
+          const options = lastRecs.map((r, i) => `${i+1}. ${r.title || r.handle}`).slice(0,5).join('\n');
+          const ask = lang==='fr'
+            ? `Parlez-vous de l'un de ces produits? Répondez par "premier", "deuxième", etc.\n${options}`
+            : `Are you asking about one of these products? Reply with "first", "second", etc.\n${options}`;
+          await session.addMessage(currentSessionId, ask, false);
+          await analytics.trackMessage(currentSessionId, ask, false);
+          return res.json({ reply: ask, intent: 'product_inquiry', confidence: 0.8, sessionId: currentSessionId, escalation: { required: false } });
+        }
+      }
+
+      if (target) {
+        const full = byHandle(target.handle) || {};
+        const options = Array.isArray(full.options) ? full.options : [];
+        const variants = Array.isArray(full.variants) ? full.variants : [];
+        const colorIdx = options.findIndex(o => /color|colour|couleur/i.test(String(o?.name || '')));
+        const sizeIdx  = options.findIndex(o => /size|taille/i.test(String(o?.name || '')));
+        const collect = (idx) => {
+          if (idx < 0) return [];
+          const set = new Set();
+          for (const v of variants) {
+            const val = String(v[`option${idx+1}`] || '').trim();
+            if (val) set.add(val);
+          }
+          return Array.from(set);
+        };
+        const colors = collect(colorIdx);
+        const sizes  = collect(sizeIdx);
+        let replyFU = '';
+        if (followUpColor && colors.length) {
+          replyFU = lang==='fr'
+            ? `Couleurs disponibles pour ${full.title || 'cet article'}: ${colors.join(', ')}.`
+            : `Available colors for ${full.title || 'this item'}: ${colors.join(', ')}.`;
+        }
+        if (!replyFU && followUpSize && sizes.length) {
+          replyFU = lang==='fr'
+            ? `Tailles disponibles pour ${full.title || 'cet article'}: ${sizes.join(', ')}.`
+            : `Available sizes for ${full.title || 'this item'}: ${sizes.join(', ')}.`;
+        }
+        if (!replyFU && followUpPrice) {
+          const numbers = variants.map(v => parseFloat(String(v.price || '0').replace(/[^0-9.]/g,''))).filter(n => !Number.isNaN(n));
+          const min = numbers.length ? Math.min(...numbers) : (full.variants?.[0]?.price || null);
+          const max = numbers.length ? Math.max(...numbers) : null;
+          const range = min !== null ? (max && max !== min ? `$${min.toFixed(2)} – $${max.toFixed(2)}` : `$${parseFloat(min).toFixed(2)}`) : '—';
+          replyFU = lang==='fr'
+            ? `Prix pour ${full.title || 'cet article'}: ${range}.`
+            : `Price for ${full.title || 'this item'}: ${range}.`;
+        }
+        if (!replyFU && followUpStock) {
+          const available = variants.some(v => (typeof v.available === 'boolean' ? v.available : (typeof v.inventory_quantity === 'number' ? v.inventory_quantity > 0 : true)));
+          replyFU = lang==='fr'
+            ? `${full.title || 'Cet article'} est ${available ? 'en stock' : 'actuellement en rupture'}${available ? '' : ' (certaines options peuvent revenir bientôt)'}.`
+            : `${full.title || 'This item'} is ${available ? 'in stock' : 'currently out of stock'}${available ? '' : ' (some options may restock soon)'}.`;
+        }
+        if (!replyFU && followUpMaterial) {
+          const hay = [String(full.body_html||'').replace(/<[^>]+>/g,' ').toLowerCase(), String(full.tags||'').toLowerCase(), String(full.title||'').toLowerCase()].join(' ');
+          const mats = ['satin','silk','cotton','linen','wool','cashmere','denim','chiffon','lace','polyester','spandex','elastane','viscose','rayon','nylon','velvet','sequin'];
+          const found = mats.filter(m => new RegExp(`\\b${m}\\b`).test(hay));
+          replyFU = found.length
+            ? (lang==='fr' ? `Matières: ${found.join(', ')}.` : `Materials: ${found.join(', ')}.`)
+            : (lang==='fr' ? `La matière n'est pas précisée. Souhaitez‑vous que je vérifie un modèle précis?` : `Material not specified. Want me to check a specific model?`);
+        }
+        if (!replyFU && followUpLength) {
+          const tags = Array.isArray(full.tags) ? full.tags.map(t => String(t).toLowerCase()) : String(full.tags||'').toLowerCase().split(',').map(t=>t.trim());
+          const label = tags.includes('mini') ? 'mini' : tags.includes('midi') ? 'midi' : (tags.includes('maxi') ? 'maxi' : '');
+          replyFU = label
+            ? (lang==='fr' ? `Longueur: ${label}.` : `Length: ${label}.`)
+            : (lang==='fr' ? `La longueur n'est pas précisée, mais d'après les photos cela semble ${/mini|midi|maxi/i.test(String(full.body_html||'')) ? 'être mentionné dans la description' : 'être approximatif'}.` : `Length not explicitly tagged; please check the product photos/description.`);
+        }
+        if (!replyFU && followUpLink) {
+          const url = `/products/${target.handle}`;
+          replyFU = lang==='fr' ? `Voici la page du produit: ${url}` : `Here is the product page: ${url}`;
+        }
+        if (replyFU) {
+          await session.addMessage(currentSessionId, replyFU, false);
+          await analytics.trackMessage(currentSessionId, replyFU, false);
+          return res.json({ reply: replyFU, intent: 'product_inquiry', confidence: 0.9, sessionId: currentSessionId, escalation: { required: false } });
+        }
+      }
+
+      // If we couldn't resolve locally, let LLM answer with the context we have
+    }
+
+    // Pronoun-based follow-up router using last intent
+    const pronounish = /(it|this|that|one|those|them)\b/i.test(lower);
+    if (pronounish) {
+      try {
+        const s = await session.getSession(currentSessionId);
+        const lastIntent = s?.context?.currentIntent || '';
+        const lastPolicy = s?.context?.lastPolicyKind || '';
+        if (lastIntent === 'shipping_info') {
+          const eta = buildShippingEtaReply(lower + ' shipping', lang);
+          if (eta) {
+            await session.addMessage(currentSessionId, eta, false);
+            await analytics.trackMessage(currentSessionId, eta, false);
+            return res.json({ reply: eta, intent: 'shipping_info', confidence: 0.85, sessionId: currentSessionId, escalation: { required: false } });
+          }
+        }
+        if (lastIntent === 'return_exchange') {
+          const kind = lastPolicy || 'returns';
+          const reply = await (async () => {
+            if (kind === 'shipping') return formatPolicyResponse('shipping', basicSanitize(storeData?.policies?.shipping_policy?.body || ''), lang);
+            if (kind === 'privacy') return formatPolicyResponse('privacy', basicSanitize(storeData?.policies?.privacy_policy?.body || ''), lang);
+            return formatPolicyResponse('returns', basicSanitize(storeData?.policies?.refund_policy?.body || ''), lang);
+          })();
+          if (reply) {
+            await session.addMessage(currentSessionId, reply, false);
+            await analytics.trackMessage(currentSessionId, reply, false);
+            return res.json({ reply, intent: 'return_exchange', confidence: 0.85, sessionId: currentSessionId, escalation: { required: false } });
+          }
+        }
+        if (lastIntent === 'size_help') {
+          const sizeAdvice = buildSizeAdviceReply(storeData, message, lang);
+          const ans = sizeAdvice || (lang==='fr' ? "Pouvez‑vous partager vos mesures (taille, poids, buste/taille/hanches)?" : "Could you share your measurements (height, weight, bust/waist/hip)?");
+          await session.addMessage(currentSessionId, ans, false);
+          await analytics.trackMessage(currentSessionId, ans, false);
+          return res.json({ reply: ans, intent: 'size_help', confidence: 0.75, sessionId: currentSessionId, escalation: { required: false } });
+        }
+        if (lastIntent === 'order_tracking') {
+          const ask = lang==='fr'
+            ? "Pour suivre votre commande, indiquez votre numéro de suivi."
+            : "To track your order, please provide your tracking number.";
+          await session.addMessage(currentSessionId, ask, false);
+          await analytics.trackMessage(currentSessionId, ask, false);
+          return res.json({ reply: ask, intent: 'order_tracking', confidence: 0.75, sessionId: currentSessionId, escalation: { required: false } });
+        }
+      } catch (_) {}
+    }
+
     // 9. Build AI prompt with context
     const systemPrompt = buildSystemPrompt(lang, storeData, conversationContext, intentResult);
 
@@ -227,11 +422,21 @@ router.post('/enhanced-chat', async (req, res) => {
     
     if (process.env.OPENAI_API_KEY) {
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      // Build compact chat history to help follow-ups
+      let history = [];
+      try {
+        const s = await session.getSession(currentSessionId);
+        const msgs = Array.isArray(s.messages) ? s.messages : [];
+        // take up to 6 prior messages before the current one we just added
+        const prior = msgs.slice(Math.max(0, msgs.length - 7), Math.max(0, msgs.length - 1));
+        history = prior.map(m => ({ role: m.isUser ? 'user' : 'assistant', content: stripHtml(m.content).slice(0, 900) }));
+      } catch (_) {}
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: message }
+          ...history,
+          { role: "user", content: stripHtml(message) }
         ],
         temperature: 0.7, // Balanced for natural yet focused responses
         max_tokens: 1200, // Increased for comprehensive responses
