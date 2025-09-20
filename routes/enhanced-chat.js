@@ -92,7 +92,19 @@ router.post('/enhanced-chat', async (req, res) => {
     const storeData = await getStoreDataWithCache(storeUrl);
 
     // 7. Get conversation context for AI
-    const conversationContext = await session.getConversationContext(currentSessionId, 5);
+    const conversationContext = await session.getConversationContext(currentSessionId, 8);
+
+    // Build follow-up anchors (last intent/policy/products) to help the LLM resolve pronouns
+    let conversationContextExtended = conversationContext;
+    try {
+      const s = await session.getSession(currentSessionId);
+      const lastIntent = s?.context?.currentIntent || '';
+      const lastPolicy = s?.context?.lastPolicyKind || '';
+      const lastRecs = Array.isArray(s?.context?.lastRecommendations) ? s.context.lastRecommendations.slice(0, 4) : [];
+      const names = lastRecs.map(r => r.title || r.handle).filter(Boolean).join(', ');
+      const anchors = `\nFOLLOW-UP ANCHORS:\n- Last intent: ${lastIntent || 'n/a'}${lastPolicy ? ` (${lastPolicy})` : ''}\n- Last products: ${names || 'n/a'}`;
+      conversationContextExtended = conversationContext + anchors;
+    } catch (_) {}
 
     // Helper: light HTML -> text sanitizer
     const stripHtml = (html) => String(html || '')
@@ -209,7 +221,7 @@ router.post('/enhanced-chat', async (req, res) => {
       const sizeAdvice = buildSizeAdviceReply(storeData, message, lang);
       const defaultGuidance = lang==='fr'
         ? "Sans mesures, voici un repère général: XS <86/66/90, S <92/72/96, M <98/78/102, L <104/84/108, XL au‑dessus. Si vous partagez votre taille/poids/mesures (poitrine/taille/hanches), je peux affiner."
-        : "Without measurements, here’s a general guide: XS <86/66/90, S <92/72/96, M <98/78/102, L <104/84/108, XL above. If you share height/weight/measurements (bust/waist/hip), I can refine.";
+        : "Without measurements, here's a general guide: XS <86/66/90, S <92/72/96, M <98/78/102, L <104/84/108, XL above. If you share height/weight/measurements (bust/waist/hip), I can refine.";
       const replySize = sizeAdvice || defaultGuidance;
       await session.addMessage(currentSessionId, replySize, false);
       await analytics.trackMessage(currentSessionId, replySize, false);
@@ -247,7 +259,7 @@ router.post('/enhanced-chat', async (req, res) => {
     }
 
     // Follow-up handler: attribute questions about last recommended products
-    const followUpColor = /(what|which)\s+(color|colors|colour|colours)\b|\bavailable\s+colors?\b/i.test(lower);
+    const followUpColor = /(what|which)\s+(color|colors|colour|colours)\b|\bavailable\s+colors?\b|\bin\s+(red|blue|green|black|white|pink|purple|gold|silver|beige|yellow|orange|brown|grey|gray)\b/i.test(lower);
     const followUpSize  = /(what|which)\s+(size|sizes)\b|\bavailable\s+sizes?\b/i.test(lower);
     const followUpPrice = /(how\s+much|price|cost|\$\s*\??)\b/i.test(lower);
     const followUpStock = /(in\s*stock|available\s+now|availability|is\s+it\s+available)/i.test(lower);
@@ -410,7 +422,7 @@ router.post('/enhanced-chat', async (req, res) => {
     }
 
     // 9. Build AI prompt with context
-    const systemPrompt = buildSystemPrompt(lang, storeData, conversationContext, intentResult);
+    const systemPrompt = buildSystemPrompt(lang, storeData, conversationContextExtended, intentResult);
 
     // 10. Generate AI response with enhanced configuration for detailed understanding
     let reply;
@@ -422,8 +434,8 @@ router.post('/enhanced-chat', async (req, res) => {
       try {
         const s = await session.getSession(currentSessionId);
         const msgs = Array.isArray(s.messages) ? s.messages : [];
-        // take up to 6 prior messages before the current one we just added
-        const prior = msgs.slice(Math.max(0, msgs.length - 7), Math.max(0, msgs.length - 1));
+        // take up to 10 prior messages before the current one we just added
+        const prior = msgs.slice(Math.max(0, msgs.length - 11), Math.max(0, msgs.length - 1));
         history = prior.map(m => ({ role: m.isUser ? 'user' : 'assistant', content: stripHtml(m.content).slice(0, 900) }));
       } catch (_) {}
       const response = await openai.chat.completions.create({
@@ -608,6 +620,7 @@ INSTRUCTIONS DE RÉPONSE:
 10. Fournis des conseils actionables et des étapes claires
 11. Utilise des exemples spécifiques et des détails concrets de l'inventaire de la boutique
 12. Pose des questions de clarification quand nécessaire pour mieux comprendre la demande
+13. IMPORTANT: Pour les questions de suivi avec pronoms ("ça", "celui-ci", "celle-là") ou références implicites, appuie-toi d'abord sur les ANCRAGES DE SUIVI (dernier intent, derniers produits) pour conserver la cohérence. Ne change pas de sujet sur la base de mots-clés isolés.
 
 GESTION SPÉCIALE:
 - Pour les demandes d'étiquettes d'expédition: Reconnais la demande et explique qu'une assistance humaine est nécessaire
@@ -642,6 +655,7 @@ RESPONSE INSTRUCTIONS:
 10. Provide actionable advice and clear next steps
 11. Use specific examples and concrete details from the store inventory
 12. Ask clarifying questions when needed to better understand the request
+13. IMPORTANT: For follow-ups using pronouns ("it", "this", "that") or implicit references, rely first on the FOLLOW-UP ANCHORS (last intent, last products) to stay on topic. Do not pivot topics due to isolated keywords.
 
 SPECIAL HANDLING:
 - For shipping label requests: Acknowledge the request and explain that human assistance is needed
@@ -1368,7 +1382,7 @@ function buildSizeAdviceReply(storeData, message, lang) {
 
   const note = lang==='fr'
     ? `Conseil taille: ${size}. ${heightCm ? `Taille: ${heightCm} cm. ` : ''}${weightKg ? `Poids: ${weightKg} kg. ` : ''}${bust ? `Tour de poitrine: ${bust} cm. ` : ''}${waist ? `Taille: ${waist} cm. ` : ''}${hip ? `Hanches: ${hip} cm. ` : ''}Vérifiez aussi le guide des tailles du produit.`
-    : `Size tip: ${size}. ${heightCm ? `Height: ${heightCm} cm. ` : ''}${weightKg ? `Weight: ${weightKg} kg. ` : ''}${bust ? `Bust: ${bust} cm. ` : ''}${waist ? `Waist: ${waist} cm. ` : ''}${hip ? `Hip: ${hip} cm. ` : ''}Please also check the product’s size guide.`;
+    : `Size tip: ${size}. ${heightCm ? `Height: ${heightCm} cm. ` : ''}${weightKg ? `Weight: ${weightKg} kg. ` : ''}${bust ? `Bust: ${bust} cm. ` : ''}${waist ? `Waist: ${waist} cm. ` : ''}${hip ? `Hip: ${hip} cm. ` : ''}Please also check the product's size guide.`;
   return note.trim();
 }
 
@@ -1411,15 +1425,15 @@ function buildShippingEtaReply(lowerMsg, lang) {
     EU: { en: 'Shipping to the UK/EU', fr: "Livraison vers le Royaume‑Uni/UE", eta: '7–14 business days after 1–3 days processing' },
     AU: { en: 'Shipping to Australia/NZ', fr: 'Livraison vers Australie/NZ', eta: '7–15 business days after 1–3 days processing' },
     ME: { en: 'Shipping to Middle East', fr: 'Livraison vers le Moyen‑Orient', eta: '7–15 business days after 1–3 days processing' },
-    AS: { en: 'Shipping to Asia', fr: 'Livraison vers l’Asie', eta: '7–15 business days after 1–3 days processing' },
-    AF: { en: 'Shipping to Africa', fr: 'Livraison vers l’Afrique', eta: '10–20 business days after 1–3 days processing' },
-    LATAM: { en: 'Shipping to Latin America', fr: "Livraison vers l’Amérique latine", eta: '10–20 business days after 1–3 days processing' }
+    AS: { en: 'Shipping to Asia', fr: "Livraison vers l'Asie", eta: '7–15 business days after 1–3 days processing' },
+    AF: { en: 'Shipping to Africa', fr: "Livraison vers l'Afrique", eta: '10–20 business days after 1–3 days processing' },
+    LATAM: { en: 'Shipping to Latin America', fr: "Livraison vers l'Amérique latine", eta: '10–20 business days after 1–3 days processing' }
   };
 
   if (zone) {
     const hdr = lang==='fr' ? byZone[zone].fr : byZone[zone].en;
     const eta = byZone[zone].eta;
-    return `${hdr}${place ? ` (${placeRaw})` : ''}: ${eta}. ${lang==='fr' ? "Suivi fourni après l’expédition." : "Tracking provided after shipment."}`;
+    return `${hdr}${place ? ` (${placeRaw})` : ''}: ${eta}. ${lang==='fr' ? "Suivi fourni après l'expédition." : "Tracking provided after shipment."}`;
   }
 
   // Generic
