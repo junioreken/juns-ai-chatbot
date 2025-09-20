@@ -199,6 +199,8 @@ class IntentClassifier {
       'too big', 'too small', 'doesn\'t fit', 'size issue', 'measurement help',
       'size question', 'fit question', 'measurement question', 'sizing question',
       'what size am i', 'which size', 'size me', 'fit me', 'measure me',
+      'propose me a size', 'propose a size', 'suggest a size', 'recommend a size',
+      'tell me my size', 'determine my size', 'choose my size', 'what should I get size',
       'size calculator', 'fit calculator', 'measurement calculator', 'size finder',
       'size chart', 'measurement chart', 'sizing chart', 'fit chart',
       'bust measurement', 'waist measurement', 'hip measurement', 'height weight',

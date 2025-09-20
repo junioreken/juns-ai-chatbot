@@ -205,20 +205,15 @@ router.post('/enhanced-chat', async (req, res) => {
     const measurementLike = /(\d{2,3}\s*cm)|(\d{2,3}\s*(kg|lb|lbs))|(\b\d\s*(?:ft|foot|')\s*\d{1,2}\b)|(\b\d{2,3}\s*[\/\-]\s*\d{2,3}\s*[\/\-]\s*\d{2,3}\b)/i;
     // More specific size patterns to avoid matching "outfit" -> "fit"
     const sizePattern = /\b(size|sizing|measurement|measure|waist|hip|bust|height|weight|fit\s+(guide|chart|help|advice))\b/i;
-    if (sizePattern.test(lower) || measurementLike.test(lower)) {
+    if (sizePattern.test(lower) || measurementLike.test(lower) || /\b(propose|recommend|suggest)\b.*\b(size)\b/i.test(lower)) {
       const sizeAdvice = buildSizeAdviceReply(storeData, message, lang);
-      if (sizeAdvice) {
-        await session.addMessage(currentSessionId, sizeAdvice, false);
-        await analytics.trackMessage(currentSessionId, sizeAdvice, false);
-        return res.json({ reply: sizeAdvice, intent: 'size_help', confidence: 0.85, sessionId: currentSessionId, escalation: { required: false } });
-      } else {
-        const ask = lang==='fr'
-          ? "Pour vous conseiller la taille, indiquez vos mesures (taille, poids, tour de poitrine/taille/hanches). Ex: 168 cm, 60 kg, 88/70/95."
-          : "To recommend a size, please share your measurements (height, weight, bust/waist/hip). Example: 168 cm, 60 kg, 88/70/95.";
-        await session.addMessage(currentSessionId, ask, false);
-        await analytics.trackMessage(currentSessionId, ask, false);
-        return res.json({ reply: ask, intent: 'size_help', confidence: 0.7, sessionId: currentSessionId, escalation: { required: false } });
-      }
+      const defaultGuidance = lang==='fr'
+        ? "Sans mesures, voici un repère général: XS <86/66/90, S <92/72/96, M <98/78/102, L <104/84/108, XL au‑dessus. Si vous partagez votre taille/poids/mesures (poitrine/taille/hanches), je peux affiner."
+        : "Without measurements, here’s a general guide: XS <86/66/90, S <92/72/96, M <98/78/102, L <104/84/108, XL above. If you share height/weight/measurements (bust/waist/hip), I can refine.";
+      const replySize = sizeAdvice || defaultGuidance;
+      await session.addMessage(currentSessionId, replySize, false);
+      await analytics.trackMessage(currentSessionId, replySize, false);
+      return res.json({ reply: replySize, intent: 'size_help', confidence: sizeAdvice ? 0.85 : 0.75, sessionId: currentSessionId, escalation: { required: false } });
     }
 
     // 8e. Product discovery (colors, themes, budget cues) before LLM
