@@ -229,7 +229,19 @@ router.post('/enhanced-chat', async (req, res) => {
     }
 
     // 8e. Product discovery (colors, themes, budget cues) before LLM
-    const productDiscovery = handleProductDiscovery(storeData, message, lang);
+    // But skip if this looks like a follow-up about previously shown products
+    const hasLastRecs = (await session.getLastRecommendations(currentSessionId)).length > 0;
+    const looksLikeFollowUp = /(first|second|third|fourth|this|that|it|those|them)\b/i.test(lower)
+      || /(what|which)\s+(color|colors|colour|colours)\b|\bavailable\s+colors?\b/i.test(lower)
+      || /(what|which)\s+(size|sizes)\b|\bavailable\s+sizes?\b/i.test(lower)
+      || /(how\s+much|price|cost|\$\s*\??)\b/i.test(lower)
+      || /(in\s*stock|available\s+now|availability|is\s+it\s+available)/i.test(lower)
+      || /(material|fabric|made\s+of|composition)/i.test(lower)
+      || /(length|how\s+long|mini|midi|maxi|knee\s*length|floor\s*length)/i.test(lower)
+      || /(link|url|page|open\s+it|show\s+me\s+it|where\s+to\s+buy)/i.test(lower);
+
+    const shouldRunDiscovery = !(hasLastRecs && looksLikeFollowUp);
+    const productDiscovery = shouldRunDiscovery ? handleProductDiscovery(storeData, message, lang) : '';
     if (productDiscovery) {
       // Capture product handles from the HTML grid so follow-up questions like
       // "what colors does this dress come in" can be resolved
