@@ -228,6 +228,74 @@ router.post('/enhanced-chat', async (req, res) => {
       return res.json({ reply: replySize, intent: 'size_help', confidence: sizeAdvice ? 0.85 : 0.75, sessionId: currentSessionId, escalation: { required: false } });
     }
 
+    // 8e. Named product availability/variant follow-up (semantic, catalog-wide)
+    const availabilityLike = /(available|in\s*stock|do\s*you\s*have|have\s*it|stock)/i.test(lower);
+    if (availabilityLike) {
+      const products = Array.isArray(storeData.products) ? storeData.products : [];
+      const colorTerms = ['red','blue','green','black','white','pink','purple','gold','silver','beige','yellow','orange','brown','grey','gray','navy','ivory','cream'];
+      const colorMention = (() => {
+        const m = lower.match(new RegExp(`\\b(${colorTerms.join('|')})\\b`, 'i'));
+        return m ? m[1].toLowerCase() : '';
+      })();
+      const tokens = lower.replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(t => t && t.length > 2 && !['available','stock','color','white','black','blue','green','pink','purple','gold','silver','beige','yellow','orange','brown','grey','gray','have','you','this','that','in','is','are','the','for','dress','robe','gown','silk','satin'].includes(t));
+      const scoreProductByTokens = (p) => {
+        const hay = [String(p.title||'').toLowerCase(), String(p.handle||'').toLowerCase()].join(' ');
+        let s = 0;
+        for (const t of tokens) { if (hay.includes(t)) s += 1; }
+        return s;
+      };
+      let best = null, bestScore = 0;
+      for (const p of products) {
+        const sc = scoreProductByTokens(p);
+        if (sc > bestScore) { best = p; bestScore = sc; }
+      }
+      if (best && bestScore >= 1) {
+        const options = Array.isArray(best.options) ? best.options : [];
+        const variants = Array.isArray(best.variants) ? best.variants : [];
+        const colorIdx = options.findIndex(o => /color|colour|couleur/i.test(String(o?.name || '')));
+        const sizeIdx  = options.findIndex(o => /size|taille/i.test(String(o?.name || '')));
+        const collect = (idx) => {
+          if (idx < 0) return [];
+          const set = new Set();
+          for (const v of variants) {
+            const val = String(v[`option${idx+1}`] || '').trim();
+            if (val) set.add(val);
+          }
+          return Array.from(set);
+        };
+        const colors = collect(colorIdx);
+        const sizes  = collect(sizeIdx);
+        const isVariantAvailable = (v) => (typeof v.available === 'boolean' ? v.available : (typeof v.inventory_quantity === 'number' ? v.inventory_quantity > 0 : true));
+        let replyAvail = '';
+        if (colorMention) {
+          // try to find a variant for the requested color
+          const hit = variants.find(v => {
+            const val = colorIdx >= 0 ? String(v[`option${colorIdx+1}`]||'').toLowerCase() : String(v.title||'').toLowerCase();
+            return val.includes(colorMention);
+          });
+          if (hit) {
+            const ok = isVariantAvailable(hit);
+            replyAvail = lang==='fr'
+              ? `${best.title} en ${colorMention} est ${ok ? 'disponible' : 'actuellement indisponible'}.`
+              : `${best.title} in ${colorMention} is ${ok ? 'available' : 'currently unavailable'}.`;
+          } else if (colors.length) {
+            replyAvail = lang==='fr'
+              ? `Je n'ai pas trouvé ${best.title} en ${colorMention}. Couleurs disponibles: ${colors.join(', ')}.`
+              : `I didn’t find ${best.title} in ${colorMention}. Available colors: ${colors.join(', ')}.`;
+          }
+        }
+        if (!replyAvail) {
+          const anyAvailable = variants.some(isVariantAvailable);
+          replyAvail = lang==='fr'
+            ? `${best.title} est ${anyAvailable ? 'en stock' : 'actuellement en rupture'}.${colors.length ? ` Couleurs: ${colors.join(', ')}.` : ''}${sizes.length ? ` Tailles: ${sizes.join(', ')}.` : ''}`
+            : `${best.title} is ${anyAvailable ? 'in stock' : 'currently out of stock'}.${colors.length ? ` Colors: ${colors.join(', ')}.` : ''}${sizes.length ? ` Sizes: ${sizes.join(', ')}.` : ''}`;
+        }
+        await session.addMessage(currentSessionId, replyAvail, false);
+        await analytics.trackMessage(currentSessionId, replyAvail, false);
+        return res.json({ reply: replyAvail, intent: 'product_inquiry', confidence: 0.88, sessionId: currentSessionId, escalation: { required: false } });
+      }
+    }
+
     // 8e. Product discovery (colors, themes, budget cues) before LLM
     // But skip if this looks like a follow-up about previously shown products
     const hasLastRecs = (await session.getLastRecommendations(currentSessionId)).length > 0;
