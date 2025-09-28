@@ -19,8 +19,8 @@
     }
     @media (max-width: 560px) {
       #juns-products-grid {
-        grid-template-columns: 1fr;
-        gap: 14px;
+        grid-template-columns: repeat(2, minmax(150px, 1fr));
+        gap: 10px;
       }
     }
     @media (max-width: 360px) {
@@ -37,13 +37,17 @@
     }
     @media (max-width: 560px) {
       #juns-dresses-grid, #juns-accessories-grid {
-        grid-template-columns: 1fr;
-        gap: 14px;
+        grid-template-columns: repeat(2, minmax(150px, 1fr));
+        gap: 10px;
       }
-      #recommendation-section { padding: 24px 14px !important; }
-      #juns-heading { font-size: 26px !important; }
-      #dresses-heading, #accessories-heading { font-size: 20px !important; }
-      #juns-theme-label { font-size: 14px !important; }
+      #recommendation-section { padding: 20px 12px !important; }
+      #juns-heading { font-size: 24px !important; }
+      #dresses-heading, #accessories-heading { font-size: 18px !important; }
+      #juns-theme-label { font-size: 13px !important; }
+      .j-card { padding: 10px; border-radius: 12px; }
+      .j-card img { aspect-ratio: 3/4; border-radius: 10px; }
+      .j-title { font-size: 14px; }
+      .j-price { font-size: 12px; }
     }
     .j-card {
       background: #fff;
