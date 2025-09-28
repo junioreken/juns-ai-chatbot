@@ -6,6 +6,12 @@
   <p id="juns-theme-label" style="text-align:center; font-size: 16px; margin-bottom: 30px; color: #555;"></p>
 
   <style>
+    #recommendation-section, #recommendation-section * { box-sizing: border-box; }
+    .j-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(240px, 1fr));
+      gap: 24px;
+    }
     #juns-products-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(240px, 1fr));
@@ -49,6 +55,11 @@
       .j-title { font-size: 14px; }
       .j-price { font-size: 12px; }
     }
+    @media (max-width: 380px) {
+      #juns-dresses-grid, #juns-accessories-grid, #juns-products-grid {
+        grid-template-columns: 1fr;
+      }
+    }
     .j-card {
       background: #fff;
       border-radius: 14px;
@@ -91,7 +102,7 @@
     <h3 id="dresses-heading" style="text-align:center; font-size: 24px; font-weight: 600; margin-bottom: 20px; color: #333; font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;">
       Dresses & Skirts
     </h3>
-    <div id="juns-dresses-grid" style="display: grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap: 24px; margin-bottom: 40px;"></div>
+    <div id="juns-dresses-grid" class="j-grid" style="margin-bottom: 40px;"></div>
   </div>
 
   <!-- Accessories Section -->
@@ -99,7 +110,7 @@
     <h3 id="accessories-heading" style="text-align:center; font-size: 24px; font-weight: 600; margin-bottom: 20px; color: #333; font-family: 'Playfair Display', 'Times New Roman', Georgia, serif;">
       Matching Accessories
     </h3>
-    <div id="juns-accessories-grid" style="display: grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap: 24px;"></div>
+    <div id="juns-accessories-grid" class="j-grid"></div>
   </div>
 
   <!-- Fallback grid for backward compatibility -->
