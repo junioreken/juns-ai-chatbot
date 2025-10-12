@@ -10,6 +10,42 @@ async function trackByNumber(trackingNumber, preferredSlug = '') {
   const number = String(trackingNumber).trim();
   const afterShipKey = process.env.AFTERSHIP_API_KEY;
   const universalLink = `https://t.17track.net/en#nums=${encodeURIComponent(number)}`;
+  const shopifyDomain = process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOPIFY_DOMAIN;
+  const shopifyToken = process.env.SHOPIFY_ADMIN_TOKEN || process.env.SHOPIFY_API_TOKEN || process.env.SHOPIFY_ADMIN_API;
+
+  async function fallbackViaShopify() {
+    try {
+      if (!shopifyDomain || !shopifyToken) return null;
+      const fields = 'id,name,order_number,updated_at,fulfillments';
+      const url = `https://${shopifyDomain}/admin/api/2024-01/orders.json?status=any&limit=100&fields=${encodeURIComponent(fields)}`;
+      const { data } = await axios.get(url, { headers: { 'X-Shopify-Access-Token': shopifyToken }});
+      const orders = Array.isArray(data?.orders) ? data.orders : [];
+      const match = orders.find(o => (o.fulfillments || []).some(ff => (ff.tracking_number && String(ff.tracking_number).includes(number)) || (Array.isArray(ff.tracking_numbers) && ff.tracking_numbers.some(x => x && String(x).includes(number)))));
+      if (!match) return null;
+
+      // Pick the fulfillment that matches the tracking number
+      const fulfillment = (match.fulfillments || []).find(ff => (ff.tracking_number && String(ff.tracking_number).includes(number)) || (Array.isArray(ff.tracking_numbers) && ff.tracking_numbers.some(x => x && String(x).includes(number)))) || (match.fulfillments || [])[0];
+      const shipmentStatus = (fulfillment && fulfillment.shipment_status) || '';
+      const statusMap = {
+        delivered: 'Delivered',
+        out_for_delivery: 'Out for delivery',
+        in_transit: 'In transit',
+        attempted_delivery: 'Delivery attempt',
+        ready_for_pickup: 'Ready for pickup',
+        confirmed: 'Confirmed',
+        failure: 'Delivery exception',
+        label_printed: 'Label created',
+        label_purchased: 'Label purchased'
+      };
+      const status = statusMap[shipmentStatus] || (shipmentStatus ? shipmentStatus : 'Unknown');
+      const courier = (fulfillment && (fulfillment.tracking_company || '')) || '';
+      const last_update = fulfillment?.updated_at || match.updated_at || '';
+      const link = (Array.isArray(fulfillment?.tracking_urls) && fulfillment.tracking_urls[0]) || fulfillment?.tracking_url || universalLink;
+      return { status, courier, last_update, checkpoint: '', link };
+    } catch (_) {
+      return null;
+    }
+  }
 
   // If AfterShip is available, use it for real-time tracking
   if (afterShipKey) {
@@ -72,11 +108,15 @@ async function trackByNumber(trackingNumber, preferredSlug = '') {
       }
     } catch (e) {
       // fall back
+      const fb = await fallbackViaShopify();
+      if (fb) return fb;
       return { status: 'Awaiting carrier update', link: universalLink };
     }
   }
 
   // Fallback only link
+  const fb = await fallbackViaShopify();
+  if (fb) return fb;
   return { status: 'Awaiting carrier update', link: universalLink };
 }
 

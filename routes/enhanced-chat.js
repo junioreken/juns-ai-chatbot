@@ -138,9 +138,10 @@ router.post('/enhanced-chat', async (req, res) => {
         const preferredSlugMap = { dhl: 'dhl', ups: 'ups', usps: 'usps', fedex: 'fedex', canpar: 'canpar', gls: 'gls', purolator: 'purolator', 'royal mail': 'royal-mail', royalmail: 'royal-mail', evri: 'hermes-uk', yodel: 'yodel', laposte: 'laposte' };
         const preferredSlug = carrierMatch ? (preferredSlugMap[carrierMatch[1].replace(/\s+/g,'')] || '') : '';
         const info = await tracking.trackByNumber(tn, preferredSlug);
+        const linkHtml = info.link ? (lang==='fr' ? `\nLien de suivi: <a href="${info.link}" target="_blank" rel="noopener">ouvrir le suivi</a>` : `\nTracking link: <a href="${info.link}" target="_blank" rel="noopener">open tracking</a>`) : '';
         const reply = lang==='fr'
-          ? `Statut: ${info.status}${info.courier ? ` | Transporteur: ${info.courier}` : ''}${info.last_update ? ` | Dernière mise à jour: ${info.last_update}` : ''}${info.checkpoint ? `\nDernier point: ${info.checkpoint}` : ''}${info.link ? `\nLien de suivi: ${info.link}` : ''}`
-          : `Status: ${info.status}${info.courier ? ` | Carrier: ${info.courier}` : ''}${info.last_update ? ` | Last update: ${info.last_update}` : ''}${info.checkpoint ? `\nLast checkpoint: ${info.checkpoint}` : ''}${info.link ? `\nTracking link: ${info.link}` : ''}`;
+          ? `Statut: ${info.status}${info.courier ? ` | Transporteur: ${info.courier}` : ''}${info.last_update ? ` | Dernière mise à jour: ${info.last_update}` : ''}${info.checkpoint ? `\nDernier point: ${info.checkpoint}` : ''}${linkHtml}`
+          : `Status: ${info.status}${info.courier ? ` | Carrier: ${info.courier}` : ''}${info.last_update ? ` | Last update: ${info.last_update}` : ''}${info.checkpoint ? `\nLast checkpoint: ${info.checkpoint}` : ''}${linkHtml}`;
         await session.addMessage(currentSessionId, reply, false);
         await analytics.trackMessage(currentSessionId, reply, false);
         return res.json({ reply, intent: 'order_tracking', confidence: 0.95, sessionId: currentSessionId, escalation: { required: false } });
@@ -281,7 +282,7 @@ router.post('/enhanced-chat', async (req, res) => {
           } else if (colors.length) {
             replyAvail = lang==='fr'
               ? `Je n'ai pas trouvé ${best.title} en ${colorMention}. Couleurs disponibles: ${colors.join(', ')}.`
-              : `I didn’t find ${best.title} in ${colorMention}. Available colors: ${colors.join(', ')}.`;
+              : `I didn't find ${best.title} in ${colorMention}. Available colors: ${colors.join(', ')}.`;
           }
         }
         if (!replyAvail) {
