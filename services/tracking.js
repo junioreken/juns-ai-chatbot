@@ -43,21 +43,41 @@ async function trackByNumber(trackingNumber, preferredSlug = '') {
       const { data } = await axios.get(endpoint, { headers });
       const t = data && data.data && data.data.tracking ? data.data.tracking : null;
       if (t) {
-        const status = t.tag || t.subtag || t?.checkpoints?.slice(-1)[0]?.subtag || 'Unknown';
-        const courier = t.slug || t.courier || ((t.checkpoints && t.checkpoints.slice(-1)[0] && t.checkpoints.slice(-1)[0].courier) || '');
-        const last = t.checkpoints && t.checkpoints.slice(-1)[0];
+        // Derive a robust status across tag/subtag/checkpoints
+        const checkpoints = Array.isArray(t.checkpoints) ? t.checkpoints : [];
+        const last = checkpoints.slice(-1)[0] || null;
+        const rawTag = (t.tag || t.subtag || '').toLowerCase();
+        const lastSubtag = (last && (last.subtag || last.tag)) ? String(last.subtag || last.tag).toLowerCase() : '';
+        const messages = [t?.message, last?.message, ...checkpoints.map(c => c.message)].filter(Boolean).map(x => String(x).toLowerCase());
+
+        const isDelivered = rawTag.includes('delivered') || lastSubtag.includes('delivered') || messages.some(m => /delivered|delivery successful|signed|proof of delivery|pod/.test(m));
+        const isOutForDelivery = rawTag.includes('outfordelivery') || lastSubtag.includes('outfordelivery') || messages.some(m => /out for delivery/.test(m));
+        const isInTransit = rawTag.includes('intransit') || lastSubtag.includes('intransit') || messages.some(m => /in transit|line haul|departed|arrived at facility/.test(m));
+        const isException = rawTag.includes('exception') || lastSubtag.includes('exception') || messages.some(m => /exception|failed|unable to deliver|return to sender/.test(m));
+        const isInfoReceived = rawTag.includes('info') || rawTag.includes('pending') || messages.some(m => /label created|shipment information received|pending/.test(m));
+
+        let status = 'Unknown';
+        if (isDelivered) status = 'Delivered';
+        else if (isOutForDelivery) status = 'Out for delivery';
+        else if (isInTransit) status = 'In transit';
+        else if (isException) status = 'Delivery exception';
+        else if (isInfoReceived) status = 'Label created';
+        else status = (t.tag || t.subtag || 'Unknown');
+
+        const courier = t.slug || t.courier || ((last && last.courier) || '');
         const checkpoint = last ? `${last.location || ''} ${last.message || ''}`.trim() : '';
-        const last_update = (last && last.checkpoint_time) || t.updated_at || '';
-        return { status, courier, last_update, checkpoint };
+        const last_update = (last && (last.checkpoint_time || last.time)) || t.updated_at || '';
+
+        return { status, courier, last_update, checkpoint, link: universalLink };
       }
     } catch (e) {
       // fall back
-      return { status: 'Awaiting carrier update' };
+      return { status: 'Awaiting carrier update', link: universalLink };
     }
   }
 
   // Fallback only link
-  return { status: 'Awaiting carrier update' };
+  return { status: 'Awaiting carrier update', link: universalLink };
 }
 
 module.exports = { trackByNumber };
