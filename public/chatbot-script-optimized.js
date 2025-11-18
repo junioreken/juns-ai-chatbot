@@ -7,7 +7,17 @@ if (window.JUNS_CHATBOT_LOADED) {
 
 // Lightweight configuration
 const CONFIG = {
-  apiUrl: window.location.origin + '/api/enhanced-chat',
+  apiUrl: (window.JUNS_CHATBOT_API_URL || (function () {
+  try {
+    const sc = document.currentScript || (function () {
+      const a = document.getElementsByTagName('script');
+      return a[a.length - 1];
+    })();
+    return new URL(sc.src).origin + '/chat';
+  } catch (e) {
+    return 'https://juns-ai-chatbot-production.up.railway.app/chat';
+  }
+})()),
   lang: (() => {
     const htmlLang = document.documentElement.getAttribute('lang') || '';
     const path = window.location.pathname || '';
@@ -221,7 +231,8 @@ async function sendMessage(text = null) {
       body: JSON.stringify({
         message: message,
         lang: CONFIG.lang,
-        sessionId: sessionId
+        sessionId: sessionId,
+        storeUrl: window.location.origin
       })
     });
     
@@ -262,6 +273,18 @@ function removeMessage(messageElement) {
 }
 
 function sendQuickMessage(message) {
+  try {
+    const n = String(message || '').toLowerCase();
+    if (n.includes('recommend')) {
+      var handle = (typeof window !== 'undefined' && window.JUNS_RECOMMENDATIONS_HANDLE)
+        ? window.JUNS_RECOMMENDATIONS_HANDLE
+        : 'event-dress-recommendations';
+      var isFr = (document.documentElement.getAttribute('lang') || '').toLowerCase().startsWith('fr')
+        || (window.location.pathname || '').startsWith('/fr');
+      window.location.href = (isFr ? '/fr' : '') + '/pages/' + handle;
+      return;
+    }
+  } catch (_) {}
   sendMessage(message);
 }
 
