@@ -907,12 +907,33 @@ function createLauncher() {
   // Removed: 2-minute nudge was too pushy for customers
 }
 
-// Performance optimized: Delay launcher creation to prevent blocking
-window.addEventListener("load", () => {
-  // Wait additional time to ensure page is fully stable
-  setTimeout(() => {
-  createLauncher();
-  }, 1000); // Wait 1 second after page load
-});
+// Robust boot: initialize even if load already fired or theme delays events
+(function bootJunsAI() {
+  const boot = () => { try { createLauncher(); } catch(_) {} };
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(boot, 50);
+  } else {
+    window.addEventListener('load', () => setTimeout(boot, 50), { once: true });
+    document.addEventListener('DOMContentLoaded', () => setTimeout(boot, 50), { once: true });
+  }
+  // Safety: ensure the launcher remains visible shortly after boot across themes
+  let attempts = 0;
+  const vis = setInterval(() => {
+    attempts++;
+    try {
+      const host = document.getElementById('juns-ai-root');
+      const sh = host && host.shadowRoot;
+      const bubble = sh && sh.getElementById('juns-ai-button');
+      if (bubble) {
+        bubble.style.display = 'block';
+        bubble.style.visibility = 'visible';
+        bubble.style.opacity = '1';
+        bubble.style.zIndex = '2147483647';
+        clearInterval(vis);
+      }
+    } catch(_) {}
+    if (attempts > 40) clearInterval(vis); // ~20s max
+  }, 500);
+})();
 
 } // Close the else block for preventing multiple loads
