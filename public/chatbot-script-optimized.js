@@ -42,7 +42,18 @@ const I18N = {
   }
 };
 
-let sessionId = null;
+let sessionId = (function(){
+  try {
+    var s = localStorage.getItem('juns_session_id');
+    if (!s) {
+      s = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
+      localStorage.setItem('juns_session_id', s);
+    }
+    return s;
+  } catch (_) {
+    return null;
+  }
+})();
 let isVisible = false;
 
 // Optimized DOM creation
@@ -237,7 +248,10 @@ async function sendMessage(text = null) {
     });
     
     const data = await response.json();
-    sessionId = data.sessionId;
+    if (data && data.sessionId) {
+      sessionId = data.sessionId;
+      try { localStorage.setItem('juns_session_id', sessionId); } catch(_) {}
+    }
     
     // Remove loading and add response
     removeMessage(loadingId);
