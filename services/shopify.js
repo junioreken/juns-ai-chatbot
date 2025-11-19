@@ -1,5 +1,24 @@
 const axios = require('axios');
 
+async function fetchAllProducts(baseUrl, headers, cap=1000){
+  const results=[];
+  let url=baseUrl;
+  let guard=0;
+  while(url && results.length < cap && guard++ < 20){
+    const res = await axios.get(url, { headers, timeout: 15000 });
+    const arr = res.data?.products || [];
+    for(const p of arr){ results.push(p); }
+    const link = res.headers && (res.headers.link || res.headers.Link);
+    if(link && /rel="next"/.test(link)){
+      const m = link.match(/<([^>]+)>; rel="next"/);
+      url = m ? m[1] : null;
+    } else {
+      url = null;
+    }
+  }
+  return results;
+}
+
 // Support multiple env var names for compatibility across deployments
 let shopifyDomain = process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOPIFY_DOMAIN;
 const accessToken = process.env.SHOPIFY_ADMIN_TOKEN || process.env.SHOPIFY_API_TOKEN || process.env.SHOPIFY_ADMIN_API;
@@ -29,34 +48,29 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60, offset
   const ADMIN_API_VERSION = '2023-07';
   const base = `https://${shopifyDomain}/admin/api/${ADMIN_API_VERSION}/products.json`;
 
+  // Fetch products from Shopify (paginated)
   const out = [];
   const seen = new Set();
-  
-  // Fetch products from Shopify
-  const url = `${base}?limit=250`;
+  const ADMIN_LIMIT = 250;
+  const firstUrl = `${base}?limit=${ADMIN_LIMIT}`;
   try {
-    console.log(`🔍 Fetching products from Shopify: ${url}`);
-    const { data } = await axios.get(url, {
-      headers: {
-        'X-Shopify-Access-Token': accessToken,
-        'Content-Type': 'application/json'
-      },
-      timeout: 12000
-    });
-    const arr = data?.products || [];
-    console.log(`📦 Got ${arr.length} products from Shopify`);
+    console.log(`🔍 Fetching products (paginated) from: ${firstUrl}`);
+    const headers = { 'X-Shopify-Access-Token': accessToken, 'Content-Type': 'application/json' };
+    const arr = await fetchAllProducts(firstUrl, headers, 1000);
+    console.log(`📦 Aggregated ${arr.length} products from Shopify`);
     for (const p of arr) {
       if (seen.has(p.handle)) continue;
       seen.add(p.handle);
       out.push(p);
     }
   } catch (error) {
-    console.error(`❌ Error fetching products:`, error.message);
+    console.error(`❌ Error fetching products: `, error.message);
     if (error.response) {
       console.error(`❌ Response status: ${error.response.status}`);
-      console.error(`❌ Response data:`, error.response.data);
+      console.error(`❌ Response data: `, error.response.data);
     }
     throw error;
+  }
   }
 
   const themeSlug = String(theme || '').toLowerCase();
