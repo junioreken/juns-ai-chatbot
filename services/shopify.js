@@ -69,8 +69,6 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60, offset
       console.error(`❌ Response status: ${error.response.status}`);
       console.error(`❌ Response data: `, error.response.data);
     }
-    throw error;
-  }
   }
 
   const themeSlug = String(theme || '').toLowerCase();
