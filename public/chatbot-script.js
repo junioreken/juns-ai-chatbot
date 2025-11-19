@@ -13,11 +13,13 @@ function getAssetInfo() {
     })();
     const scriptUrl = new URL(thisScript.src);
     return {
-      api: `${scriptUrl.origin}/api/enhanced-chat`,
+      api: (typeof window !== 'undefined' && window.JUNS_CHATBOT_API_URL)
+        ? window.JUNS_CHATBOT_API_URL
+        : `${scriptUrl.origin}/api/enhanced-chat`,
       origin: scriptUrl.origin
     };
   } catch (e) {
-    return { api: "/api/enhanced-chat", origin: "" };
+    return { api: (typeof window !== "undefined" && window.JUNS_CHATBOT_API_URL) ? window.JUNS_CHATBOT_API_URL : "/api/enhanced-chat", origin: "" };
   }
 }
 
@@ -807,7 +809,8 @@ function initChat() {
           } else if (!ok) {
             // Fallback: navigate to recommendations page without params (respect FR path)
             const isFr = detectLang() === 'fr';
-            window.location.href = (isFr ? '/fr' : '') + '/pages/event-dress-recommendations';
+            var handle = (typeof window !== 'undefined' && window.JUNS_RECOMMENDATIONS_HANDLE) ? window.JUNS_RECOMMENDATIONS_HANDLE : 'event-dress-recommendations';
+            window.location.href = (isFr ? '/fr' : '') + '/pages/' + handle;
           }
         })();
         return;
