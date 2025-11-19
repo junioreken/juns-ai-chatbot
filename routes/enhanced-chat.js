@@ -1369,7 +1369,15 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
 
   const bothRequested = Boolean(theme) && Boolean(canonicalColor);
   let list = candidates.sort((a,b)=>b.score-a.score);
-  const limit = desiredCategory && desiredCategory !== 'dress' ? 8 : 4;
+  // Determine how many items to show: up to 30 dresses when theme or budget is provided
+  let limit;
+  if (desiredCategory && desiredCategory !== 'dress') {
+    limit = 12;
+  } else {
+    const hasBudget = Boolean(priceBetween) || (priceUnder !== null) || (priceOver !== null);
+    const hasTheme = Boolean(selectedTheme);
+    limit = (hasTheme || hasBudget) ? 30 : 12;
+  }
   if (bothRequested) {
     const strict = list.filter(x => x.score >= 5).slice(0, limit);
     list = strict.length >= 2 ? strict : list.filter(x => x.score >= 1).slice(0, limit);
