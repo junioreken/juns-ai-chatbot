@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
 
   try {
     console.log(`🎯 Recommend API called with theme: "${theme}", budget: "${budget}"`);
-    const products = await getProductsByTheme(theme, budget, 60);
+    const products = await getProductsByTheme(theme, budget, 30);
     console.log(`✅ Returning ${products.length} products`);
     res.json({ products });
   } catch (err) {
