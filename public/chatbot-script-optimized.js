@@ -7,7 +7,17 @@ if (window.JUNS_CHATBOT_LOADED) {
 
 // Lightweight configuration
 const CONFIG = {
-  apiUrl: window.location.origin + '/api/enhanced-chat',
+  apiUrl: (window.JUNS_CHATBOT_API_URL || (function () {
+  try {
+    const sc = document.currentScript || (function () {
+      const a = document.getElementsByTagName('script');
+      return a[a.length - 1];
+    })();
+    return new URL(sc.src).origin + '/chat';
+  } catch (e) {
+    return 'https://juns-ai-chatbot-production.up.railway.app/chat';
+  }
+})()),
   lang: (() => {
     const htmlLang = document.documentElement.getAttribute('lang') || '';
     const path = window.location.pathname || '';
@@ -32,7 +42,18 @@ const I18N = {
   }
 };
 
-let sessionId = null;
+let sessionId = (function(){
+  try {
+    var s = localStorage.getItem('juns_session_id');
+    if (!s) {
+      s = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
+      localStorage.setItem('juns_session_id', s);
+    }
+    return s;
+  } catch (_) {
+    return null;
+  }
+})();
 let isVisible = false;
 
 // Optimized DOM creation
@@ -221,12 +242,16 @@ async function sendMessage(text = null) {
       body: JSON.stringify({
         message: message,
         lang: CONFIG.lang,
-        sessionId: sessionId
+        sessionId: sessionId,
+        storeUrl: window.location.origin
       })
     });
     
     const data = await response.json();
-    sessionId = data.sessionId;
+    if (data && data.sessionId) {
+      sessionId = data.sessionId;
+      try { localStorage.setItem('juns_session_id', sessionId); } catch(_) {}
+    }
     
     // Remove loading and add response
     removeMessage(loadingId);
@@ -262,6 +287,18 @@ function removeMessage(messageElement) {
 }
 
 function sendQuickMessage(message) {
+  try {
+    const n = String(message || '').toLowerCase();
+    if (n.includes('recommend')) {
+      var handle = (typeof window !== 'undefined' && window.JUNS_RECOMMENDATIONS_HANDLE)
+        ? window.JUNS_RECOMMENDATIONS_HANDLE
+        : 'event-dress-recommendations';
+      var isFr = (document.documentElement.getAttribute('lang') || '').toLowerCase().startsWith('fr')
+        || (window.location.pathname || '').startsWith('/fr');
+      window.location.href = (isFr ? '/fr' : '') + '/pages/' + handle;
+      return;
+    }
+  } catch (_) {}
   sendMessage(message);
 }
 
