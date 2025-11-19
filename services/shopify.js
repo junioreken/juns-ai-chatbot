@@ -33,7 +33,7 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
   const seen = new Set();
   
   // Fetch products from Shopify
-  const url = `${base}?limit=50`;
+  const url = `${base}?limit=250`;
   try {
     console.log(`🔍 Fetching products from Shopify: ${url}`);
     const { data } = await axios.get(url, {
@@ -91,31 +91,25 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
   const filtered = out.filter(p => {
     const tags = normalizeTags(p.tags);
     const themed = exactThemeTags.some(exactTag => tags.includes(exactTag));
-    
-    if (!themed) {
-      console.log(`❌ ${p.title} - No exact theme match. Tags: [${tags.join(', ')}]`);
-      return false;
-    }
-    
-    // If it has the theme tag, include it regardless of other tags
-    // The frontend will categorize it based on title and product type
-    console.log(`✅ ${p.title} - Has theme tag "${themeSlug}". Tags: [${tags.join(', ')}]`);
-    
+    if (!themed) return false;
     const price = minVariantPrice(p);
-    const pricePass = priceOk(price);
-    
-    if (!pricePass) {
-      console.log(`❌ ${p.title} - Price $${price} doesn't match budget ${budget}`);
-      return false;
-    }
-    
-    return true;
-  }).slice(0, limit);
-  
-  console.log(`📊 Final result: ${filtered.length} products match exact theme tag "${themeSlug}" and budget "${budget}"`);
+    return priceOk(price);
+  });
+
+  // Keep only dresses/skirts and cap to requested limit
+  const isDress = (prod) => {
+    const tags = normalizeTags(prod.tags);
+    const t = (prod.title || '').toLowerCase();
+    const pt = (prod.product_type || '').toLowerCase();
+    return tags.includes('dress') || tags.includes('gown') || tags.includes('robe') || tags.includes('skirt')
+      || /\b(dress|gown|robe|skirt)s?\b/.test(t) || /\b(dress|gown|robe|skirt)s?\b/.test(pt);
+  };
+  const dressesOnly = filtered.filter(isDress).slice(0, limit);
+
+  console.log(`📊 Final result: ${dressesOnly.length} dresses match exact theme tag "${themeSlug}" and budget "${budget}"`);
 
   // If no products match, return some products for debugging (remove this later)
-  if (filtered.length === 0) {
+  if (dressesOnly.length === 0) {
     console.log(`⚠️ No products have exact theme tag "${themeSlug}". Showing first 5 products for debugging:`);
     const debugProducts = out.slice(0, 5).map(p => {
       const tags = normalizeTags(p.tags);
@@ -133,7 +127,7 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
     return debugProducts;
   }
 
-  return filtered.map(p => ({
+  return dressesOnly.map(p => ({
     title: p.title,
     image: (p.image && p.image.src) || (Array.isArray(p.images) && p.images[0] && p.images[0].src) || '',
     price: p.variants && p.variants[0] ? p.variants[0].price : '',
