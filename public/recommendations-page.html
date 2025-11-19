@@ -113,12 +113,18 @@
     <div id="juns-accessories-grid" class="j-grid"></div>
   </div>
 
+  <div style="text-align:center; margin: 20px 0 10px;">
+    <button id="juns-load-more" style="display:none; padding:10px 16px; border-radius:10px; border:1px solid #ddd; background:#111; color:#fff; cursor:pointer;">Show more</button>
+  </div>
+
   <!-- Fallback grid for backward compatibility -->
   <div id="juns-products-grid" style="display: none;"></div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
+  let offset = 0; const limit = 30; let lastCount = 0;
+  const loadMoreBtn = document.getElementById('juns-load-more');
   const params = new URLSearchParams(window.location.search);
   const rawTheme = (params.get('theme') || '').toLowerCase().trim();
   const budgetParam = (params.get('budget') || 'no-limit').toLowerCase().trim();
@@ -149,7 +155,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // Fetch products from server endpoint
   async function fetchProducts() {
-    const qs = new URLSearchParams({ theme: rawTheme, budget: budgetParam }).toString();
+    const qs = new URLSearchParams({ theme: rawTheme, budget: budgetParam, limit: String(limit), offset: String(offset) }).toString();
     const serverUrl = 'https://juns-ai-chatbot-production.up.railway.app';
     console.log('🔍 Fetching from', serverUrl, 'with:', qs);
     
@@ -251,6 +257,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     const products = await fetchProducts();
     console.log('✅ Found', products.length, 'products');
     renderProducts(products);
+    lastCount = products.length;
+    offset += products.length;
+    if (loadMoreBtn) {
+      loadMoreBtn.style.display = products.length >= limit ? 'inline-block' : 'none';
+    }
 
     // Optional chatbot upsell
     if (window.JUNS?.chat?.message) {
@@ -260,6 +271,21 @@ document.addEventListener('DOMContentLoaded', async function() {
       }, 15000);
     }
 
+    if (loadMoreBtn) {
+      loadMoreBtn.onclick = async () => {
+        loadMoreBtn.disabled = true; loadMoreBtn.textContent = 'Loading…';
+        try {
+          const more = await fetchProducts();
+          if (more.length) {
+            renderProducts(more); offset += more.length;
+            loadMoreBtn.style.display = more.length >= limit ? 'inline-block' : 'none';
+          } else {
+            loadMoreBtn.style.display = 'none';
+          }
+        } catch(e) { loadMoreBtn.style.display = 'none'; }
+        loadMoreBtn.disabled = false; loadMoreBtn.textContent = 'Show more';
+      };
+    }
   } catch (err) {
     console.error('❌ Error:', err);
     dressesGridEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1; color: #d32f2f;'>Failed to load products.</p>";

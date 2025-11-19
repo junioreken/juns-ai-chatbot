@@ -21,7 +21,7 @@ async function getLatestOrderByEmail(email) {
   return response.data.orders[0];
 }
 
-async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
+async function getProductsByTheme(theme, budget = 'no-limit', limit = 60, offset = 0) {
   try {
     if (!shopifyDomain || !accessToken) {
       throw new Error('Shopify credentials missing');
@@ -96,20 +96,13 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
     return priceOk(price);
   });
 
-  // Keep only dresses/skirts and cap to requested limit
-  const isDress = (prod) => {
-    const tags = normalizeTags(prod.tags);
-    const t = (prod.title || '').toLowerCase();
-    const pt = (prod.product_type || '').toLowerCase();
-    return tags.includes('dress') || tags.includes('gown') || tags.includes('robe') || tags.includes('skirt')
-      || /\b(dress|gown|robe|skirt)s?\b/.test(t) || /\b(dress|gown|robe|skirt)s?\b/.test(pt);
-  };
-  const dressesOnly = filtered.filter(isDress).slice(0, limit);
-
-  console.log(`📊 Final result: ${dressesOnly.length} dresses match exact theme tag "${themeSlug}" and budget "${budget}"`);
+  // Window for pagination (offset+limit) while keeping both dresses and accessories)
+  const start = Math.max(parseInt(offset||0,10), 0);
+  const windowed = filtered.slice(start, start + limit);
+  console.log(`📊 Final result: ${windowed.length} products match exact theme tag "${themeSlug}" and budget "${budget}"`);
 
   // If no products match, return some products for debugging (remove this later)
-  if (dressesOnly.length === 0) {
+  if (filtered.length === 0) {
     console.log(`⚠️ No products have exact theme tag "${themeSlug}". Showing first 5 products for debugging:`);
     const debugProducts = out.slice(0, 5).map(p => {
       const tags = normalizeTags(p.tags);
@@ -127,7 +120,7 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
     return debugProducts;
   }
 
-  return dressesOnly.map(p => ({
+  return windowed.map(p => ({
     title: p.title,
     image: (p.image && p.image.src) || (Array.isArray(p.images) && p.images[0] && p.images[0].src) || '',
     price: p.variants && p.variants[0] ? p.variants[0].price : '',
