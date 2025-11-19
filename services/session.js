@@ -244,6 +244,13 @@ class SessionService {
         }))
       : [];
     session.context.lastRecommendations = normalized;
+    // Also track a cumulative set to prevent repeats across "more" requests
+    try {
+      const seen = Array.isArray(session.context.seenRecommendations) ? session.context.seenRecommendations : [];
+      const add = normalized.map(it => it.handle).filter(Boolean);
+      const merged = Array.from(new Set([...seen, ...add])).slice(-100);
+      session.context.seenRecommendations = merged;
+    } catch (_) {}
     await cache.set(`session:${sessionId}`, session, this.sessionTTL);
     return session.context.lastRecommendations;
   }
@@ -251,6 +258,11 @@ class SessionService {
   async getLastRecommendations(sessionId) {
     const session = await this.getSession(sessionId);
     return session?.context?.lastRecommendations || [];
+  }
+
+  async getSeenRecommendations(sessionId) {
+    const session = await this.getSession(sessionId);
+    return Array.isArray(session?.context?.seenRecommendations) ? session.context.seenRecommendations : [];
   }
 }
 
