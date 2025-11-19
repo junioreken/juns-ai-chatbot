@@ -256,6 +256,14 @@ async function sendMessage(text = null) {
     // Remove loading and add response
     removeMessage(loadingId);
     addMessage(data.reply, false);
+    // If backend requests live-agent handoff, open Tawk
+    try {
+      if (data && data.triggerLiveChat) {
+        if (typeof openLiveChat === 'function') {
+          openLiveChat();
+        }
+      }
+    } catch(_) {}
     
   } catch (error) {
     removeMessage(loadingId);
@@ -324,6 +332,41 @@ function hideChat() {
     isVisible = false;
   }
 }
+
+// --- Minimal Tawk integration for live-agent handoff ---
+let TAWK_LOADING = false;
+let TAWK_LOADED = false;
+function loadTawkOnce() {
+  if (TAWK_LOADING || TAWK_LOADED) return;
+  TAWK_LOADING = true;
+  (function () {
+    var s1 = document.createElement('script');
+    var s0 = document.getElementsByTagName('script')[0];
+    s1.async = true;
+    // Your Tawk property ID
+    s1.src = 'https://embed.tawk.to/68a6b4e77ebce11927981c0e/1j35j5a9d';
+    s1.charset = 'UTF-8';
+    s1.setAttribute('crossorigin', '*');
+    s1.onload = function(){ TAWK_LOADED = true; try { if (window.Tawk_API) window.Tawk_API.hideWidget(); } catch(_) {} };
+    (s0 && s0.parentNode ? s0.parentNode : document.head).insertBefore(s1, s0 || null);
+  })();
+}
+
+async function openLiveChat() {
+  try {
+    loadTawkOnce();
+    let tries = 0;
+    while (tries++ < 100) { // ~5s
+      if (window.Tawk_API && typeof window.Tawk_API.showWidget === 'function') {
+        try { window.Tawk_API.showWidget(); window.Tawk_API.maximize && window.Tawk_API.maximize(); } catch(_) {}
+        try { hideChat(); } catch(_) {}
+        return;
+      }
+      await new Promise(r => setTimeout(r, 50));
+    }
+  } catch(_) {}
+}
+
 
 // Lightweight Tawk detection (reduced polling)
 function checkTawkAndShow() {
