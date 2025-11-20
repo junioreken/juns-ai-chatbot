@@ -93,12 +93,13 @@ function createChatbot() {
         bottom: 70px;
         right: 0;
         width: 350px;
-        height: 500px;
+        height: min(75vh, 560px);
         background: white;
         border-radius: 12px;
         box-shadow: 0 8px 32px rgba(0,0,0,0.1);
         display: none;
         flex-direction: column;
+        max-height: calc(100vh - 120px);
         overflow: hidden;
       }
       .chat-header {
@@ -393,6 +394,19 @@ function checkTawkAndShow() {
 
 // Optimized initialization
 function init() {
+  try {
+    if (window.visualViewport) {
+      const handler = () => {
+        const win = document.getElementById('chat-window');
+        if (!win) return;
+        const vh = window.visualViewport.height || window.innerHeight;
+        win.style.maxHeight = Math.max(320, Math.round(vh - 120)) + 'px';
+        const kb = Math.max(0, (window.innerHeight - vh));
+        win.style.bottom = Math.max(70, 70 + kb) + 'px';
+      };
+      window.visualViewport.addEventListener('resize', handler, { passive: true });
+    }
+  } catch(_) {}
   // Wait for page to be fully loaded
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
