@@ -709,6 +709,11 @@ function initChat() {
   }
 
   const input = root.getElementById("chatInput");
+  // chat-input-font-guard
+  try {
+    if (input) { input.style.fontSize = '16px'; input.style.webkitTextSizeAdjust = '100%'; }
+    if (typeof document !== 'undefined' && document.documentElement) { document.documentElement.style.webkitTextSizeAdjust = '100%'; }
+  } catch(_) {}
   const messages = root.getElementById("chatMessages");
   const sendBtn = root.getElementById("juns-send");
   const quickActions = root.getElementById("juns-quick-actions");

@@ -225,6 +225,11 @@ function createChatbot() {
 // Optimized message sending
 async function sendMessage(text = null) {
   const input = document.getElementById('message-input');
+    // message-input-font-guard
+    try {
+      if (input) { input.style.fontSize = '16px'; input.style.webkitTextSizeAdjust = '100%'; }
+      if (typeof document !== 'undefined' && document.documentElement) { document.documentElement.style.webkitTextSizeAdjust = '100%'; }
+    } catch(_) {}
   const message = text || input.value.trim();
   
   if (!message) return;
