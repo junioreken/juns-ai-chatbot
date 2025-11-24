@@ -1680,21 +1680,29 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
 
     let chosenVariant = null;
     let matchedColorTerm = '';
+    
+    // Color filtering - STRICT enforcement if color is specified
     if (canonicalColor) {
       const { variant, matchedTerm } = matchVariantByColor(product, canonicalColor);
       matchedColorTerm = matchedTerm;
+      
+      // If color is specified, we MUST have a color match (either variant or product-level)
+      if (!matchedColorTerm && !variant) {
+        colorFiltered++;
+        continue; // No color match - skip this product
+      }
+      
       if (variant) {
         const vPrice = parseFloat(String(variant.price || '0').replace(/[^0-9.]/g,'')) || 0;
         // Double-check variant price against budget
         if (!pricePassValue(vPrice)) {
-          console.log(`💰 Variant filtered out by price: ${vPrice}`);
+          priceFiltered++;
           continue;
         }
         chosenVariant = variant;
       } else {
-        // Require a real color match at product-level at least
-        if (!matchedColorTerm) continue;
-        // Price already checked above
+        // Product-level color match found, but price already checked above
+        // No additional action needed
       }
     }
     const s = scoreProduct(product, Boolean(chosenVariant));
