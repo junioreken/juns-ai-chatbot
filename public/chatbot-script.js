@@ -133,12 +133,19 @@ function loadTawkOnce() {
 }
 
 async function openLiveChat() {
-  // If theme provided helper, use it (will also close chatbot)
+  // ALWAYS use theme provided helper - DO NOT auto-open Tawk
   if (window.JUNS && window.JUNS.support && typeof window.JUNS.support.open === 'function') {
     window.JUNS.support.open();
     return;
   }
-  // Otherwise load Tawk ourselves
+  // DO NOT load Tawk ourselves - this causes auto-opening
+  // Only the theme code should handle Tawk opening and positioning
+  console.log('⚠️ JUNS.support.open() not available - Tawk should be opened via theme code only');
+  return;
+  
+  // REMOVED: Fallback code that was auto-opening Tawk
+  // This was causing the widget to appear automatically
+  /*
   loadTawkOnce();
   // wait briefly for Tawk to be ready
   let tries = 0;
@@ -333,6 +340,7 @@ async function openLiveChat() {
   
   // Set up Tawk event listeners to show JUN'S AI when Tawk closes
   setupTawkEventListeners();
+  */
 }
 
 function setupTawkEventListeners() {
@@ -777,9 +785,15 @@ function initChat() {
       messages.scrollTop = messages.scrollHeight;
       
       // Check if we need to trigger live chat
+      // ONLY open if JUNS.support.open is available (theme handles positioning and hiding)
       if (data.triggerLiveChat) {
         setTimeout(() => {
-          openLiveChat();
+          // Only open if theme helper is available
+          if (window.JUNS && window.JUNS.support && typeof window.JUNS.support.open === 'function') {
+            openLiveChat();
+          } else {
+            console.log('⚠️ Cannot open Tawk - JUNS.support.open() not available. Make sure theme code is loaded.');
+          }
         }, 2000); // Wait 2 seconds to show the message, then open live chat
       }
     } catch (err) {
