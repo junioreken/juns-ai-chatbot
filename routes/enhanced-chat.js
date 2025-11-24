@@ -333,6 +333,8 @@ router.post('/enhanced-chat', async (req, res) => {
     let productDiscovery = '';
     let searchContextToStore = null;
     
+    console.log(`🔍 Product request check - wantsProducts: ${wantsProducts}, wantsMore: ${wantsMore}, hasLastRecs: ${hasLastRecs}, looksLikeFollowUp: ${looksLikeFollowUp}`);
+    
     if (wantsMore && lastSearchContext) {
       // User wants more of the same - use stored search context
       console.log(`🔄 "More" request detected - using last search context:`, lastSearchContext);
@@ -347,13 +349,17 @@ router.post('/enhanced-chat', async (req, res) => {
           useStoredContext: lastSearchContext // Pass stored context
         }
       );
-    } else if (wantsProducts && !(hasLastRecs && looksLikeFollowUp)) {
-      // User wants products/dresses - ALWAYS show in card format
+      console.log(`📦 Product discovery result (more): ${productDiscovery ? 'Found products' : 'No products'}`);
+    } else if (wantsProducts) {
+      // User wants products/dresses - ALWAYS show in card format (removed restrictive condition)
+      console.log(`🛍️ Product request detected - triggering product discovery`);
       let excludeHandles = [];
-      if (hasLastRecs) {
+      if (hasLastRecs && !looksLikeFollowUp) {
+        // Only exclude if it's NOT a follow-up question about attributes
         try { excludeHandles = (await session.getLastRecommendations(currentSessionId)).map(r=>r.handle); } catch(_) {}
       }
       productDiscovery = handleProductDiscovery(storeData, message, lang, { excludeHandles });
+      console.log(`📦 Product discovery result: ${productDiscovery ? 'Found products' : 'No products'}`);
     }
     if (productDiscovery) {
       // Capture product handles from the HTML grid so follow-up questions like
@@ -1352,7 +1358,16 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
   if (wantAccessories) needles.push(...accessoryTerms);
   // Expanded pattern to catch all product/dress requests - always show in card format
   const wantRecommend = /(recommend|suggest|show|display|find|looking|need|want|search|browse|see|give me|help me find|what.*have|what.*available|dress|dresses|gown|gowns|robe|robes|jacket|jackets|coat|coats|skirt|skirts|bag|bags|shoes|heels|accessories|products|items|clothing|clothes|fashion|outfit|outfits|look|looks|ensemble|style|styles|wear|wearing|dress up|get dressed|put together|coordinate|matching|coordinated|ideas?|best|bestsellers?|options?|complete my look)/i.test(text) || needles.length > 0 || desiredCategory || materialKey || selectedTheme;
-  if (!wantRecommend) return '';
+  
+  // If using stored context, always return products (for "more" requests)
+  if (opts.useStoredContext) {
+    console.log(`🎯 Using stored context for product discovery`);
+  }
+  
+  if (!wantRecommend && !opts.useStoredContext) {
+    console.log(`⚠️ Product discovery skipped - wantRecommend: ${wantRecommend}, text: "${text.substring(0, 50)}"`);
+    return '';
+  }
 
   function lowestVariantPrice(p) {
     const vars = Array.isArray(p.variants) ? p.variants : [];
