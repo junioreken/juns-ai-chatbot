@@ -2079,14 +2079,14 @@ function buildSizeAdviceReply(storeData, message, lang) {
     : { dress: 'dress', jacket: 'jacket', pants: 'pants', skirt: 'skirt', top: 'top', shoes: 'shoes', bag: 'bag', general: 'item' }[productCategory] || 'item';
 
   let note = '';
-    if (lang === 'fr') {
-      note = `Conseil taille pour ${productName ? `"${productName}"` : `cette ${categoryName}`}: **${size}**.`;
-      if (heightCm) note += ` Taille: ${heightCm} cm.`;
-      if (weightKg) note += ` Poids: ${weightKg} kg.`;
-      if (bust) note += ` Tour de poitrine: ${bust} cm.`;
-      if (waist) note += ` Taille: ${waist} cm.`;
-      if (hip) note += ` Hanches: ${hip} cm.`;
-      if (footLengthCm) note += ` Longueur du pied: ${footLengthCm} cm.`;
+  if (lang === 'fr') {
+    note = `Conseil taille pour ${productName ? `"${productName}"` : `cette ${categoryName}`}: **${size}**.`;
+    if (heightCm) note += ` Taille: ${heightCm} cm.`;
+    if (weightKg) note += ` Poids: ${weightKg} kg.`;
+    if (bust) note += ` Tour de poitrine: ${bust} cm.`;
+    if (waist) note += ` Taille: ${waist} cm.`;
+    if (hip) note += ` Hanches: ${hip} cm.`;
+    if (footLengthCm) note += ` Longueur du pied: ${footLengthCm} cm.`;
     if (productCategory === 'shoes') {
       if (footLengthCm) {
         note += ` Basé sur une longueur de pied de ${footLengthCm} cm.`;
