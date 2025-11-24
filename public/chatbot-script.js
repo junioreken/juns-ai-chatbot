@@ -141,12 +141,7 @@ async function openLiveChat() {
   // DO NOT load Tawk ourselves - this causes auto-opening
   // Only the theme code should handle Tawk opening and positioning
   console.log('⚠️ JUNS.support.open() not available - Tawk should be opened via theme code only');
-  return;
-  
-  // REMOVED: Fallback code that was auto-opening Tawk
-  // This was causing the widget to appear automatically
-  /*
-  loadTawkOnce();
+}
   // wait briefly for Tawk to be ready
   let tries = 0;
   const maxTries = 100; // ~5s worst case
@@ -332,16 +327,6 @@ async function openLiveChat() {
       } catch(e) {
         console.log('❌ Error positioning Tawk and hiding JUN\'S AI:', e);
       }
-      break;
-    }
-    await new Promise(r => setTimeout(r, 100));
-    tries++;
-  }
-  
-  // Set up Tawk event listeners to show JUN'S AI when Tawk closes
-  setupTawkEventListeners();
-  */
-}
 
 function setupTawkEventListeners() {
   console.log('🔧 Setting up Tawk event listeners...');
