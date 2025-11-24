@@ -1251,14 +1251,16 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
 
   // If using stored context, prioritize stored theme
   let selectedTheme = '';
+  let theme = ''; // Initialize theme variable
   if (opts.useStoredContext && opts.useStoredContext.theme) {
     selectedTheme = opts.useStoredContext.theme;
+    theme = selectedTheme; // Set theme from stored context
     console.log(`🎯 Using stored theme: ${selectedTheme}`);
   } else {
     const themeMatch = text.match(/(wedding|gala|night\s*out|nightclub|night\s*club|office|business|casual|birthday|cocktail|graduation|beach|summer|winter|eid)/i);
     const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
     // Preserve 'nightclub' as its own theme; normalize 'night club' -> 'nightclub'
-    let theme = themeRaw
+    theme = themeRaw
       ? themeRaw.replace(/\s+/g, (m) => m === ' ' && themeRaw.includes('night club') ? '' : '-')
       : '';
     if (theme === 'night-club') theme = 'nightclub';
