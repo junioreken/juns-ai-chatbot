@@ -359,7 +359,10 @@ router.post('/enhanced-chat', async (req, res) => {
         try { excludeHandles = (await session.getLastRecommendations(currentSessionId)).map(r=>r.handle); } catch(_) {}
       }
       productDiscovery = handleProductDiscovery(storeData, message, lang, { excludeHandles });
-      console.log(`📦 Product discovery result: ${productDiscovery ? 'Found products' : 'No products'}`);
+      console.log(`📦 Product discovery result: ${productDiscovery ? `Found ${(productDiscovery.match(/product-card/g) || []).length} products` : 'No products'}`);
+      if (!productDiscovery) {
+        console.log(`⚠️ No products found for: "${message}"`);
+      }
     }
     if (productDiscovery) {
       // Capture product handles from the HTML grid so follow-up questions like
@@ -1356,23 +1359,7 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     console.log(`👗 No category detected but product request found - defaulting to dresses`);
   }
 
-  // If theme not recognized, infer from merchant tags present in the user's message
-  function allStoreTagsLower() {
-    try {
-      const set = new Set();
-      const prods = Array.isArray(storeData.products) ? storeData.products : [];
-      for (const p of prods) {
-        const raw = Array.isArray(p.tags) ? p.tags : String(p.tags || '').split(',');
-        for (const t of raw) {
-          const v = String(t).toLowerCase().trim();
-          if (v) set.add(v);
-        }
-      }
-      return Array.from(set);
-    } catch (_) { return []; }
-  }
-
-  // Theme inference already handled above, so this section is now redundant but kept for safety
+  // Theme inference already handled above, so this section is now redundant
 
   const needles = [];
   if (canonicalColor) needles.push(canonicalColor, ...(colorMap[canonicalColor]||[]));
@@ -1386,10 +1373,15 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     console.log(`🎯 Using stored context for product discovery`);
   }
   
-  if (!wantRecommend && !opts.useStoredContext) {
-    console.log(`⚠️ Product discovery skipped - wantRecommend: ${wantRecommend}, text: "${text.substring(0, 50)}"`);
+  // Always allow if we have category, theme, material, or color - user wants products
+  const hasAnyFilter = desiredCategory || selectedTheme || materialKey || canonicalColor || priceUnder !== null || priceOver !== null || priceBetween !== null;
+  
+  if (!wantRecommend && !opts.useStoredContext && !hasAnyFilter) {
+    console.log(`⚠️ Product discovery skipped - wantRecommend: ${wantRecommend}, hasAnyFilter: ${hasAnyFilter}, text: "${text.substring(0, 50)}"`);
     return '';
   }
+  
+  console.log(`🔍 Product discovery params - category: ${desiredCategory}, theme: ${selectedTheme}, material: ${materialKey}, color: ${canonicalColor}, budget: under=${priceUnder}, over=${priceOver}, between=${priceBetween}`);
 
   function lowestVariantPrice(p) {
     const vars = Array.isArray(p.variants) ? p.variants : [];
