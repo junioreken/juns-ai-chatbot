@@ -91,24 +91,30 @@ class SessionService {
     const recentMessages = session.messages.slice(-maxMessages);
     
     // Build enhanced context with conversation flow
-    let context = 'CONVERSATION HISTORY:\n';
+    let context = 'CONVERSATION HISTORY (most recent first):\n';
     context += recentMessages.map((msg, index) => {
       const role = msg.isUser ? 'Customer' : 'JUN\'S AI';
       const timestamp = new Date(msg.timestamp).toLocaleTimeString();
-      return `${index + 1}. [${timestamp}] ${role}: ${msg.content}`;
-    }).join('\n');
+      // Include more of the message content for better context (increased from 900 to 1200 chars)
+      const content = String(msg.content || '').slice(0, 1200);
+      return `${index + 1}. [${timestamp}] ${role}: ${content}`;
+    }).join('\n\n');
     
-    // Add session context information
+    // Add session context information with more detail
     if (session.context) {
       context += '\n\nSESSION CONTEXT:';
       if (session.context.language) {
         context += `\n- Language: ${session.context.language}`;
       }
       if (session.context.currentIntent) {
-        context += `\n- Current Topic: ${session.context.currentIntent}`;
+        context += `\n- Current Topic/Intent: ${session.context.currentIntent}`;
       }
       if (session.context.lastProductViewed) {
-        context += `\n- Last Product Viewed: ${session.context.lastProductViewed}`;
+        context += `\n- Last Product Viewed: ${session.context.lastProductViewed.title || session.context.lastProductViewed}`;
+      }
+      if (session.context.lastRecommendations && session.context.lastRecommendations.length > 0) {
+        const recs = session.context.lastRecommendations.map(r => r.title || r.handle).join(', ');
+        context += `\n- Recently Recommended Products: ${recs}`;
       }
       if (session.context.preferences && Object.keys(session.context.preferences).length > 0) {
         context += `\n- Customer Preferences: ${JSON.stringify(session.context.preferences)}`;

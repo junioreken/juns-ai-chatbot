@@ -91,47 +91,86 @@ class IntentClassifier {
   // Classify user intent with enhanced semantic understanding
   async classifyIntent(message, sessionId = null) {
     try {
-      // Check cache first
-      const cacheKey = `intent:${message.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-      const cachedIntent = await cache.get(cacheKey);
-      if (cachedIntent) {
-        return cachedIntent;
+      // Check if this is a follow-up question by checking conversation context
+      let isFollowUp = false;
+      if (sessionId) {
+        try {
+          const session = require('./session');
+          const s = await session.getSession(sessionId);
+          const followUpIndicators = /\b(it|this|that|one|those|them|the|first|second|third|fourth|above|mentioned|previous|earlier|before|same|also|too|as well)\b/i;
+          const hasPronouns = followUpIndicators.test(message);
+          const hasLastContext = (s?.context?.currentIntent || s?.context?.lastRecommendations?.length > 0);
+          isFollowUp = hasPronouns && hasLastContext && s.messages.length > 2;
+          
+          // If it's a follow-up, reduce confidence in keyword-based classification
+          // This allows the LLM to handle it with full context
+          if (isFollowUp) {
+            console.log(`🔄 Detected follow-up question - reducing keyword handler priority`);
+          }
+        } catch (_) {}
+      }
+      
+      // Check cache first (but skip cache for follow-ups to allow context-aware classification)
+      if (!isFollowUp) {
+        const cacheKey = `intent:${message.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+        const cachedIntent = await cache.get(cacheKey);
+        if (cachedIntent) {
+          return cachedIntent;
+        }
       }
 
       // Enhanced semantic analysis (highest priority)
+      // For follow-ups, require higher confidence to avoid topic switching
       const semanticMatch = this.analyzeSemanticIntent(message);
-      if (semanticMatch && semanticMatch.confidence > 0.7) {
-        await cache.set(cacheKey, semanticMatch, 3600);
+      const requiredConfidence = isFollowUp ? 0.85 : 0.7;
+      if (semanticMatch && semanticMatch.confidence > requiredConfidence) {
+        if (!isFollowUp) {
+          const cacheKey = `intent:${message.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+          await cache.set(cacheKey, semanticMatch, 3600);
+        }
         return semanticMatch;
       }
 
       // Pattern matching (high confidence)
+      // For follow-ups, require higher confidence
       const patternMatch = this.matchPatterns(message);
-      if (patternMatch && patternMatch.confidence > 0.8) {
-        await cache.set(cacheKey, patternMatch, 3600);
+      const patternConfidence = isFollowUp ? 0.9 : 0.8;
+      if (patternMatch && patternMatch.confidence > patternConfidence) {
+        if (!isFollowUp) {
+          const cacheKey = `intent:${message.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+          await cache.set(cacheKey, patternMatch, 3600);
+        }
         return patternMatch;
       }
 
       // TF-IDF classification
       const tfidfMatch = this.classifyWithTFIDF(message);
-      if (tfidfMatch && tfidfMatch.confidence > 0.6) {
-        await cache.set(cacheKey, tfidfMatch, 3600);
+      const tfidfConfidence = isFollowUp ? 0.75 : 0.6;
+      if (tfidfMatch && tfidfMatch.confidence > tfidfConfidence) {
+        if (!isFollowUp) {
+          const cacheKey = `intent:${message.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+          await cache.set(cacheKey, tfidfMatch, 3600);
+        }
         return tfidfMatch;
       }
 
-      // Keyword matching (lower priority)
-      const keywordMatch = this.matchKeywords(message);
-      if (keywordMatch && keywordMatch.confidence > 0.5) {
-        await cache.set(cacheKey, keywordMatch, 3600);
-        return keywordMatch;
+      // Keyword matching (lower priority) - skip for follow-ups to allow LLM to handle
+      if (!isFollowUp) {
+        const keywordMatch = this.matchKeywords(message);
+        if (keywordMatch && keywordMatch.confidence > 0.5) {
+          const cacheKey = `intent:${message.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+          await cache.set(cacheKey, keywordMatch, 3600);
+          return keywordMatch;
+        }
       }
 
       // Fallback to general help with higher confidence for AI processing
+      // For follow-ups, always route to LLM with full context
       return {
-        intent: 'general_help',
-        confidence: 0.6, // Increased confidence for AI processing
+        intent: isFollowUp ? 'follow_up' : 'general_help',
+        confidence: isFollowUp ? 0.9 : 0.6, // Higher confidence for follow-ups
         handler: 'generalHandler',
-        reason: 'Complex query requiring full AI analysis'
+        reason: isFollowUp ? 'Follow-up question - requires full conversation context' : 'Complex query requiring full AI analysis'
       };
 
     } catch (error) {

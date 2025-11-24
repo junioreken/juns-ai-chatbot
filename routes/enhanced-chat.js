@@ -91,18 +91,26 @@ router.post('/enhanced-chat', async (req, res) => {
     // 6. Get cached store data or fetch fresh (domain-aware)
     const storeData = await getStoreDataWithCache(storeUrl);
 
-    // 7. Get conversation context for AI
-    const conversationContext = await session.getConversationContext(currentSessionId, 8);
+    // 7. Get conversation context for AI (increased from 8 to 20 messages for better context)
+    const conversationContext = await session.getConversationContext(currentSessionId, 20);
 
     // Build follow-up anchors (last intent/policy/products) to help the LLM resolve pronouns
     let conversationContextExtended = conversationContext;
+    let isFollowUpQuestion = false;
     try {
       const s = await session.getSession(currentSessionId);
       const lastIntent = s?.context?.currentIntent || '';
       const lastPolicy = s?.context?.lastPolicyKind || '';
       const lastRecs = Array.isArray(s?.context?.lastRecommendations) ? s.context.lastRecommendations.slice(0, 4) : [];
       const names = lastRecs.map(r => r.title || r.handle).filter(Boolean).join(', ');
-      const anchors = `\nFOLLOW-UP ANCHORS:\n- Last intent: ${lastIntent || 'n/a'}${lastPolicy ? ` (${lastPolicy})` : ''}\n- Last products: ${names || 'n/a'}`;
+      
+      // Detect if this is a follow-up question (pronouns, "this", "that", "it", etc.)
+      const followUpIndicators = /\b(it|this|that|one|those|them|the|first|second|third|fourth|above|mentioned|previous|earlier|before|same|also|too|as well)\b/i;
+      const hasPronouns = followUpIndicators.test(message);
+      const hasLastContext = lastIntent || lastRecs.length > 0;
+      isFollowUpQuestion = hasPronouns && hasLastContext && s.messages.length > 2; // More than just initial greeting
+      
+      const anchors = `\nFOLLOW-UP ANCHORS:\n- Last intent: ${lastIntent || 'n/a'}${lastPolicy ? ` (${lastPolicy})` : ''}\n- Last products: ${names || 'n/a'}\n- Is follow-up: ${isFollowUpQuestion ? 'yes' : 'no'}`;
       conversationContextExtended = conversationContext + anchors;
     } catch (_) {}
 
@@ -117,8 +125,12 @@ router.post('/enhanced-chat', async (req, res) => {
       .trim();
 
     // 8. Shortcut handlers for well-known intents before LLM
+    // IMPORTANT: Skip keyword handlers if this is a follow-up question to maintain conversation context
     const lower = message.toLowerCase();
-    // 8a. Order tracking: require tracking number (or detect it directly)
+    
+    // Only run keyword handlers if NOT a follow-up question (to preserve conversation flow)
+    if (!isFollowUpQuestion) {
+      // 8a. Order tracking: require tracking number (or detect it directly)
     // Accept tracking numbers 8-40 chars (alphanumeric, must contain a digit)
     const trackingNumDirect = (message.match(/\b(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{8,40}\b/) || [])[0];
     const carrierMatch = lower.match(/\b(dhl|ups|usps|fedex|canpar|gls|purolator|royal\s?mail|evri|yodel|laposte)\b/);
@@ -455,6 +467,7 @@ router.post('/enhanced-chat', async (req, res) => {
 
       // If we couldn't resolve locally, let LLM answer with the context we have
     }
+    } // End of !isFollowUpQuestion check
 
     // Pronoun-based follow-up router using last intent
     const pronounish = /(it|this|that|one|those|them)\b/i.test(lower);
@@ -510,14 +523,14 @@ router.post('/enhanced-chat', async (req, res) => {
     
     if (process.env.OPENAI_API_KEY) {
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      // Build compact chat history to help follow-ups
+      // Build comprehensive chat history to help follow-ups (increased from 10 to 20 messages)
       let history = [];
       try {
         const s = await session.getSession(currentSessionId);
         const msgs = Array.isArray(s.messages) ? s.messages : [];
-        // take up to 10 prior messages before the current one we just added
-        const prior = msgs.slice(Math.max(0, msgs.length - 11), Math.max(0, msgs.length - 1));
-        history = prior.map(m => ({ role: m.isUser ? 'user' : 'assistant', content: stripHtml(m.content).slice(0, 900) }));
+        // take up to 20 prior messages before the current one we just added for better context
+        const prior = msgs.slice(Math.max(0, msgs.length - 21), Math.max(0, msgs.length - 1));
+        history = prior.map(m => ({ role: m.isUser ? 'user' : 'assistant', content: stripHtml(m.content).slice(0, 1200) }));
       } catch (_) {}
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
@@ -527,10 +540,10 @@ router.post('/enhanced-chat', async (req, res) => {
           { role: "user", content: stripHtml(message) }
         ],
         temperature: 0.7, // Balanced for natural yet focused responses
-        max_tokens: 1200, // Increased for comprehensive responses
+        max_tokens: 1500, // Increased for comprehensive responses
         top_p: 0.95,      // High diversity for creative responses
-        frequency_penalty: 0.2, // Reduce repetition
-        presence_penalty: 0.1,  // Encourage new topics
+        frequency_penalty: 0.3, // Increased to reduce repetition
+        presence_penalty: 0.2,  // Increased to maintain topic consistency
         stop: null        // No early stopping for complete responses
       });
 
@@ -728,7 +741,9 @@ INSTRUCTIONS DE RÉPONSE:
 10. Fournis des conseils actionables et des étapes claires
 11. Utilise des exemples spécifiques et des détails concrets de l'inventaire de la boutique
 12. Pose des questions de clarification quand nécessaire pour mieux comprendre la demande
-13. IMPORTANT: Pour les questions de suivi avec pronoms ("ça", "celui-ci", "celle-là") ou références implicites, appuie-toi d'abord sur les ANCRAGES DE SUIVI (dernier intent, derniers produits) pour conserver la cohérence. Ne change pas de sujet sur la base de mots-clés isolés.
+13. CRITIQUE: Pour les questions de suivi avec pronoms ("ça", "celui-ci", "celle-là", "le premier", "cette robe") ou références implicites, tu DOIS t'appuyer sur les ANCRAGES DE SUIVI (dernier intent, derniers produits) pour rester sur le sujet. NE change JAMAIS de sujet à cause de mots-clés isolés. Si l'utilisateur dit "qu'en est-il de celui-ci" ou "dis-m'en plus", il fait référence aux DERNIERS PRODUITS ou au DERNIER INTENT mentionnés. Vérifie toujours les ANCRAGES DE SUIVI avant de répondre.
+14. Quand l'utilisateur pose des questions de suivi, maintiens le contexte de la conversation. Ne commence pas un nouveau sujet juste parce qu'un mot-clé apparaît. Par exemple, si nous discutions d'une robe de mariée et que l'utilisateur dit "quelles couleurs sont disponibles", il parle de la robe de mariée dont nous venons de discuter, PAS d'une nouvelle recherche de produit.
+15. Si tu n'es pas sûr qu'une question soit un suivi, vérifie les ANCRAGES DE SUIVI et l'historique de conversation. En cas de doute, assume que c'est un suivi pour maintenir la continuité de la conversation.
 
 GESTION SPÉCIALE:
 - Pour les demandes d'étiquettes d'expédition: Reconnais la demande et explique qu'une assistance humaine est nécessaire
@@ -763,7 +778,9 @@ RESPONSE INSTRUCTIONS:
 10. Provide actionable advice and clear next steps
 11. Use specific examples and concrete details from the store inventory
 12. Ask clarifying questions when needed to better understand the request
-13. IMPORTANT: For follow-ups using pronouns ("it", "this", "that") or implicit references, rely first on the FOLLOW-UP ANCHORS (last intent, last products) to stay on topic. Do not pivot topics due to isolated keywords.
+13. CRITICAL: For follow-ups using pronouns ("it", "this", "that", "the first one", "that dress") or implicit references, you MUST rely on the FOLLOW-UP ANCHORS (last intent, last products) to stay on topic. NEVER pivot topics due to isolated keywords. If the user says "what about this one" or "tell me more about it", they are referring to the LAST PRODUCTS or LAST INTENT mentioned. Always check the FOLLOW-UP ANCHORS before answering.
+14. When the user asks follow-up questions, maintain the conversation context. Do not start a new topic just because a keyword appears. For example, if we were discussing a wedding dress and the user says "what colors does it come in", they mean the wedding dress we just discussed, NOT a new product search.
+15. If you're unsure whether a question is a follow-up, check the FOLLOW-UP ANCHORS and conversation history. When in doubt, assume it's a follow-up to maintain conversation continuity.
 
 SPECIAL HANDLING:
 - For shipping label requests: Acknowledge the request and explain that human assistance is needed
