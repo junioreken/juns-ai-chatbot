@@ -1769,12 +1769,6 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
       list = list.filter(x => x.score >= 0).slice(0, limit);
     }
   }
-  if (bothRequested) {
-    const strict = list.filter(x => x.score >= 5).slice(0, limit);
-    list = strict.length >= 2 ? strict : list.filter(x => x.score >= 1).slice(0, limit);
-  } else {
-    list = list.filter(x => x.score >= 0).slice(0, limit);
-  }
 
   if (list.length === 0) return '';
 
