@@ -132,7 +132,7 @@ router.post('/enhanced-chat', async (req, res) => {
     
     // Only run keyword handlers if NOT a follow-up question (to preserve conversation flow)
     if (!isFollowUpQuestion) {
-      // 8a. Order tracking: require tracking number (or detect it directly)
+    // 8a. Order tracking: require tracking number (or detect it directly)
     // Accept tracking numbers 8-40 chars (alphanumeric, must contain a digit)
     const trackingNumDirect = (message.match(/\b(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{8,40}\b/) || [])[0];
     const carrierMatch = lower.match(/\b(dhl|ups|usps|fedex|canpar|gls|purolator|royal\s?mail|evri|yodel|laposte)\b/);
@@ -231,12 +231,17 @@ router.post('/enhanced-chat', async (req, res) => {
     // 8d. Size advice (also trigger on raw measurements like "168 cm, 60 kg, 88/70/95")
     const measurementLike = /(\d{2,3}\s*cm)|(\d{2,3}\s*(kg|lb|lbs))|(\b\d\s*(?:ft|foot|')\s*\d{1,2}\b)|(\b\d{2,3}\s*[\/\-]\s*\d{2,3}\s*[\/\-]\s*\d{2,3}\b)/i;
     // More specific size patterns to avoid matching "outfit" -> "fit"
-    const sizePattern = /\b(size|sizing|measurement|measure|waist|hip|bust|height|weight|fit\s+(guide|chart|help|advice))\b/i;
-    if (sizePattern.test(lower) || measurementLike.test(lower) || /\b(propose|recommend|suggest)\b.*\b(size)\b/i.test(lower)) {
-      const sizeAdvice = buildSizeAdviceReply(storeData, message, lang);
+    const sizePattern = /\b(size|sizing|measurement|measure|waist|hip|bust|height|weight|fit\s+(guide|chart|help|advice)|confirm.*size|what.*size|which.*size)\b/i;
+    if (sizePattern.test(lower) || measurementLike.test(lower) || /\b(propose|recommend|suggest|confirm|check)\b.*\b(size)\b/i.test(lower)) {
+      // Get conversation context to detect product mentions from previous messages
+      const recentContext = await session.getConversationContext(currentSessionId, 10);
+      const contextText = recentContext ? recentContext.split('\n').slice(-5).join(' ') : '';
+      const fullContextMessage = `${contextText} ${message}`;
+      
+      const sizeAdvice = buildSizeAdviceReply(storeData, fullContextMessage, lang);
       const defaultGuidance = lang==='fr'
-        ? "Sans mesures, voici un repère général: XS <86/66/90, S <92/72/96, M <98/78/102, L <104/84/108, XL au‑dessus. Si vous partagez votre taille/poids/mesures (poitrine/taille/hanches), je peux affiner."
-        : "Without measurements, here's a general guide: XS <86/66/90, S <92/72/96, M <98/78/102, L <104/84/108, XL above. If you share height/weight/measurements (bust/waist/hip), I can refine.";
+        ? "Sans mesures, voici un repère général: XS <86/66/90, S <92/72/96, M <98/78/102, L <104/84/108, XL au‑dessus. Si vous partagez votre taille/poids/mesures (poitrine/taille/hanches), je peux affiner. Pour une recommandation précise, mentionnez aussi le produit qui vous intéresse."
+        : "Without measurements, here's a general guide: XS <86/66/90, S <92/72/96, M <98/78/102, L <104/84/108, XL above. If you share height/weight/measurements (bust/waist/hip), I can refine. For an accurate recommendation, please also mention the product you're interested in.";
       const replySize = sizeAdvice || defaultGuidance;
       await session.addMessage(currentSessionId, replySize, false);
       await analytics.trackMessage(currentSessionId, replySize, false);
@@ -549,8 +554,15 @@ router.post('/enhanced-chat', async (req, res) => {
           }
         }
         if (lastIntent === 'size_help') {
-          const sizeAdvice = buildSizeAdviceReply(storeData, message, lang);
-          const ans = sizeAdvice || (lang==='fr' ? "Pouvez‑vous partager vos mesures (taille, poids, buste/taille/hanches)?" : "Could you share your measurements (height, weight, bust/waist/hip)?");
+          // Get conversation context to detect product mentions
+          const recentContext = await session.getConversationContext(currentSessionId, 10);
+          const contextText = recentContext ? recentContext.split('\n').slice(-5).join(' ') : '';
+          const fullContextMessage = `${contextText} ${message}`;
+          
+          const sizeAdvice = buildSizeAdviceReply(storeData, fullContextMessage, lang);
+          const ans = sizeAdvice || (lang==='fr' 
+            ? "Pouvez‑vous partager vos mesures (taille, poids, buste/taille/hanches)? Si vous avez un produit spécifique en tête, mentionnez-le aussi pour une recommandation plus précise."
+            : "Could you share your measurements (height, weight, bust/waist/hip)? If you have a specific product in mind, please mention it too for a more accurate recommendation.");
           await session.addMessage(currentSessionId, ans, false);
           await analytics.trackMessage(currentSessionId, ans, false);
           return res.json({ reply: ans, intent: 'size_help', confidence: 0.75, sessionId: currentSessionId, escalation: { required: false } });
@@ -800,7 +812,8 @@ GESTION SPÉCIALE:
 - Pour les demandes d'étiquettes d'expédition: Reconnais la demande et explique qu'une assistance humaine est nécessaire
 - Pour les demandes de représentant: Offre immédiatement de connecter à un agent humain
 - Pour les problèmes de commande: Fournis une aide spécifique ou escalade vers le support humain
-- Pour les demandes complexes: Décompose la réponse en étapes claires et actionables`
+- Pour les demandes complexes: Décompose la réponse en étapes claires et actionables
+- Pour les demandes de confirmation de taille: Quand un client demande la taille pour un produit spécifique, identifie le produit à partir du contexte de conversation ou des mentions de produits. Fournis des recommandations de taille précises basées sur la catégorie de produit (robe, veste, pantalon, chaussures, etc.) et les mesures du client. Recommande toujours de vérifier le guide des tailles spécifique au produit pour confirmation.`
     : `You are JUN'S AI – an expert and intelligent fashion assistant for the JUN'S dress store. You understand natural language, nuances, and can adapt your responses to the complete context of the conversation.
 
 ADVANCED CAPABILITIES:
@@ -837,7 +850,8 @@ SPECIAL HANDLING:
 - For shipping label requests: Acknowledge the request and explain that human assistance is needed
 - For representative requests: Immediately offer to connect to a human agent
 - For order issues: Provide specific help or escalate to human support
-- For complex requests: Break down the response into clear, actionable steps`;
+- For complex requests: Break down the response into clear, actionable steps
+- For size confirmation requests: When a customer asks about sizing for a specific product, identify the product from the conversation context or product mentions. Provide accurate size recommendations based on the product category (dress, jacket, pants, shoes, etc.) and the customer's measurements. Always recommend checking the product's specific size guide for confirmation.`;
 
   // Add comprehensive store data context
   if (storeData.products.length > 0) {
@@ -1247,7 +1261,7 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
   const allMaterialTerms = Object.values(materialMap).flat();
   const materialFound = allMaterialTerms.find(m => new RegExp(`\\b${m}\\b`, 'i').test(text));
   let materialKey = materialFound && Object.keys(materialMap).find(k => materialMap[k].includes(materialFound));
-  
+
   // If using stored context, prioritize stored material
   if (opts.useStoredContext && opts.useStoredContext.material) {
     materialKey = opts.useStoredContext.material;
@@ -1263,17 +1277,17 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     console.log(`🎯 Using stored price filters: under=${priceUnder}, over=${priceOver}, between=${priceBetween}`);
   } else {
     priceUnder = (() => {
-      const m = text.match(/under\s*\$?\s*(\d{2,4})/i) || text.match(/below\s*\$?\s*(\d{2,4})/i);
-      return m ? parseFloat(m[1]) : null;
-    })();
+    const m = text.match(/under\s*\$?\s*(\d{2,4})/i) || text.match(/below\s*\$?\s*(\d{2,4})/i);
+    return m ? parseFloat(m[1]) : null;
+  })();
     priceOver = (() => {
-      const m = text.match(/over\s*\$?\s*(\d{2,4})/i) || text.match(/above\s*\$?\s*(\d{2,4})/i);
-      return m ? parseFloat(m[1]) : null;
-    })();
+    const m = text.match(/over\s*\$?\s*(\d{2,4})/i) || text.match(/above\s*\$?\s*(\d{2,4})/i);
+    return m ? parseFloat(m[1]) : null;
+  })();
     priceBetween = (() => {
-      const m = text.match(/(?:between|from)\s*\$?\s*(\d{2,4})\s*(?:and|to|-)\s*\$?\s*(\d{2,4})/i);
-      return m ? [parseFloat(m[1]), parseFloat(m[2])].sort((a,b)=>a-b) : null;
-    })();
+    const m = text.match(/(?:between|from)\s*\$?\s*(\d{2,4})\s*(?:and|to|-)\s*\$?\s*(\d{2,4})/i);
+    return m ? [parseFloat(m[1]), parseFloat(m[2])].sort((a,b)=>a-b) : null;
+  })();
   }
 
   // If using stored context, prioritize stored theme
@@ -1286,7 +1300,7 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
   } else {
     // FIRST: Check hardcoded theme keywords (faster, more reliable)
     const themeMatch = text.match(/(wedding|gala|night\s*out|nightclub|night\s*club|office|business|casual|birthday|cocktail|graduation|beach|summer|winter|eid)/i);
-    const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
+  const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
     
     // SECOND: Try to infer theme from store tags (catches all other themes)
     const tags = allStoreTagsLower();
@@ -1314,9 +1328,9 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     
     // Use hardcoded theme if found (more reliable), otherwise use store tag theme
     if (themeRaw) {
-      // Preserve 'nightclub' as its own theme; normalize 'night club' -> 'nightclub'
+  // Preserve 'nightclub' as its own theme; normalize 'night club' -> 'nightclub'
       theme = themeRaw.replace(/\s+/g, (m) => m === ' ' && themeRaw.includes('night club') ? '' : '-');
-      if (theme === 'night-club') theme = 'nightclub';
+  if (theme === 'night-club') theme = 'nightclub';
       
       // Apply theme mapping (e.g., nightclub -> nightout)
       const mappedTheme = themeMapping[theme.toLowerCase()] || theme;
@@ -1392,7 +1406,7 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
   if (!desiredCategory && /(outfit|outfits|look|looks|ensemble|style|styles|fashion|clothing|clothes|wear|wearing|dress up|get dressed|put together|coordinate|matching|coordinated)/i.test(text)) {
     desiredCategory = 'dress';
   }
-  
+
   // Final fallback: if no category detected but user asked for products, default to dresses
   if (!desiredCategory && opts.useStoredContext) {
     // If using stored context, use stored category or default to dress
@@ -1401,7 +1415,7 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     // If user asked for products but no specific category, default to dresses
     desiredCategory = 'dress';
     console.log(`👗 No category detected but product request found - defaulting to dresses`);
-  }
+    }
 
   // Theme inference already handled above, so this section is now redundant
 
@@ -1459,7 +1473,7 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
       if (hit) {
         console.log(`🎨 Color match (variant): ${product.title} - variant "${value}" matches "${canonicalColorKey}"`);
         return { variant, matchedTerm: hit };
-      }
+    }
     }
     
     // Fallback: product-level (title, handle, body, tags)
@@ -1763,9 +1777,65 @@ function formatActiveDiscounts(storeData, lang) {
   return lang==='fr' ? `Promotions en cours:\n${items}` : `Current promotions:\n${items}`;
 }
 
-// Naive size advice generator from message and typical size charts
+// Enhanced size advice generator with product-specific size charts
 function buildSizeAdviceReply(storeData, message, lang) {
   const text = String(message).toLowerCase();
+  const originalMessage = String(message);
+
+  // Detect product mention in message
+  let mentionedProduct = null;
+  if (storeData && storeData.products && Array.isArray(storeData.products)) {
+    // Try to find product by title match
+    for (const product of storeData.products) {
+      const productTitle = (product.title || '').toLowerCase();
+      const productHandle = (product.handle || '').toLowerCase();
+      const productTags = Array.isArray(product.tags) ? product.tags.map(t => t.toLowerCase()).join(' ') : '';
+      
+      // Check if product title or handle appears in message
+      const titleWords = productTitle.split(/\s+/).filter(w => w.length > 3);
+      const handleWords = productHandle.split('-').filter(w => w.length > 3);
+      
+      const titleMatch = titleWords.some(word => text.includes(word));
+      const handleMatch = handleWords.some(word => text.includes(word));
+      
+      if (titleMatch || handleMatch) {
+        mentionedProduct = product;
+        break;
+      }
+    }
+  }
+
+  // Detect product category from product or message
+  const detectProductCategory = (product) => {
+    if (!product) {
+      // Try to detect from message
+      if (/\b(dress|robe|gown)\b/i.test(text)) return 'dress';
+      if (/\b(jacket|coat|blazer)\b/i.test(text)) return 'jacket';
+      if (/\b(pants|trousers|jeans)\b/i.test(text)) return 'pants';
+      if (/\b(skirt)\b/i.test(text)) return 'skirt';
+      if (/\b(top|shirt|blouse|sweater)\b/i.test(text)) return 'top';
+      if (/\b(shoes?|heel|sneaker|boot|sandal|flat)\b/i.test(text)) return 'shoes';
+      if (/\b(bag|purse|handbag)\b/i.test(text)) return 'bag';
+      return 'general';
+    }
+    
+    const tags = Array.isArray(product.tags) ? product.tags.map(t => t.toLowerCase()).join(' ') : '';
+    const type = (product.type || '').toLowerCase();
+    const title = (product.title || '').toLowerCase();
+    const allText = `${tags} ${type} ${title}`;
+    
+    // Check for shoes first (before pants)
+    if (/\b(shoe|heel|sneaker|boot|sandal|flat)\b/i.test(allText)) return 'shoes';
+    if (/\b(dress|robe|gown)\b/i.test(allText)) return 'dress';
+    if (/\b(jacket|coat|blazer)\b/i.test(allText)) return 'jacket';
+    if (/\b(pants|trousers|jeans)\b/i.test(allText)) return 'pants';
+    if (/\b(skirt)\b/i.test(allText)) return 'skirt';
+    if (/\b(top|shirt|blouse|sweater)\b/i.test(allText)) return 'top';
+    if (/\b(bag|purse|handbag)\b/i.test(allText)) return 'bag';
+    return 'general';
+  };
+
+  const productCategory = detectProductCategory(mentionedProduct);
 
   // Helpers: unit parsing and conversion
   const toNumber = (v) => {
@@ -1825,9 +1895,112 @@ function buildSizeAdviceReply(storeData, message, lang) {
   const heightCm = parseHeight(text);
   const weightKg = parseWeight(text);
 
-  // Suggest size with layered heuristics
+  // Product-specific size charts
+  const getProductSpecificSizeChart = (category, measurements) => {
+    const { bust, waist, hip, heightCm, weightKg } = measurements;
+    
+    switch (category) {
+      case 'dress':
+        if (bust && waist && hip) {
+          // Dress sizing focuses on bust and hip
+          if (bust < 86 && hip < 90) return 'XS';
+          if (bust < 92 && hip < 96) return 'S';
+          if (bust < 98 && hip < 102) return 'M';
+          if (bust < 104 && hip < 108) return 'L';
+          return 'XL or above';
+        }
+        if (heightCm && weightKg) {
+          const bmi = weightKg / Math.pow(heightCm / 100, 2);
+          if (bmi < 19.5) return 'XS';
+          if (bmi < 22.5) return 'S';
+          if (bmi < 25.5) return 'M';
+          if (bmi < 28.5) return 'L';
+          return 'XL or above';
+        }
+        break;
+        
+      case 'jacket':
+      case 'coat':
+        if (bust && waist) {
+          // Jackets focus on bust and waist
+          if (bust < 88 && waist < 68) return 'XS';
+          if (bust < 94 && waist < 74) return 'S';
+          if (bust < 100 && waist < 80) return 'M';
+          if (bust < 106 && waist < 86) return 'L';
+          return 'XL or above';
+        }
+        break;
+        
+      case 'pants':
+        if (waist && hip) {
+          // Pants focus on waist and hip
+          if (waist < 68 && hip < 90) return 'XS';
+          if (waist < 74 && hip < 96) return 'S';
+          if (waist < 80 && hip < 102) return 'M';
+          if (waist < 86 && hip < 108) return 'L';
+          return 'XL or above';
+        }
+        break;
+        
+      case 'skirt':
+        if (waist && hip) {
+          // Skirts focus on waist and hip
+          if (waist < 66 && hip < 88) return 'XS';
+          if (waist < 72 && hip < 94) return 'S';
+          if (waist < 78 && hip < 100) return 'M';
+          if (waist < 84 && hip < 106) return 'L';
+          return 'XL or above';
+        }
+        break;
+        
+      case 'top':
+        if (bust) {
+          // Tops focus primarily on bust
+          if (bust < 84) return 'XS';
+          if (bust < 90) return 'S';
+          if (bust < 96) return 'M';
+          if (bust < 102) return 'L';
+          return 'XL or above';
+        }
+        break;
+        
+      case 'shoes':
+        if (heightCm) {
+          // Shoe sizing based on height (rough estimate)
+          // Note: Actual shoe size should be measured, but this gives a starting point
+          if (heightCm < 155) return 'EU 35-36 / US 5-6';
+          if (heightCm < 165) return 'EU 37-38 / US 6.5-7.5';
+          if (heightCm < 175) return 'EU 39-40 / US 8-9';
+          return 'EU 41+ / US 9.5+';
+        }
+        return null; // Shoes need actual foot measurement
+        
+      default:
+        // General sizing
+        if (bust && waist && hip) {
+          if (bust < 86 && waist < 66 && hip < 90) return 'XS';
+          if (bust < 92 && waist < 72 && hip < 96) return 'S';
+          if (bust < 98 && waist < 78 && hip < 102) return 'M';
+          if (bust < 104 && waist < 84 && hip < 108) return 'L';
+          return 'XL or above';
+        }
+        if (heightCm && weightKg) {
+          const bmi = weightKg / Math.pow(heightCm / 100, 2);
+          if (bmi < 20.5) return 'S';
+          if (bmi < 24.5) return 'M';
+          if (bmi < 28.5) return 'L';
+          return 'XL';
+        }
+    }
+    return null;
+  };
+
+  // Get product-specific size recommendation
+  const productSize = getProductSpecificSizeChart(productCategory, { bust, waist, hip, heightCm, weightKg });
+  
+  // Fallback to general sizing if product-specific didn't work
   const suggestByBWH = () => {
-    if (!(bust && waist && hip)) return '';
+    if (!(bust && waist && hip)) return null;
     if (bust < 86 && waist < 66 && hip < 90) return 'XS';
     if (bust < 92 && waist < 72 && hip < 96) return 'S';
     if (bust < 98 && waist < 78 && hip < 102) return 'M';
@@ -1836,8 +2009,7 @@ function buildSizeAdviceReply(storeData, message, lang) {
   };
 
   const suggestByHW = () => {
-    if (!(heightCm && weightKg)) return '';
-    // Rough BMI-based split
+    if (!(heightCm && weightKg)) return null;
     const bmi = weightKg / Math.pow(heightCm / 100, 2);
     if (bmi < 20.5) return 'S';
     if (bmi < 24.5) return 'M';
@@ -1845,12 +2017,48 @@ function buildSizeAdviceReply(storeData, message, lang) {
     return 'XL';
   };
 
-  const size = suggestByBWH() || suggestByHW();
+  const size = productSize || suggestByBWH() || suggestByHW();
   if (!size) return '';
 
-  const note = lang==='fr'
-    ? `Conseil taille: ${size}. ${heightCm ? `Taille: ${heightCm} cm. ` : ''}${weightKg ? `Poids: ${weightKg} kg. ` : ''}${bust ? `Tour de poitrine: ${bust} cm. ` : ''}${waist ? `Taille: ${waist} cm. ` : ''}${hip ? `Hanches: ${hip} cm. ` : ''}Vérifiez aussi le guide des tailles du produit.`
-    : `Size tip: ${size}. ${heightCm ? `Height: ${heightCm} cm. ` : ''}${weightKg ? `Weight: ${weightKg} kg. ` : ''}${bust ? `Bust: ${bust} cm. ` : ''}${waist ? `Waist: ${waist} cm. ` : ''}${hip ? `Hip: ${hip} cm. ` : ''}Please also check the product's size guide.`;
+  // Build response with product context
+  const productName = mentionedProduct ? mentionedProduct.title : '';
+  const categoryName = lang === 'fr' 
+    ? { dress: 'robe', jacket: 'veste', pants: 'pantalon', skirt: 'jupe', top: 'haut', shoes: 'chaussures', bag: 'sac', general: 'article' }[productCategory] || 'article'
+    : { dress: 'dress', jacket: 'jacket', pants: 'pants', skirt: 'skirt', top: 'top', shoes: 'shoes', bag: 'bag', general: 'item' }[productCategory] || 'item';
+
+  let note = '';
+  if (lang === 'fr') {
+    note = `Conseil taille pour ${productName ? `"${productName}"` : `cette ${categoryName}`}: **${size}**.`;
+    if (heightCm) note += ` Taille: ${heightCm} cm.`;
+    if (weightKg) note += ` Poids: ${weightKg} kg.`;
+    if (bust) note += ` Tour de poitrine: ${bust} cm.`;
+    if (waist) note += ` Taille: ${waist} cm.`;
+    if (hip) note += ` Hanches: ${hip} cm.`;
+    if (productCategory === 'shoes') {
+      note += ` Pour les chaussures, mesurez votre pied du talon à l'orteil le plus long et consultez le guide des tailles du produit.`;
+    } else {
+      note += ` Vérifiez aussi le guide des tailles du produit pour confirmer.`;
+    }
+    if (productCategory !== 'general' && productCategory !== 'shoes') {
+      note += ` Les ${categoryName}s peuvent varier selon le style, alors consultez toujours le guide des tailles spécifique au produit.`;
+    }
+  } else {
+    note = `Size recommendation for ${productName ? `"${productName}"` : `this ${categoryName}`}: **${size}**.`;
+    if (heightCm) note += ` Height: ${heightCm} cm.`;
+    if (weightKg) note += ` Weight: ${weightKg} kg.`;
+    if (bust) note += ` Bust: ${bust} cm.`;
+    if (waist) note += ` Waist: ${waist} cm.`;
+    if (hip) note += ` Hip: ${hip} cm.`;
+    if (productCategory === 'shoes') {
+      note += ` For shoes, measure your foot from heel to longest toe and check the product's size guide.`;
+    } else {
+      note += ` Please also check the product's size guide to confirm.`;
+    }
+    if (productCategory !== 'general' && productCategory !== 'shoes') {
+      note += ` ${categoryName.charAt(0).toUpperCase() + categoryName.slice(1)}s can vary by style, so always check the product-specific size guide.`;
+    }
+  }
+  
   return note.trim();
 }
 
