@@ -322,7 +322,15 @@ router.post('/enhanced-chat', async (req, res) => {
       || /(link|url|page|open\s+it|show\s+me\s+it|where\s+to\s+buy)/i.test(lower);
 
     const shouldRunDiscovery = !(hasLastRecs && looksLikeFollowUp);
-    const productDiscovery = shouldRunDiscovery ? handleProductDiscovery(storeData, message, lang) : '';
+    // Exclude previously recommended items when user asks for "more"
+    let excludeHandles = [];
+    const wantsMore = /(more|another|others|plus|encore|more samples|more options)/i.test(lower);
+    if (wantsMore) {
+      try { excludeHandles = (await session.getSeenRecommendations(currentSessionId)) || []; } catch(_) {}
+    } else if (hasLastRecs) {
+      try { excludeHandles = (await session.getLastRecommendations(currentSessionId)).map(r=>r.handle); } catch(_) {}
+    }
+    const productDiscovery = shouldRunDiscovery ? handleProductDiscovery(storeData, message, lang, { excludeHandles }) : '';
     if (productDiscovery) {
       // Capture product handles from the HTML grid so follow-up questions like
       // "what colors does this dress come in" can be resolved
@@ -1065,7 +1073,7 @@ function normalize(str) {
   return String(str || '').toLowerCase();
 }
 
-function handleProductDiscovery(storeData, message, lang) {
+function handleProductDiscovery(storeData, message, lang, opts = {}) {
   const products = Array.isArray(storeData.products) ? storeData.products : [];
   if (products.length === 0) return '';
 
@@ -1327,7 +1335,9 @@ function handleProductDiscovery(storeData, message, lang) {
   };
 
   const candidates = [];
+  const excludeSet = new Set(Array.isArray(opts.excludeHandles) ? opts.excludeHandles.map(h=>String(h)) : []);
   for (const product of products) {
+    if (excludeSet.has(String(product.handle))) continue;
     // Strict gating by manual tags
     if (!hasThemeTagStrict(product)) continue;
     if (desiredCategory === 'dress' || !desiredCategory) {
@@ -1376,7 +1386,15 @@ function handleProductDiscovery(storeData, message, lang) {
 
   const bothRequested = Boolean(theme) && Boolean(canonicalColor);
   let list = candidates.sort((a,b)=>b.score-a.score);
-  const limit = desiredCategory && desiredCategory !== 'dress' ? 8 : 4;
+  // Determine how many items to show: up to 30 dresses when theme or budget is provided
+  let limit;
+  if (desiredCategory && desiredCategory !== 'dress') {
+    limit = 12;
+  } else {
+    const hasBudget = Boolean(priceBetween) || (priceUnder !== null) || (priceOver !== null);
+    const hasTheme = Boolean(selectedTheme);
+    limit = (hasTheme || hasBudget) ? 30 : 12;
+  }
   if (bothRequested) {
     const strict = list.filter(x => x.score >= 5).slice(0, limit);
     list = strict.length >= 2 ? strict : list.filter(x => x.score >= 1).slice(0, limit);

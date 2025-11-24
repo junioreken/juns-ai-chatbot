@@ -7,7 +7,17 @@ if (window.JUNS_CHATBOT_LOADED) {
 
 // Lightweight configuration
 const CONFIG = {
-  apiUrl: window.location.origin + '/api/enhanced-chat',
+  apiUrl: (window.JUNS_CHATBOT_API_URL || (function () {
+  try {
+    const sc = document.currentScript || (function () {
+      const a = document.getElementsByTagName('script');
+      return a[a.length - 1];
+    })();
+    return new URL(sc.src).origin + '/chat';
+  } catch (e) {
+    return 'https://juns-ai-chatbot-production.up.railway.app/chat';
+  }
+})()),
   lang: (() => {
     const htmlLang = document.documentElement.getAttribute('lang') || '';
     const path = window.location.pathname || '';
@@ -32,7 +42,18 @@ const I18N = {
   }
 };
 
-let sessionId = null;
+let sessionId = (function(){
+  try {
+    var s = localStorage.getItem('juns_session_id');
+    if (!s) {
+      s = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
+      localStorage.setItem('juns_session_id', s);
+    }
+    return s;
+  } catch (_) {
+    return null;
+  }
+})();
 let isVisible = false;
 
 // Optimized DOM creation
@@ -72,12 +93,13 @@ function createChatbot() {
         bottom: 70px;
         right: 0;
         width: 350px;
-        height: 500px;
+        height: min(75vh, 560px);
         background: white;
         border-radius: 12px;
         box-shadow: 0 8px 32px rgba(0,0,0,0.1);
         display: none;
         flex-direction: column;
+        max-height: calc(100vh - 120px);
         overflow: hidden;
       }
       .chat-header {
@@ -203,6 +225,11 @@ function createChatbot() {
 // Optimized message sending
 async function sendMessage(text = null) {
   const input = document.getElementById('message-input');
+    // message-input-font-guard
+    try {
+      if (input) { input.style.fontSize = '16px'; input.style.webkitTextSizeAdjust = '100%'; }
+      if (typeof document !== 'undefined' && document.documentElement) { document.documentElement.style.webkitTextSizeAdjust = '100%'; }
+    } catch(_) {}
   const message = text || input.value.trim();
   
   if (!message) return;
@@ -221,16 +248,28 @@ async function sendMessage(text = null) {
       body: JSON.stringify({
         message: message,
         lang: CONFIG.lang,
-        sessionId: sessionId
+        sessionId: sessionId,
+        storeUrl: window.location.origin
       })
     });
     
     const data = await response.json();
-    sessionId = data.sessionId;
+    if (data && data.sessionId) {
+      sessionId = data.sessionId;
+      try { localStorage.setItem('juns_session_id', sessionId); } catch(_) {}
+    }
     
     // Remove loading and add response
     removeMessage(loadingId);
     addMessage(data.reply, false);
+    // If backend requests live-agent handoff, open Tawk
+    try {
+      if (data && data.triggerLiveChat) {
+        if (typeof openLiveChat === 'function') {
+          openLiveChat();
+        }
+      }
+    } catch(_) {}
     
   } catch (error) {
     removeMessage(loadingId);
@@ -262,6 +301,18 @@ function removeMessage(messageElement) {
 }
 
 function sendQuickMessage(message) {
+  try {
+    const n = String(message || '').toLowerCase();
+    if (n.includes('recommend')) {
+      var handle = (typeof window !== 'undefined' && window.JUNS_RECOMMENDATIONS_HANDLE)
+        ? window.JUNS_RECOMMENDATIONS_HANDLE
+        : 'event-dress-recommendations';
+      var isFr = (document.documentElement.getAttribute('lang') || '').toLowerCase().startsWith('fr')
+        || (window.location.pathname || '').startsWith('/fr');
+      window.location.href = (isFr ? '/fr' : '') + '/pages/' + handle;
+      return;
+    }
+  } catch (_) {}
   sendMessage(message);
 }
 
@@ -288,6 +339,41 @@ function hideChat() {
   }
 }
 
+// --- Minimal Tawk integration for live-agent handoff ---
+let TAWK_LOADING = false;
+let TAWK_LOADED = false;
+function loadTawkOnce() {
+  if (TAWK_LOADING || TAWK_LOADED) return;
+  TAWK_LOADING = true;
+  (function () {
+    var s1 = document.createElement('script');
+    var s0 = document.getElementsByTagName('script')[0];
+    s1.async = true;
+    // Your Tawk property ID
+    s1.src = 'https://embed.tawk.to/68a6b4e77ebce11927981c0e/1j35j5a9d';
+    s1.charset = 'UTF-8';
+    s1.setAttribute('crossorigin', '*');
+    s1.onload = function(){ TAWK_LOADED = true; try { if (window.Tawk_API) window.Tawk_API.hideWidget(); } catch(_) {} };
+    (s0 && s0.parentNode ? s0.parentNode : document.head).insertBefore(s1, s0 || null);
+  })();
+}
+
+async function openLiveChat() {
+  try {
+    loadTawkOnce();
+    let tries = 0;
+    while (tries++ < 100) { // ~5s
+      if (window.Tawk_API && typeof window.Tawk_API.showWidget === 'function') {
+        try { window.Tawk_API.showWidget(); window.Tawk_API.maximize && window.Tawk_API.maximize(); } catch(_) {}
+        try { hideChat(); } catch(_) {}
+        return;
+      }
+      await new Promise(r => setTimeout(r, 50));
+    }
+  } catch(_) {}
+}
+
+
 // Lightweight Tawk detection (reduced polling)
 function checkTawkAndShow() {
   let checkCount = 0;
@@ -313,6 +399,19 @@ function checkTawkAndShow() {
 
 // Optimized initialization
 function init() {
+  try {
+    if (window.visualViewport) {
+      const handler = () => {
+        const win = document.getElementById('chat-window');
+        if (!win) return;
+        const vh = window.visualViewport.height || window.innerHeight;
+        win.style.maxHeight = Math.max(320, Math.round(vh - 120)) + 'px';
+        const kb = Math.max(0, (window.innerHeight - vh));
+        win.style.bottom = Math.max(70, 70 + kb) + 'px';
+      };
+      window.visualViewport.addEventListener('resize', handler, { passive: true });
+    }
+  } catch(_) {}
   // Wait for page to be fully loaded
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {

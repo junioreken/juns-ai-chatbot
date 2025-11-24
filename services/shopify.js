@@ -1,5 +1,24 @@
 const axios = require('axios');
 
+async function fetchAllProducts(baseUrl, headers, cap=1000){
+  const results=[];
+  let url=baseUrl;
+  let guard=0;
+  while(url && results.length < cap && guard++ < 20){
+    const res = await axios.get(url, { headers, timeout: 15000 });
+    const arr = res.data?.products || [];
+    for(const p of arr){ results.push(p); }
+    const link = res.headers && (res.headers.link || res.headers.Link);
+    if(link && /rel="next"/.test(link)){
+      const m = link.match(/<([^>]+)>; rel="next"/);
+      url = m ? m[1] : null;
+    } else {
+      url = null;
+    }
+  }
+  return results;
+}
+
 // Support multiple env var names for compatibility across deployments
 let shopifyDomain = process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOPIFY_DOMAIN;
 const accessToken = process.env.SHOPIFY_ADMIN_TOKEN || process.env.SHOPIFY_API_TOKEN || process.env.SHOPIFY_ADMIN_API;
@@ -21,7 +40,7 @@ async function getLatestOrderByEmail(email) {
   return response.data.orders[0];
 }
 
-async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
+async function getProductsByTheme(theme, budget = 'no-limit', limit = 60, offset = 0) {
   try {
     if (!shopifyDomain || !accessToken) {
       throw new Error('Shopify credentials missing');
@@ -29,34 +48,27 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
   const ADMIN_API_VERSION = '2023-07';
   const base = `https://${shopifyDomain}/admin/api/${ADMIN_API_VERSION}/products.json`;
 
+  // Fetch products from Shopify (paginated)
   const out = [];
   const seen = new Set();
-  
-  // Fetch products from Shopify
-  const url = `${base}?limit=50`;
+  const ADMIN_LIMIT = 250;
+  const firstUrl = `${base}?limit=${ADMIN_LIMIT}`;
   try {
-    console.log(`🔍 Fetching products from Shopify: ${url}`);
-    const { data } = await axios.get(url, {
-      headers: {
-        'X-Shopify-Access-Token': accessToken,
-        'Content-Type': 'application/json'
-      },
-      timeout: 12000
-    });
-    const arr = data?.products || [];
-    console.log(`📦 Got ${arr.length} products from Shopify`);
+    console.log(`🔍 Fetching products (paginated) from: ${firstUrl}`);
+    const headers = { 'X-Shopify-Access-Token': accessToken, 'Content-Type': 'application/json' };
+    const arr = await fetchAllProducts(firstUrl, headers, 1000);
+    console.log(`📦 Aggregated ${arr.length} products from Shopify`);
     for (const p of arr) {
       if (seen.has(p.handle)) continue;
       seen.add(p.handle);
       out.push(p);
     }
   } catch (error) {
-    console.error(`❌ Error fetching products:`, error.message);
+    console.error(`❌ Error fetching products: `, error.message);
     if (error.response) {
       console.error(`❌ Response status: ${error.response.status}`);
-      console.error(`❌ Response data:`, error.response.data);
+      console.error(`❌ Response data: `, error.response.data);
     }
-    throw error;
   }
 
   const themeSlug = String(theme || '').toLowerCase();
@@ -91,28 +103,15 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
   const filtered = out.filter(p => {
     const tags = normalizeTags(p.tags);
     const themed = exactThemeTags.some(exactTag => tags.includes(exactTag));
-    
-    if (!themed) {
-      console.log(`❌ ${p.title} - No exact theme match. Tags: [${tags.join(', ')}]`);
-      return false;
-    }
-    
-    // If it has the theme tag, include it regardless of other tags
-    // The frontend will categorize it based on title and product type
-    console.log(`✅ ${p.title} - Has theme tag "${themeSlug}". Tags: [${tags.join(', ')}]`);
-    
+    if (!themed) return false;
     const price = minVariantPrice(p);
-    const pricePass = priceOk(price);
-    
-    if (!pricePass) {
-      console.log(`❌ ${p.title} - Price $${price} doesn't match budget ${budget}`);
-      return false;
-    }
-    
-    return true;
-  }).slice(0, limit);
-  
-  console.log(`📊 Final result: ${filtered.length} products match exact theme tag "${themeSlug}" and budget "${budget}"`);
+    return priceOk(price);
+  });
+
+  // Window for pagination (offset+limit) while keeping both dresses and accessories)
+  const start = Math.max(parseInt(offset||0,10), 0);
+  const windowed = filtered.slice(start, start + limit);
+  console.log(`📊 Final result: ${windowed.length} products match exact theme tag "${themeSlug}" and budget "${budget}"`);
 
   // If no products match, return some products for debugging (remove this later)
   if (filtered.length === 0) {
@@ -133,7 +132,7 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60) {
     return debugProducts;
   }
 
-  return filtered.map(p => ({
+  return windowed.map(p => ({
     title: p.title,
     image: (p.image && p.image.src) || (Array.isArray(p.images) && p.images[0] && p.images[0].src) || '',
     price: p.variants && p.variants[0] ? p.variants[0].price : '',
