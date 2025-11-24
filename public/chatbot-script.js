@@ -122,21 +122,40 @@ function loadTawkOnce() {
           Tawk_API.hideWidget(); 
         } 
       } catch(_) {}
-      // Aggressively keep it hidden - check every 500ms for 10 seconds
+      // Aggressively keep it hidden - check every 200ms for 60 seconds
       try {
         let attempts = 0; 
         const hideLoop = setInterval(() => {
           attempts++;
           try { 
             if (window.Tawk_API) {
-              // Only hide if not explicitly opened via JUNS.support.open()
-              if (!window.JUNS || !window.JUNS.support || typeof window.JUNS.support.open !== 'function') {
-                Tawk_API.hideWidget(); 
+              // Check if widget was explicitly opened via JUNS.support.open()
+              var wasExplicitlyOpened = false;
+              try {
+                if (window.JUNS && window.JUNS.support && typeof window.JUNS.support.open === 'function') {
+                  // Check localStorage to see if it was explicitly opened
+                  var tawkStorageKey = localStorage.getItem('juns_tawk_opened');
+                  wasExplicitlyOpened = tawkStorageKey === 'true';
+                }
+              } catch(_) {}
+              
+              // Only hide if NOT explicitly opened
+              if (!wasExplicitlyOpened) {
+                Tawk_API.hideWidget();
+                // Also hide via CSS
+                var tawkElements = document.querySelectorAll('[data-tawk-widget], #tawk-widget, iframe[src*="tawk"], iframe[src*="tawk.to"]');
+                tawkElements.forEach(function(el) {
+                  if (el) {
+                    el.style.display = 'none';
+                    el.style.visibility = 'hidden';
+                    el.style.opacity = '0';
+                  }
+                });
               }
             }
           } catch(_) {}
-          if (attempts > 20) clearInterval(hideLoop); // 10 seconds
-        }, 500);
+          if (attempts > 300) clearInterval(hideLoop); // 60 seconds
+        }, 200);
       } catch(_) {}
     };
     if (s0 && s0.parentNode) s0.parentNode.insertBefore(s1, s0); else document.head.appendChild(s1);
@@ -152,6 +171,7 @@ async function openLiveChat() {
   
   // Fallback: Only if theme helper is not available, load Tawk ourselves
   // But ensure it's positioned bottom-left BEFORE showing
+  // NOTE: This fallback should rarely be needed if theme code is properly loaded
   loadTawkOnce();
   
   // Wait briefly for Tawk to be ready
@@ -164,7 +184,7 @@ async function openLiveChat() {
         setupTawkPositioningInChatbot();
         
         // Force positioning immediately with setProperty
-        const tawkElements = document.querySelectorAll('[data-tawk-widget], #tawk-widget, iframe[src*="tawk"], iframe[src*="tawk.to"], div[id*="tawk"], div[class*="tawk"], body > div[style*="position: fixed"]');
+        const tawkElements = document.querySelectorAll('[data-tawk-widget], #tawk-widget, iframe[src*="tawk"], iframe[src*="tawk.to"]');
         tawkElements.forEach(el => {
           if (el) {
             el.style.setProperty('position', 'fixed', 'important');
@@ -227,78 +247,78 @@ async function openLiveChat() {
 }
 
 function setupTawkPositioningInChatbot() {
-  try {
+      try {
     // Add CSS to position Tawk widget to bottom-left - ULTRA AGGRESSIVE
-    const style = document.createElement('style');
+        const style = document.createElement('style');
     style.id = 'tawk-positioning-chatbot';
-    style.textContent = `
+        style.textContent = `
       /* Force bottom-left positioning - override EVERYTHING */
-      .tawk-widget-container,
-      [data-tawk-widget],
-      #tawk-widget,
-      iframe[src*="tawk"],
-      div[id*="tawk"],
-      div[class*="tawk"],
-      div[style*="position: fixed"],
-      div[style*="bottom"],
+          .tawk-widget-container,
+          [data-tawk-widget],
+          #tawk-widget,
+          iframe[src*="tawk"],
+          div[id*="tawk"],
+          div[class*="tawk"],
+          div[style*="position: fixed"],
+          div[style*="bottom"],
       div[style*="right"],
       div[style*="left"],
       div[style*="z-index"] {
-        position: fixed !important;
+            position: fixed !important;
         left: 30px !important;
         bottom: 30px !important;
         top: auto !important;
         transform: none !important;
         right: auto !important;
-        z-index: 999999 !important;
-        width: 60px !important;
-        height: 60px !important;
-      }
-      
+            z-index: 999999 !important;
+            width: 60px !important;
+            height: 60px !important;
+          }
+          
       /* Force ALL Tawk iframes to bottom-left */
       iframe[src*="tawk"] {
         position: fixed !important;
         left: 30px !important;
         bottom: 30px !important;
         right: auto !important;
-        top: auto !important;
+            top: auto !important;
       }
       
-      .tawk-widget-container .tawk-chat,
-      [data-tawk-widget] .tawk-chat,
+          .tawk-widget-container .tawk-chat,
+          [data-tawk-widget] .tawk-chat,
       #tawk-widget .tawk-chat {
         left: 30px !important;
         bottom: 100px !important;
         right: auto !important;
       }
       
-      html body .tawk-widget-container,
-      html body [data-tawk-widget],
-      html body #tawk-widget,
-      html body div[style*="position: fixed"],
+          html body .tawk-widget-container,
+          html body [data-tawk-widget],
+          html body #tawk-widget,
+          html body div[style*="position: fixed"],
       html body div[style*="bottom"],
       html body div[style*="right"] {
-        position: fixed !important;
+            position: fixed !important;
         left: 30px !important;
         bottom: 30px !important;
         top: auto !important;
         transform: none !important;
         right: auto !important;
-      }
-    `;
-    
+          }
+        `;
+        
     const existingStyle = document.getElementById('tawk-positioning-chatbot');
-    if (existingStyle) {
-      existingStyle.remove();
-    }
-    
-    document.head.appendChild(style);
-    
+        if (existingStyle) {
+          existingStyle.remove();
+        }
+        
+        document.head.appendChild(style);
+        
     // Also directly modify any existing Tawk elements - FORCE bottom-left with !important
     function forceBottomLeft() {
       const tawkElements = document.querySelectorAll('[data-tawk-widget], #tawk-widget, iframe[src*="tawk"], iframe[src*="tawk.to"], div[id*="tawk"], div[class*="tawk"], div[style*="position: fixed"], body > div[style*="position: fixed"], body > iframe');
-      tawkElements.forEach(el => {
-        if (el) {
+          tawkElements.forEach(el => {
+            if (el) {
           // Use setProperty with 'important' flag for stronger override
           el.style.setProperty('position', 'fixed', 'important');
           el.style.setProperty('left', '30px', 'important');
@@ -320,7 +340,7 @@ function setupTawkPositioningInChatbot() {
     setTimeout(forceBottomLeft, 200);
     setTimeout(forceBottomLeft, 500);
     setTimeout(forceBottomLeft, 1000);
-    
+        
     // Use MutationObserver to catch when widget is added to DOM
     const observer = new MutationObserver(() => {
       forceBottomLeft();
@@ -332,9 +352,9 @@ function setupTawkPositioningInChatbot() {
     });
     
     // Continuous monitoring to catch and reposition - check for right positioning
-    let tawkMonitor = setInterval(() => {
+        let tawkMonitor = setInterval(() => {
       const tawkElements = document.querySelectorAll('#tawk-widget, [data-tawk-widget], iframe[src*="tawk"], iframe[src*="tawk.to"], div[id*="tawk"], div[class*="tawk"], body > div[style*="position: fixed"]');
-      tawkElements.forEach(el => {
+          tawkElements.forEach(el => {
         if (el) {
           const computed = window.getComputedStyle(el);
           const rightValue = computed.right;
@@ -353,17 +373,17 @@ function setupTawkPositioningInChatbot() {
             el.style.setProperty('z-index', '999999', 'important');
             console.log('🔄 FORCED Tawk to bottom-left:', el);
           }
-        }
-      });
+            }
+          });
     }, 200); // Check every 200ms - VERY AGGRESSIVE
     
-    setTimeout(() => {
-      clearInterval(tawkMonitor);
+        setTimeout(() => {
+          clearInterval(tawkMonitor);
       observer.disconnect();
     }, 120000); // Monitor for 2 minutes
-  } catch(e) {
+      } catch(e) {
     console.log('Error positioning Tawk:', e);
-  }
+      }
 }
 
 function setupTawkEventListeners() {
