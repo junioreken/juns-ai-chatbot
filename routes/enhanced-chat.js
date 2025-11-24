@@ -1284,33 +1284,36 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     theme = selectedTheme; // Set theme from stored context
     console.log(`🎯 Using stored theme: ${selectedTheme}`);
   } else {
-    // FIRST: Try to infer theme from store tags (catches all themes like cocktail, nightclub, etc.)
-    const tags = allStoreTagsLower();
-    let bestThemeFromTags = '';
-    for (const t of tags) {
-      const spaced = t;
-      const slug = t.replace(/\s+/g,'-');
-      const re = new RegExp(`\\b${spaced.replace(/[-/\\^$*+?.()|[\]{}]/g,'\\$&')}\\b`, 'i');
-      if (re.test(message) && slug.length > bestThemeFromTags.length) {
-        bestThemeFromTags = slug;
-      }
-    }
-    
-    // SECOND: Check hardcoded theme keywords
+    // FIRST: Check hardcoded theme keywords (faster, more reliable)
     const themeMatch = text.match(/(wedding|gala|night\s*out|nightclub|night\s*club|office|business|casual|birthday|cocktail|graduation|beach|summer|winter|eid)/i);
     const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
     
-    // Use store tag theme if found, otherwise use hardcoded theme
-    if (bestThemeFromTags) {
-      theme = bestThemeFromTags;
-      selectedTheme = decodeURIComponent(bestThemeFromTags);
-      console.log(`🎯 Theme from store tags: ${selectedTheme}`);
-    } else if (themeRaw) {
+    // SECOND: Try to infer theme from store tags (catches all other themes)
+    const tags = allStoreTagsLower();
+    let bestThemeFromTags = '';
+    const messageLower = message.toLowerCase();
+    for (const t of tags) {
+      const tagLower = t.toLowerCase();
+      // Check if tag appears in message (case-insensitive, word boundary aware)
+      if (messageLower.includes(tagLower)) {
+        // Prefer longer, more specific tags
+        if (tagLower.length > bestThemeFromTags.length) {
+          bestThemeFromTags = tagLower;
+        }
+      }
+    }
+    
+    // Use hardcoded theme if found (more reliable), otherwise use store tag theme
+    if (themeRaw) {
       // Preserve 'nightclub' as its own theme; normalize 'night club' -> 'nightclub'
       theme = themeRaw.replace(/\s+/g, (m) => m === ' ' && themeRaw.includes('night club') ? '' : '-');
       if (theme === 'night-club') theme = 'nightclub';
       selectedTheme = theme ? decodeURIComponent(theme) : '';
       console.log(`🎯 Theme from keywords: ${selectedTheme}`);
+    } else if (bestThemeFromTags) {
+      theme = bestThemeFromTags;
+      selectedTheme = bestThemeFromTags; // Already lowercase from allStoreTagsLower
+      console.log(`🎯 Theme from store tags: ${selectedTheme}`);
     }
   }
 
