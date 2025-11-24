@@ -2088,7 +2088,12 @@ function buildSizeAdviceReply(storeData, message, lang) {
       if (hip) note += ` Hanches: ${hip} cm.`;
       if (footLengthCm) note += ` Longueur du pied: ${footLengthCm} cm.`;
     if (productCategory === 'shoes') {
-      note += ` Pour les chaussures, mesurez votre pied du talon à l'orteil le plus long et consultez le guide des tailles du produit.`;
+      if (footLengthCm) {
+        note += ` Basé sur une longueur de pied de ${footLengthCm} cm.`;
+      } else {
+        note += ` Pour une recommandation précise, mesurez votre pied du talon à l'orteil le plus long (en cm) et partagez cette mesure.`;
+      }
+      note += ` Les chaussures peuvent varier selon le style (talons, baskets, bottes), alors consultez toujours le guide des tailles spécifique au produit.`;
     } else {
       note += ` Vérifiez aussi le guide des tailles du produit pour confirmer.`;
     }
