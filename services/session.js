@@ -270,6 +270,29 @@ class SessionService {
     const session = await this.getSession(sessionId);
     return Array.isArray(session?.context?.seenRecommendations) ? session.context.seenRecommendations : [];
   }
+
+  // Store the last search context (category, material, theme, color, price filters)
+  async setLastSearchContext(sessionId, searchContext) {
+    const session = await this.getSession(sessionId);
+    session.context.lastSearchContext = {
+      category: searchContext.category || null,
+      material: searchContext.material || null,
+      theme: searchContext.theme || null,
+      color: searchContext.color || null,
+      priceUnder: searchContext.priceUnder || null,
+      priceOver: searchContext.priceOver || null,
+      priceBetween: searchContext.priceBetween || null,
+      timestamp: new Date().toISOString()
+    };
+    await cache.set(`session:${sessionId}`, session, this.sessionTTL);
+    return session.context.lastSearchContext;
+  }
+
+  // Get the last search context
+  async getLastSearchContext(sessionId) {
+    const session = await this.getSession(sessionId);
+    return session?.context?.lastSearchContext || null;
+  }
 }
 
 module.exports = new SessionService();
