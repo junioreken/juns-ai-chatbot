@@ -312,7 +312,7 @@ router.post('/enhanced-chat', async (req, res) => {
     }
 
     // 8e. Product discovery (colors, themes, budget cues) before LLM
-    // But skip if this looks like a follow-up about previously shown products
+    // ALWAYS trigger product discovery if user asks for dresses/products/recommendations
     const hasLastRecs = (await session.getLastRecommendations(currentSessionId)).length > 0;
     const lastSearchContext = await session.getLastSearchContext(currentSessionId);
     const looksLikeFollowUp = /(first|second|third|fourth|this|that|it|those|them)\b/i.test(lower)
@@ -324,6 +324,9 @@ router.post('/enhanced-chat', async (req, res) => {
       || /(length|how\s+long|mini|midi|maxi|knee\s*length|floor\s*length)/i.test(lower)
       || /(link|url|page|open\s+it|show\s+me\s+it|where\s+to\s+buy)/i.test(lower);
 
+    // Detect product/dress requests - ALWAYS show in card format
+    const wantsProducts = /(show|recommend|suggest|find|looking|need|want|search|browse|see|display|give me|help me find|what.*have|what.*available|dress|dresses|gown|gowns|robe|robes|jacket|jackets|coat|coats|skirt|skirts|bag|bags|shoes|heels|accessories|products|items|clothing|clothes|fashion|outfit|outfits|look|looks|style|styles|ensemble)/i.test(lower);
+    
     // Detect "more" requests - use last search context instead of parsing message
     const wantsMore = /(more|another|others|other|different|alternatives|alternate|plus|encore|additional|extra|further|next|another one|more options|more samples|show me more|give me more|recommend more|suggest more|any other|any others)\b/i.test(lower);
     
@@ -344,14 +347,13 @@ router.post('/enhanced-chat', async (req, res) => {
           useStoredContext: lastSearchContext // Pass stored context
         }
       );
-    } else {
-      // New search - parse message normally
-      const shouldRunDiscovery = !(hasLastRecs && looksLikeFollowUp);
+    } else if (wantsProducts && !(hasLastRecs && looksLikeFollowUp)) {
+      // User wants products/dresses - ALWAYS show in card format
       let excludeHandles = [];
       if (hasLastRecs) {
         try { excludeHandles = (await session.getLastRecommendations(currentSessionId)).map(r=>r.handle); } catch(_) {}
       }
-      productDiscovery = shouldRunDiscovery ? handleProductDiscovery(storeData, message, lang, { excludeHandles }) : '';
+      productDiscovery = handleProductDiscovery(storeData, message, lang, { excludeHandles });
     }
     if (productDiscovery) {
       // Capture product handles from the HTML grid so follow-up questions like
@@ -774,12 +776,12 @@ INSTRUCTIONS DE RÉPONSE:
 3. Utilise le contexte de conversation pour des réponses cohérentes et personnalisées
 4. Adapte ton niveau de formalité au style de communication du client
 5. Fournis des réponses complètes et détaillées (8-12 phrases pour les questions complexes)
-6. Suggère des produits pertinents avec des justifications et raisonnements spécifiques
+6. IMPORTANT: Quand l'utilisateur demande des robes, produits, recommandations, ou "montre-moi" des articles, NE liste PAS les produits dans ta réponse texte. Le système affichera automatiquement les produits dans un format de cartes visuelles avec images et liens. Au lieu de cela, fournis un contexte utile, des conseils de style, ou pose des questions de clarification sur leurs préférences (couleur, style, occasion, budget).
 7. Anticipe les questions de suivi possibles et traite-les de manière proactive
 8. Sois naturel, conversationnel et vraiment utile - pas robotique
 9. Montre de l'empathie et de la compréhension de la situation du client
 10. Fournis des conseils actionables et des étapes claires
-11. Utilise des exemples spécifiques et des détails concrets de l'inventaire de la boutique
+11. Utilise des exemples spécifiques et des détails concrets de l'inventaire de la boutique (mais ne liste pas les noms de produits - laisse le système les afficher visuellement)
 12. Pose des questions de clarification quand nécessaire pour mieux comprendre la demande
 13. CRITIQUE: Pour les questions de suivi avec pronoms ("ça", "celui-ci", "celle-là", "le premier", "cette robe") ou références implicites, tu DOIS t'appuyer sur les ANCRAGES DE SUIVI (dernier intent, derniers produits) pour rester sur le sujet. NE change JAMAIS de sujet à cause de mots-clés isolés. Si l'utilisateur dit "qu'en est-il de celui-ci" ou "dis-m'en plus", il fait référence aux DERNIERS PRODUITS ou au DERNIER INTENT mentionnés. Vérifie toujours les ANCRAGES DE SUIVI avant de répondre.
 14. Quand l'utilisateur pose des questions de suivi, maintiens le contexte de la conversation. Ne commence pas un nouveau sujet juste parce qu'un mot-clé apparaît. Par exemple, si nous discutions d'une robe de mariée et que l'utilisateur dit "quelles couleurs sont disponibles", il parle de la robe de mariée dont nous venons de discuter, PAS d'une nouvelle recherche de produit.
@@ -811,12 +813,12 @@ RESPONSE INSTRUCTIONS:
 3. Use conversation context for coherent, personalized responses
 4. Adapt your formality level to match the customer's communication style
 5. Provide comprehensive, detailed responses (8-12 sentences for complex questions)
-6. Suggest relevant products with specific justifications and reasoning
+6. IMPORTANT: When the user asks for dresses, products, recommendations, or to "show me" items, DO NOT list products in your text response. The system will automatically display products in a visual card format with images and links. Instead, provide helpful context, styling advice, or ask clarifying questions about their preferences (color, style, occasion, budget).
 7. Anticipate possible follow-up questions and address them proactively
 8. Be natural, conversational, and genuinely helpful - not robotic
 9. Show empathy and understanding of the customer's situation
 10. Provide actionable advice and clear next steps
-11. Use specific examples and concrete details from the store inventory
+11. Use specific examples and concrete details from the store inventory (but don't list product names - let the system display them visually)
 12. Ask clarifying questions when needed to better understand the request
 13. CRITICAL: For follow-ups using pronouns ("it", "this", "that", "the first one", "that dress") or implicit references, you MUST rely on the FOLLOW-UP ANCHORS (last intent, last products) to stay on topic. NEVER pivot topics due to isolated keywords. If the user says "what about this one" or "tell me more about it", they are referring to the LAST PRODUCTS or LAST INTENT mentioned. Always check the FOLLOW-UP ANCHORS before answering.
 14. When the user asks follow-up questions, maintain the conversation context. Do not start a new topic just because a keyword appears. For example, if we were discussing a wedding dress and the user says "what colors does it come in", they mean the wedding dress we just discussed, NOT a new product search.
