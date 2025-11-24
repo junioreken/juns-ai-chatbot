@@ -1265,6 +1265,7 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     theme = selectedTheme; // Set theme from stored context
     console.log(`🎯 Using stored theme: ${selectedTheme}`);
   } else {
+    // Parse theme from message - check for theme keywords
     const themeMatch = text.match(/(wedding|gala|night\s*out|nightclub|night\s*club|office|business|casual|birthday|cocktail|graduation|beach|summer|winter|eid)/i);
     const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
     // Preserve 'nightclub' as its own theme; normalize 'night club' -> 'nightclub'
@@ -1273,6 +1274,23 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
       : '';
     if (theme === 'night-club') theme = 'nightclub';
     selectedTheme = theme ? decodeURIComponent(theme) : '';
+    
+    // If no theme found in message, try to infer from store tags
+    if (!selectedTheme) {
+      const tags = allStoreTagsLower();
+      let best = '';
+      for (const t of tags) {
+        const spaced = t;
+        const slug = t.replace(/\s+/g,'-');
+        const re = new RegExp(`\\b${spaced.replace(/[-/\\^$*+?.()|[\]{}]/g,'\\$&')}\\b`, 'i');
+        if (re.test(message) && slug.length > best.length) best = slug;
+      }
+      if (best) {
+        theme = best;
+        selectedTheme = decodeURIComponent(best);
+        console.log(`🎯 Inferred theme from store tags: ${selectedTheme}`);
+      }
+    }
   }
 
   // Theme synonyms mapping for exact matching
@@ -1352,21 +1370,7 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     } catch (_) { return []; }
   }
 
-  if (!theme) {
-    const tags = allStoreTagsLower();
-    let best = '';
-    for (const t of tags) {
-      const spaced = t;
-      const slug = t.replace(/\s+/g,'-');
-      const re = new RegExp(`\\b${spaced.replace(/[-/\\^$*+?.()|[\]{}]/g,'\\$&')}\\b`, 'i');
-      if (re.test(message) && slug.length > best.length) best = slug;
-    }
-    if (best) {
-      theme = best;
-      selectedTheme = decodeURIComponent(best);
-      if (!desiredCategory) desiredCategory = 'dress';
-    }
-  }
+  // Theme inference already handled above, so this section is now redundant but kept for safety
 
   const needles = [];
   if (canonicalColor) needles.push(canonicalColor, ...(colorMap[canonicalColor]||[]));
@@ -1515,28 +1519,20 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
       continue;
     }
     
-    // Category enforcement - be more flexible for dress requests
+    // Category enforcement - original logic restored
     if (desiredCategory === 'dress' || !desiredCategory) {
-      // For dresses, use heuristic if strict tag not found
-      const cat = classifyProduct(product);
-      if (cat === 'dress' || isDressHeuristic(product)) {
-        // Allow through
-      } else if (hasDressTagStrict(product)) {
-        // Allow through
-      } else if (desiredCategory === 'dress') {
-        // If explicitly asking for dresses, require dress classification
-        continue;
-      }
-      // If no desiredCategory, allow through (will be filtered by score)
+      const hasAnyStrict = true; // we don't know across all products here; allow heuristic fallback if missing tag
+      if (!(hasDressTagStrict(product) || (!hasAnyStrict && isDressHeuristic(product)))) continue;
     }
     if (desiredCategory === 'skirt') {
-      const cat = classifyProduct(product);
-      if (cat !== 'skirt' && !hasSkirtTagStrict(product)) continue;
+      if (!hasSkirtTagStrict(product)) continue;
     }
-    // Category enforcement for other categories
-    if (desiredCategory && desiredCategory !== 'dress' && desiredCategory !== 'skirt') {
+    // Category enforcement
+    if (desiredCategory) {
       const cat = classifyProduct(product);
       const allowed = desiredCategory === 'accessory' ? ['accessory','bag','jewelry'] : [desiredCategory];
+      // Exclude skirts when asking for dresses only
+      if (desiredCategory === 'dress' && cat === 'skirt') continue;
       if (!allowed.includes(cat)) continue;
     }
 
