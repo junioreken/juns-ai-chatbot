@@ -1028,5 +1028,3 @@ function createLauncher() {
     if (attempts > 40) clearInterval(vis); // ~20s max
   }, 500);
 })();
-
-} // Close the else block for preventing multiple loads
