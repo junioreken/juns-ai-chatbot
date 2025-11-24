@@ -1400,10 +1400,20 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     console.log(`👗 Detected dress request - setting category to dress`);
   }
   
+  // Special handling for "Complete my look" - show best accessories
+  const isCompleteMyLook = /\b(complete\s*my\s*look|complete\s*the\s*look|finish\s*my\s*look|accessorize|accessories?\s*for\s*my\s*look)\b/i.test(text);
+  if (isCompleteMyLook) {
+    desiredCategory = 'accessory';
+    console.log(`✨ "Complete my look" detected - showing best accessories`);
+  }
+  
+  // Make isCompleteMyLook available in scoring function scope
+  const completeMyLookFlag = isCompleteMyLook;
+  
   // Default to dresses when user specifies only a theme (e.g., "casual", "wedding") with no category
   if (!desiredCategory && theme) desiredCategory = 'dress';
-  // Default to dresses for outfit recommendations without specific category
-  if (!desiredCategory && /(outfit|outfits|look|looks|ensemble|style|styles|fashion|clothing|clothes|wear|wearing|dress up|get dressed|put together|coordinate|matching|coordinated)/i.test(text)) {
+  // Default to dresses for outfit recommendations without specific category (unless it's "complete my look")
+  if (!desiredCategory && !isCompleteMyLook && /(outfit|outfits|look|looks|ensemble|style|styles|fashion|clothing|clothes|wear|wearing|dress up|get dressed|put together|coordinate|matching|coordinated)/i.test(text)) {
     desiredCategory = 'dress';
   }
 
@@ -1577,11 +1587,20 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
         if (terms.some(n => n && hay.includes(n))) score += 1;
       }
     }
-    if (wantAccessories) {
-      if (accessoryTerms.some(n => hay.includes(n))) score += 2; else score -= 1;
+    if (wantAccessories || completeMyLookFlag) {
+      if (accessoryTerms.some(n => hay.includes(n))) score += 3; else score -= 1; // Higher boost for accessories
     } else {
       if (tags.includes('dress') || tags.includes('gown') || tags.includes('robe') || tags.includes('robes')) score += 1;
     }
+    
+    // Extra boost for "Complete my look" - prioritize accessories
+    if (completeMyLookFlag) {
+      const cat = classifyProduct(p);
+      if (['bag', 'jewelry', 'accessory'].includes(cat)) {
+        score += 5; // Strong boost for accessories when "complete my look" is requested
+      }
+    }
+    
     return score;
   }
 
@@ -1725,14 +1744,30 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
 
   const bothRequested = Boolean(theme) && Boolean(canonicalColor);
   let list = candidates.sort((a,b)=>b.score-a.score);
-  // Determine how many items to show: up to 30 dresses when theme or budget is provided
-  let limit;
-  if (desiredCategory && desiredCategory !== 'dress') {
-    limit = 12;
+  
+  // Special handling for "Complete my look" - prioritize best accessories
+  if (completeMyLookFlag) {
+    // For "Complete my look", show top accessories sorted by score (best first)
+    // Prioritize products with higher scores (better matches)
+    list = list.filter(x => x.score >= 0).slice(0, 20); // Show up to 20 best accessories
+    console.log(`✨ Showing ${list.length} best accessories for "Complete my look"`);
   } else {
-    const hasBudget = Boolean(priceBetween) || (priceUnder !== null) || (priceOver !== null);
-    const hasTheme = Boolean(selectedTheme);
-    limit = (hasTheme || hasBudget) ? 30 : 12;
+    // Determine how many items to show: up to 30 dresses when theme or budget is provided
+    let limit;
+    if (desiredCategory && desiredCategory !== 'dress') {
+      limit = 12;
+    } else {
+      const hasBudget = Boolean(priceBetween) || (priceUnder !== null) || (priceOver !== null);
+      const hasTheme = Boolean(selectedTheme);
+      limit = (hasTheme || hasBudget) ? 30 : 12;
+    }
+    
+    if (bothRequested) {
+      const strict = list.filter(x => x.score >= 5).slice(0, limit);
+      list = strict.length >= 2 ? strict : list.filter(x => x.score >= 1).slice(0, limit);
+    } else {
+      list = list.filter(x => x.score >= 0).slice(0, limit);
+    }
   }
   if (bothRequested) {
     const strict = list.filter(x => x.score >= 5).slice(0, limit);
