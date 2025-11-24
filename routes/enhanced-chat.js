@@ -1313,11 +1313,27 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     console.log(`🎯 Using stored category: ${desiredCategory}`);
   }
   
+  // IMPORTANT: If user explicitly says "dress" or "dresses", always set category to dress
+  if (!desiredCategory && /\b(dress|dresses)\b/i.test(text)) {
+    desiredCategory = 'dress';
+    console.log(`👗 Detected dress request - setting category to dress`);
+  }
+  
   // Default to dresses when user specifies only a theme (e.g., "casual", "wedding") with no category
   if (!desiredCategory && theme) desiredCategory = 'dress';
   // Default to dresses for outfit recommendations without specific category
   if (!desiredCategory && /(outfit|outfits|look|looks|ensemble|style|styles|fashion|clothing|clothes|wear|wearing|dress up|get dressed|put together|coordinate|matching|coordinated)/i.test(text)) {
     desiredCategory = 'dress';
+  }
+  
+  // Final fallback: if no category detected but user asked for products, default to dresses
+  if (!desiredCategory && opts.useStoredContext) {
+    // If using stored context, use stored category or default to dress
+    desiredCategory = opts.useStoredContext.category || 'dress';
+  } else if (!desiredCategory && /(show|recommend|suggest|find|looking|need|want|search|browse|see|display|give me|help me find|what.*have|what.*available)/i.test(text)) {
+    // If user asked for products but no specific category, default to dresses
+    desiredCategory = 'dress';
+    console.log(`👗 No category detected but product request found - defaulting to dresses`);
   }
 
   // If theme not recognized, infer from merchant tags present in the user's message
