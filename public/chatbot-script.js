@@ -133,14 +133,103 @@ function loadTawkOnce() {
 }
 
 async function openLiveChat() {
-  // ALWAYS use theme provided helper - DO NOT auto-open Tawk
+  // ALWAYS use theme provided helper first (it handles positioning and hiding properly)
   if (window.JUNS && window.JUNS.support && typeof window.JUNS.support.open === 'function') {
     window.JUNS.support.open();
     return;
   }
-  // DO NOT load Tawk ourselves - this causes auto-opening
-  // Only the theme code should handle Tawk opening and positioning
-  console.log('⚠️ JUNS.support.open() not available - Tawk should be opened via theme code only');
+  
+  // Fallback: Only if theme helper is not available, load Tawk ourselves
+  // But ensure it's positioned bottom-left and hidden by default
+  loadTawkOnce();
+  
+  // Wait briefly for Tawk to be ready
+  let tries = 0;
+  const maxTries = 100; // ~5s worst case
+  while (tries < maxTries) {
+    if (window.Tawk_API && typeof window.Tawk_API.showWidget === 'function') {
+      try {
+        // Position Tawk widget to bottom-left BEFORE showing
+        setupTawkPositioningInChatbot();
+        
+        window.Tawk_API.showWidget();
+        // Call maximize repeatedly for first second to ensure full chat view opens
+        let repeat = 0; 
+        const ensureOpen = setInterval(() => {
+          try { window.Tawk_API.maximize(); } catch(_) {}
+          if (++repeat > 10) clearInterval(ensureOpen);
+        }, 200);
+      } catch(_) {}
+      break;
+    }
+    await new Promise(r => setTimeout(r, 100));
+    tries++;
+  }
+  
+  // Set up Tawk event listeners to show JUN'S AI when Tawk closes
+  setupTawkEventListeners();
+}
+
+function setupTawkPositioningInChatbot() {
+  try {
+    // Add CSS to position Tawk widget to bottom-left
+    const style = document.createElement('style');
+    style.id = 'tawk-positioning-chatbot';
+    style.textContent = `
+      /* Force bottom-left positioning */
+      .tawk-widget-container,
+      [data-tawk-widget],
+      #tawk-widget,
+      iframe[src*="tawk"],
+      div[id*="tawk"],
+      div[class*="tawk"] {
+        position: fixed !important;
+        left: 30px !important;
+        bottom: 30px !important;
+        top: auto !important;
+        transform: none !important;
+        right: auto !important;
+        z-index: 999999 !important;
+        width: 60px !important;
+        height: 60px !important;
+      }
+      
+      .tawk-widget-container .tawk-chat,
+      [data-tawk-widget] .tawk-chat,
+      #tawk-widget .tawk-chat {
+        left: 30px !important;
+        bottom: 100px !important;
+        right: auto !important;
+      }
+    `;
+    
+    const existingStyle = document.getElementById('tawk-positioning-chatbot');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+    
+    document.head.appendChild(style);
+    
+    // Also directly modify any existing Tawk elements
+    setTimeout(() => {
+      const tawkElements = document.querySelectorAll('[data-tawk-widget], #tawk-widget, iframe[src*="tawk"], div[id*="tawk"], div[class*="tawk"]');
+      tawkElements.forEach(el => {
+        if (el) {
+          el.style.position = 'fixed';
+          el.style.left = '30px';
+          el.style.bottom = '30px';
+          el.style.top = 'auto';
+          el.style.transform = 'none';
+          el.style.right = 'auto';
+          el.style.width = '60px';
+          el.style.height = '60px';
+          el.style.zIndex = '999999';
+        }
+      });
+    }, 100);
+  } catch(e) {
+    console.log('Error positioning Tawk:', e);
+  }
 }
   // wait briefly for Tawk to be ready
   let tries = 0;
@@ -770,15 +859,10 @@ function initChat() {
       messages.scrollTop = messages.scrollHeight;
       
       // Check if we need to trigger live chat
-      // ONLY open if JUNS.support.open is available (theme handles positioning and hiding)
       if (data.triggerLiveChat) {
+        messages.appendChild(createMessage(I18N[detectLang()].connecting));
         setTimeout(() => {
-          // Only open if theme helper is available
-          if (window.JUNS && window.JUNS.support && typeof window.JUNS.support.open === 'function') {
-            openLiveChat();
-          } else {
-            console.log('⚠️ Cannot open Tawk - JUNS.support.open() not available. Make sure theme code is loaded.');
-          }
+          openLiveChat();
         }, 2000); // Wait 2 seconds to show the message, then open live chat
       }
     } catch (err) {
