@@ -1509,21 +1509,34 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
   const excludeSet = new Set(Array.isArray(opts.excludeHandles) ? opts.excludeHandles.map(h=>String(h)) : []);
   for (const product of products) {
     if (excludeSet.has(String(product.handle))) continue;
-    // Strict gating by manual tags
-    if (!hasThemeTagStrict(product)) continue;
+    // Theme filtering - if theme specified, require it; otherwise allow all
+    if (selectedTheme && !hasThemeTagStrict(product)) {
+      // If theme is specified, it's required
+      continue;
+    }
+    
+    // Category enforcement - be more flexible for dress requests
     if (desiredCategory === 'dress' || !desiredCategory) {
-      const hasAnyStrict = true; // we don't know across all products here; allow heuristic fallback if missing tag
-      if (!(hasDressTagStrict(product) || (!hasAnyStrict && isDressHeuristic(product)))) continue;
+      // For dresses, use heuristic if strict tag not found
+      const cat = classifyProduct(product);
+      if (cat === 'dress' || isDressHeuristic(product)) {
+        // Allow through
+      } else if (hasDressTagStrict(product)) {
+        // Allow through
+      } else if (desiredCategory === 'dress') {
+        // If explicitly asking for dresses, require dress classification
+        continue;
+      }
+      // If no desiredCategory, allow through (will be filtered by score)
     }
     if (desiredCategory === 'skirt') {
-      if (!hasSkirtTagStrict(product)) continue;
+      const cat = classifyProduct(product);
+      if (cat !== 'skirt' && !hasSkirtTagStrict(product)) continue;
     }
-    // Category enforcement
-    if (desiredCategory) {
+    // Category enforcement for other categories
+    if (desiredCategory && desiredCategory !== 'dress' && desiredCategory !== 'skirt') {
       const cat = classifyProduct(product);
       const allowed = desiredCategory === 'accessory' ? ['accessory','bag','jewelry'] : [desiredCategory];
-      // Exclude skirts when asking for dresses only
-      if (desiredCategory === 'dress' && cat === 'skirt') continue;
       if (!allowed.includes(cat)) continue;
     }
 
