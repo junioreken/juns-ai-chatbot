@@ -1265,31 +1265,33 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     theme = selectedTheme; // Set theme from stored context
     console.log(`🎯 Using stored theme: ${selectedTheme}`);
   } else {
-    // Parse theme from message - check for theme keywords
+    // FIRST: Try to infer theme from store tags (catches all themes like cocktail, nightclub, etc.)
+    const tags = allStoreTagsLower();
+    let bestThemeFromTags = '';
+    for (const t of tags) {
+      const spaced = t;
+      const slug = t.replace(/\s+/g,'-');
+      const re = new RegExp(`\\b${spaced.replace(/[-/\\^$*+?.()|[\]{}]/g,'\\$&')}\\b`, 'i');
+      if (re.test(message) && slug.length > bestThemeFromTags.length) {
+        bestThemeFromTags = slug;
+      }
+    }
+    
+    // SECOND: Check hardcoded theme keywords
     const themeMatch = text.match(/(wedding|gala|night\s*out|nightclub|night\s*club|office|business|casual|birthday|cocktail|graduation|beach|summer|winter|eid)/i);
     const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
-    // Preserve 'nightclub' as its own theme; normalize 'night club' -> 'nightclub'
-    theme = themeRaw
-      ? themeRaw.replace(/\s+/g, (m) => m === ' ' && themeRaw.includes('night club') ? '' : '-')
-      : '';
-    if (theme === 'night-club') theme = 'nightclub';
-    selectedTheme = theme ? decodeURIComponent(theme) : '';
     
-    // If no theme found in message, try to infer from store tags
-    if (!selectedTheme) {
-      const tags = allStoreTagsLower();
-      let best = '';
-      for (const t of tags) {
-        const spaced = t;
-        const slug = t.replace(/\s+/g,'-');
-        const re = new RegExp(`\\b${spaced.replace(/[-/\\^$*+?.()|[\]{}]/g,'\\$&')}\\b`, 'i');
-        if (re.test(message) && slug.length > best.length) best = slug;
-      }
-      if (best) {
-        theme = best;
-        selectedTheme = decodeURIComponent(best);
-        console.log(`🎯 Inferred theme from store tags: ${selectedTheme}`);
-      }
+    // Use store tag theme if found, otherwise use hardcoded theme
+    if (bestThemeFromTags) {
+      theme = bestThemeFromTags;
+      selectedTheme = decodeURIComponent(bestThemeFromTags);
+      console.log(`🎯 Theme from store tags: ${selectedTheme}`);
+    } else if (themeRaw) {
+      // Preserve 'nightclub' as its own theme; normalize 'night club' -> 'nightclub'
+      theme = themeRaw.replace(/\s+/g, (m) => m === ' ' && themeRaw.includes('night club') ? '' : '-');
+      if (theme === 'night-club') theme = 'nightclub';
+      selectedTheme = theme ? decodeURIComponent(theme) : '';
+      console.log(`🎯 Theme from keywords: ${selectedTheme}`);
     }
   }
 
@@ -1430,8 +1432,23 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
   function hasThemeTagStrict(p) {
     if (!selectedTheme) return true;
     const tags = normalizeTagsValue(p.tags);
-    // accept exact slug or space version
-    return tags.includes(selectedTheme) || tags.includes(selectedTheme.replace(/-/g,' '));
+    const themeLower = selectedTheme.toLowerCase();
+    const themeSpaced = themeLower.replace(/-/g, ' ');
+    const themeSlug = themeLower.replace(/\s+/g, '-');
+    
+    // Check exact matches (slug and spaced versions)
+    if (tags.includes(themeLower) || tags.includes(themeSpaced) || tags.includes(themeSlug)) {
+      return true;
+    }
+    
+    // Also check if any tag contains the theme (partial match for flexibility)
+    for (const tag of tags) {
+      if (tag.includes(themeLower) || themeLower.includes(tag)) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   function hasDressTagStrict(p) {
@@ -1481,9 +1498,19 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
   }
 
   function pricePassValue(value) {
-    if (priceBetween) return value >= priceBetween[0] && value <= priceBetween[1];
-    if (priceUnder !== null) return value <= priceUnder;
-    if (priceOver !== null) return value >= priceOver;
+    if (value === null || value === undefined || isNaN(value) || value <= 0) {
+      // If price is invalid, only pass if no budget filter is set
+      return !priceBetween && priceUnder === null && priceOver === null;
+    }
+    if (priceBetween && Array.isArray(priceBetween) && priceBetween.length === 2) {
+      return value >= priceBetween[0] && value <= priceBetween[1];
+    }
+    if (priceUnder !== null && !isNaN(priceUnder)) {
+      return value <= priceUnder;
+    }
+    if (priceOver !== null && !isNaN(priceOver)) {
+      return value >= priceOver;
+    }
     return true;
   }
 
@@ -1539,6 +1566,13 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     // Optional material hard filter
     if (!materialMatch(product)) continue;
 
+    // Price filtering - check BEFORE color matching to avoid unnecessary work
+    const minPrice = lowestVariantPrice(product);
+    if (!pricePassValue(minPrice)) {
+      console.log(`💰 Product ${product.title} filtered out by price: ${minPrice} (budget: under=${priceUnder}, over=${priceOver}, between=${priceBetween})`);
+      continue;
+    }
+
     // No fuzzy theme enforcement; strict tag gating above controls theme
 
     let chosenVariant = null;
@@ -1548,17 +1582,17 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
       matchedColorTerm = matchedTerm;
       if (variant) {
         const vPrice = parseFloat(String(variant.price || '0').replace(/[^0-9.]/g,'')) || 0;
-        if (!pricePassValue(vPrice)) continue;
+        // Double-check variant price against budget
+        if (!pricePassValue(vPrice)) {
+          console.log(`💰 Variant filtered out by price: ${vPrice}`);
+          continue;
+        }
         chosenVariant = variant;
       } else {
         // Require a real color match at product-level at least
         if (!matchedColorTerm) continue;
-        const minPrice = lowestVariantPrice(product);
-        if (!pricePassValue(minPrice)) continue;
+        // Price already checked above
       }
-    } else {
-      const minPrice = lowestVariantPrice(product);
-      if (!pricePassValue(minPrice)) continue;
     }
     const s = scoreProduct(product, Boolean(chosenVariant));
     candidates.push({ product, score: s, chosenVariant, matchedColorTerm });
