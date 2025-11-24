@@ -104,11 +104,13 @@ router.post('/enhanced-chat', async (req, res) => {
       const lastRecs = Array.isArray(s?.context?.lastRecommendations) ? s.context.lastRecommendations.slice(0, 4) : [];
       const names = lastRecs.map(r => r.title || r.handle).filter(Boolean).join(', ');
       
-      // Detect if this is a follow-up question (pronouns, "this", "that", "it", etc.)
+      // Detect if this is a follow-up question (pronouns, "this", "that", "it", "more", "another", etc.)
       const followUpIndicators = /\b(it|this|that|one|those|them|the|first|second|third|fourth|above|mentioned|previous|earlier|before|same|also|too|as well)\b/i;
+      const moreIndicators = /\b(more|another|others|other|different|alternatives|alternate|plus|encore|additional|extra|further|next|another one|more options|more samples|show me more|give me more|recommend more|suggest more|any other|any others)\b/i;
       const hasPronouns = followUpIndicators.test(message);
-      const hasLastContext = lastIntent || lastRecs.length > 0;
-      isFollowUpQuestion = hasPronouns && hasLastContext && s.messages.length > 2; // More than just initial greeting
+      const wantsMore = moreIndicators.test(message);
+      const hasLastContext = lastIntent || lastRecs.length > 0 || s?.context?.lastSearchContext;
+      isFollowUpQuestion = (hasPronouns || wantsMore) && hasLastContext && s.messages.length > 2; // More than just initial greeting
       
       const anchors = `\nFOLLOW-UP ANCHORS:\n- Last intent: ${lastIntent || 'n/a'}${lastPolicy ? ` (${lastPolicy})` : ''}\n- Last products: ${names || 'n/a'}\n- Is follow-up: ${isFollowUpQuestion ? 'yes' : 'no'}`;
       conversationContextExtended = conversationContext + anchors;
@@ -312,6 +314,7 @@ router.post('/enhanced-chat', async (req, res) => {
     // 8e. Product discovery (colors, themes, budget cues) before LLM
     // But skip if this looks like a follow-up about previously shown products
     const hasLastRecs = (await session.getLastRecommendations(currentSessionId)).length > 0;
+    const lastSearchContext = await session.getLastSearchContext(currentSessionId);
     const looksLikeFollowUp = /(first|second|third|fourth|this|that|it|those|them)\b/i.test(lower)
       || /(what|which)\s+(color|colors|colour|colours)\b|\bavailable\s+colors?\b/i.test(lower)
       || /(what|which)\s+(size|sizes)\b|\bavailable\s+sizes?\b/i.test(lower)
@@ -321,16 +324,35 @@ router.post('/enhanced-chat', async (req, res) => {
       || /(length|how\s+long|mini|midi|maxi|knee\s*length|floor\s*length)/i.test(lower)
       || /(link|url|page|open\s+it|show\s+me\s+it|where\s+to\s+buy)/i.test(lower);
 
-    const shouldRunDiscovery = !(hasLastRecs && looksLikeFollowUp);
-    // Exclude previously recommended items when user asks for "more"
-    let excludeHandles = [];
-    const wantsMore = /(more|another|others|plus|encore|more samples|more options)/i.test(lower);
-    if (wantsMore) {
-      try { excludeHandles = (await session.getSeenRecommendations(currentSessionId)) || []; } catch(_) {}
-    } else if (hasLastRecs) {
-      try { excludeHandles = (await session.getLastRecommendations(currentSessionId)).map(r=>r.handle); } catch(_) {}
+    // Detect "more" requests - use last search context instead of parsing message
+    const wantsMore = /(more|another|others|other|different|alternatives|alternate|plus|encore|additional|extra|further|next|another one|more options|more samples|show me more|give me more|recommend more|suggest more|any other|any others)\b/i.test(lower);
+    
+    let productDiscovery = '';
+    let searchContextToStore = null;
+    
+    if (wantsMore && lastSearchContext) {
+      // User wants more of the same - use stored search context
+      console.log(`🔄 "More" request detected - using last search context:`, lastSearchContext);
+      const excludeHandles = await session.getSeenRecommendations(currentSessionId);
+      // Reconstruct the search using stored context
+      productDiscovery = handleProductDiscovery(
+        storeData, 
+        '', // Empty message since we're using stored context
+        lang, 
+        { 
+          excludeHandles,
+          useStoredContext: lastSearchContext // Pass stored context
+        }
+      );
+    } else {
+      // New search - parse message normally
+      const shouldRunDiscovery = !(hasLastRecs && looksLikeFollowUp);
+      let excludeHandles = [];
+      if (hasLastRecs) {
+        try { excludeHandles = (await session.getLastRecommendations(currentSessionId)).map(r=>r.handle); } catch(_) {}
+      }
+      productDiscovery = shouldRunDiscovery ? handleProductDiscovery(storeData, message, lang, { excludeHandles }) : '';
     }
-    const productDiscovery = shouldRunDiscovery ? handleProductDiscovery(storeData, message, lang, { excludeHandles }) : '';
     if (productDiscovery) {
       // Capture product handles from the HTML grid so follow-up questions like
       // "what colors does this dress come in" can be resolved
@@ -342,6 +364,16 @@ router.post('/enhanced-chat', async (req, res) => {
         });
         if (recs.length) {
           await session.setLastRecommendations(currentSessionId, recs);
+        }
+        
+        // Store search context for "more" requests (only if not using stored context)
+        if (!wantsMore || !lastSearchContext) {
+          // Extract search context from the current search
+          const searchContext = extractSearchContext(message, storeData);
+          if (searchContext) {
+            await session.setLastSearchContext(currentSessionId, searchContext);
+            console.log(`💾 Stored search context:`, searchContext);
+          }
         }
       } catch (_) {}
       await session.addMessage(currentSessionId, productDiscovery, false);
@@ -1073,9 +1105,83 @@ function normalize(str) {
   return String(str || '').toLowerCase();
 }
 
+// Extract search context from message for storing
+function extractSearchContext(message, storeData) {
+  const text = normalize(message);
+  const categoryMap = {
+    dress: ['dress','dresses','gown','gowns','robe','robes'],
+    jacket: ['jacket','jackets','coat','coats','parka','outerwear','puffer','blazer'],
+    skirt: ['skirt','skirts'],
+    bag: ['bag','bags','purse','clutch','handbag','tote'],
+    shoes: ['heel','heels','shoe','shoes','sandal','sandals','pump','pumps','boots'],
+    jewelry: ['jewelry','jewelery','necklace','earring','earrings','bracelet','ring'],
+    accessory: ['accessory','accessories','belt','scarf','hat','headband']
+  };
+  
+  const materialMap = {
+    leather: ['leather','faux leather','pu leather','pu'],
+    satin: ['satin','silk satin','silky'],
+    denim: ['denim','jean','jeans'],
+    wool: ['wool','cashmere'],
+    cotton: ['cotton'],
+    linen: ['linen'],
+    chiffon: ['chiffon'],
+    velvet: ['velvet'],
+    lace: ['lace'],
+    sequin: ['sequin','sequins']
+  };
+  
+  const detectedCategories = Object.entries(categoryMap)
+    .filter(([, words]) => words.some(w => new RegExp(`\\b${w}\\b`,`i`).test(text)))
+    .map(([k]) => k);
+  const category = detectedCategories[0] || '';
+  
+  const allMaterialTerms = Object.values(materialMap).flat();
+  const materialFound = allMaterialTerms.find(m => new RegExp(`\\b${m}\\b`, 'i').test(text));
+  const material = materialFound && Object.keys(materialMap).find(k => materialMap[k].includes(materialFound)) || '';
+  
+  const themeMatch = text.match(/(wedding|gala|night\s*out|nightclub|night\s*club|office|business|casual|birthday|cocktail|graduation|beach|summer|winter|eid)/i);
+  const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
+  let theme = themeRaw ? themeRaw.replace(/\s+/g, '-') : '';
+  if (theme === 'night-club') theme = 'nightclub';
+  
+  const priceUnder = (() => {
+    const m = text.match(/under\s*\$?\s*(\d{2,4})/i) || text.match(/below\s*\$?\s*(\d{2,4})/i);
+    return m ? parseFloat(m[1]) : null;
+  })();
+  const priceOver = (() => {
+    const m = text.match(/over\s*\$?\s*(\d{2,4})/i) || text.match(/above\s*\$?\s*(\d{2,4})/i);
+    return m ? parseFloat(m[1]) : null;
+  })();
+  const priceBetween = (() => {
+    const m = text.match(/(?:between|from)\s*\$?\s*(\d{2,4})\s*(?:and|to|-)\s*\$?\s*(\d{2,4})/i);
+    return m ? [parseFloat(m[1]), parseFloat(m[2])].sort((a,b)=>a-b) : null;
+  })();
+  
+  if (category || material || theme || priceUnder || priceOver || priceBetween) {
+    return { category, material, theme, priceUnder, priceOver, priceBetween };
+  }
+  return null;
+}
+
 function handleProductDiscovery(storeData, message, lang, opts = {}) {
   const products = Array.isArray(storeData.products) ? storeData.products : [];
   if (products.length === 0) return '';
+
+  // If using stored context (for "more" requests), use it instead of parsing message
+  if (opts.useStoredContext) {
+    const ctx = opts.useStoredContext;
+    // Reconstruct search parameters from stored context
+    message = [
+      ctx.category ? `${ctx.category}` : '',
+      ctx.material ? `${ctx.material}` : '',
+      ctx.theme ? `for ${ctx.theme}` : '',
+      ctx.priceUnder ? `under $${ctx.priceUnder}` : '',
+      ctx.priceOver ? `over $${ctx.priceOver}` : '',
+      ctx.priceBetween ? `between $${ctx.priceBetween[0]} and $${ctx.priceBetween[1]}` : ''
+    ].filter(Boolean).join(' ');
+    console.log(`🔄 Using stored context, reconstructed message: "${message}"`);
+  }
 
   const text = normalize(message);
   const colorMap = {
@@ -1113,29 +1219,51 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
   };
   const allMaterialTerms = Object.values(materialMap).flat();
   const materialFound = allMaterialTerms.find(m => new RegExp(`\\b${m}\\b`, 'i').test(text));
-  const materialKey = materialFound && Object.keys(materialMap).find(k => materialMap[k].includes(materialFound));
+  let materialKey = materialFound && Object.keys(materialMap).find(k => materialMap[k].includes(materialFound));
+  
+  // If using stored context, prioritize stored material
+  if (opts.useStoredContext && opts.useStoredContext.material) {
+    materialKey = opts.useStoredContext.material;
+    console.log(`🎯 Using stored material: ${materialKey}`);
+  }
 
-  const priceUnder = (() => {
-    const m = text.match(/under\s*\$?\s*(\d{2,4})/i) || text.match(/below\s*\$?\s*(\d{2,4})/i);
-    return m ? parseFloat(m[1]) : null;
-  })();
-  const priceOver = (() => {
-    const m = text.match(/over\s*\$?\s*(\d{2,4})/i) || text.match(/above\s*\$?\s*(\d{2,4})/i);
-    return m ? parseFloat(m[1]) : null;
-  })();
-  const priceBetween = (() => {
-    const m = text.match(/(?:between|from)\s*\$?\s*(\d{2,4})\s*(?:and|to|-)\s*\$?\s*(\d{2,4})/i);
-    return m ? [parseFloat(m[1]), parseFloat(m[2])].sort((a,b)=>a-b) : null;
-  })();
+  // If using stored context, use stored price filters
+  let priceUnder, priceOver, priceBetween;
+  if (opts.useStoredContext && (opts.useStoredContext.priceUnder || opts.useStoredContext.priceOver || opts.useStoredContext.priceBetween)) {
+    priceUnder = opts.useStoredContext.priceUnder || null;
+    priceOver = opts.useStoredContext.priceOver || null;
+    priceBetween = opts.useStoredContext.priceBetween || null;
+    console.log(`🎯 Using stored price filters: under=${priceUnder}, over=${priceOver}, between=${priceBetween}`);
+  } else {
+    priceUnder = (() => {
+      const m = text.match(/under\s*\$?\s*(\d{2,4})/i) || text.match(/below\s*\$?\s*(\d{2,4})/i);
+      return m ? parseFloat(m[1]) : null;
+    })();
+    priceOver = (() => {
+      const m = text.match(/over\s*\$?\s*(\d{2,4})/i) || text.match(/above\s*\$?\s*(\d{2,4})/i);
+      return m ? parseFloat(m[1]) : null;
+    })();
+    priceBetween = (() => {
+      const m = text.match(/(?:between|from)\s*\$?\s*(\d{2,4})\s*(?:and|to|-)\s*\$?\s*(\d{2,4})/i);
+      return m ? [parseFloat(m[1]), parseFloat(m[2])].sort((a,b)=>a-b) : null;
+    })();
+  }
 
-  const themeMatch = text.match(/(wedding|gala|night\s*out|nightclub|night\s*club|office|business|casual|birthday|cocktail|graduation|beach|summer|eid)/i);
-  const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
-  // Preserve 'nightclub' as its own theme; normalize 'night club' -> 'nightclub'
-  let theme = themeRaw
-    ? themeRaw.replace(/\s+/g, (m) => m === ' ' && themeRaw.includes('night club') ? '' : '-')
-    : '';
-  if (theme === 'night-club') theme = 'nightclub';
-  let selectedTheme = theme ? decodeURIComponent(theme) : '';
+  // If using stored context, prioritize stored theme
+  let selectedTheme = '';
+  if (opts.useStoredContext && opts.useStoredContext.theme) {
+    selectedTheme = opts.useStoredContext.theme;
+    console.log(`🎯 Using stored theme: ${selectedTheme}`);
+  } else {
+    const themeMatch = text.match(/(wedding|gala|night\s*out|nightclub|night\s*club|office|business|casual|birthday|cocktail|graduation|beach|summer|winter|eid)/i);
+    const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
+    // Preserve 'nightclub' as its own theme; normalize 'night club' -> 'nightclub'
+    let theme = themeRaw
+      ? themeRaw.replace(/\s+/g, (m) => m === ' ' && themeRaw.includes('night club') ? '' : '-')
+      : '';
+    if (theme === 'night-club') theme = 'nightclub';
+    selectedTheme = theme ? decodeURIComponent(theme) : '';
+  }
 
   // Theme synonyms mapping for exact matching
   const themeSynonyms = {
@@ -1168,6 +1296,13 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     .filter(([, words]) => words.some(w => new RegExp(`\\b${w}\\b`,`i`).test(text)))
     .map(([k]) => k);
   let desiredCategory = detectedCategories[0] || (/(accessory|accessories)/i.test(text) ? 'accessory' : '');
+  
+  // If using stored context, prioritize stored category
+  if (opts.useStoredContext && opts.useStoredContext.category) {
+    desiredCategory = opts.useStoredContext.category;
+    console.log(`🎯 Using stored category: ${desiredCategory}`);
+  }
+  
   // Default to dresses when user specifies only a theme (e.g., "casual", "wedding") with no category
   if (!desiredCategory && theme) desiredCategory = 'dress';
   // Default to dresses for outfit recommendations without specific category
