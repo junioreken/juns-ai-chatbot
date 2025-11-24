@@ -1350,7 +1350,8 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
   if (canonicalColor) needles.push(canonicalColor, ...(colorMap[canonicalColor]||[]));
   if (theme) needles.push(theme, theme.replace(/-/g,' '));
   if (wantAccessories) needles.push(...accessoryTerms);
-  const wantRecommend = /(recommend|suggest|show|looking|ideas?|best|bestsellers?|options?|complete my look|outfit|outfits|look|looks|ensemble|style|styles|fashion|clothing|clothes|wear|wearing|dress up|get dressed|put together|coordinate|matching|coordinated)/i.test(text) || needles.length > 0;
+  // Expanded pattern to catch all product/dress requests - always show in card format
+  const wantRecommend = /(recommend|suggest|show|display|find|looking|need|want|search|browse|see|give me|help me find|what.*have|what.*available|dress|dresses|gown|gowns|robe|robes|jacket|jackets|coat|coats|skirt|skirts|bag|bags|shoes|heels|accessories|products|items|clothing|clothes|fashion|outfit|outfits|look|looks|ensemble|style|styles|wear|wearing|dress up|get dressed|put together|coordinate|matching|coordinated|ideas?|best|bestsellers?|options?|complete my look)/i.test(text) || needles.length > 0 || desiredCategory || materialKey || selectedTheme;
   if (!wantRecommend) return '';
 
   function lowestVariantPrice(p) {
