@@ -26,10 +26,11 @@
         // Configure Tawk API with custom positioning
         Tawk_API.setAttributes({
           'position': 'fixed',
-          'right': '30px',
-          'top': '50%',
-          'transform': 'translateY(-50%)',
-          'bottom': 'auto',
+          'left': '30px',
+          'bottom': '30px',
+          'top': 'auto',
+          'transform': 'none',
+          'right': 'auto',
           'width': '60px',
           'height': '60px',
           'zIndex': '999999'
@@ -43,15 +44,14 @@
   }
 
   function setupTawkPositioning() {
-    // Add CSS to position Tawk widget to middle-right when closed - NUCLEAR OPTION
+    // Add CSS to position Tawk widget to bottom-left when closed - NUCLEAR OPTION
     const style = document.createElement('style');
     style.id = 'theme-tawk-positioning';
     style.textContent = `
       /* NUCLEAR OPTION - Override everything with maximum force */
       * {
-        --tawk-right: 30px !important;
-        --tawk-top: 50% !important;
-        --tawk-transform: translateY(-50%) !important;
+        --tawk-left: 30px !important;
+        --tawk-bottom: 30px !important;
       }
       
       /* Target every possible Tawk element */
@@ -68,14 +68,14 @@
       div[style*="width"],
       div[style*="height"] {
         position: fixed !important;
-        right: 30px !important;
-        top: 50% !important;
-        transform: translateY(-50%) !important;
+        left: 30px !important;
+        bottom: 30px !important;
+        top: auto !important;
+        transform: none !important;
         z-index: 999999 !important;
         width: 60px !important;
         height: 60px !important;
-        bottom: auto !important;
-        left: auto !important;
+        right: auto !important;
         margin: 0 !important;
         padding: 0 !important;
       }
@@ -87,11 +87,11 @@
       div[style*="z-index: 9999"],
       div[style*="z-index: 99999"] {
         position: fixed !important;
-        right: 30px !important;
-        top: 50% !important;
-        transform: translateY(-50%) !important;
-        bottom: auto !important;
-        left: auto !important;
+        left: 30px !important;
+        bottom: 30px !important;
+        top: auto !important;
+        transform: none !important;
+        right: auto !important;
         width: 60px !important;
         height: 60px !important;
         z-index: 999999 !important;
@@ -108,14 +108,14 @@
       div[style*="bottom"] .tawk-button,
       div[style*="right"] .tawk-button {
         position: relative !important;
-        right: 0 !important;
+        left: 0 !important;
+        right: auto !important;
         bottom: 0 !important;
         top: auto !important;
         transform: none !important;
         width: 60px !important;
         height: 60px !important;
         border-radius: 50% !important;
-        left: auto !important;
         margin: 0 !important;
         padding: 0 !important;
       }
@@ -137,8 +137,9 @@
       [data-tawk-widget] .tawk-chat,
       #tawk-widget .tawk-chat,
       iframe[src*="tawk"] + div .tawk-chat {
-        right: 30px !important;
-        bottom: 80px !important;
+        left: 30px !important;
+        bottom: 100px !important;
+        right: auto !important;
       }
       
       /* Override any theme positioning with maximum specificity */
@@ -149,11 +150,11 @@
       html body div[style*="bottom"],
       html body div[style*="right"] {
         position: fixed !important;
-        right: 30px !important;
-        top: 50% !important;
-        transform: translateY(-50%) !important;
-        bottom: auto !important;
-        left: auto !important;
+        left: 30px !important;
+        bottom: 30px !important;
+        top: auto !important;
+        transform: none !important;
+        right: auto !important;
         width: 60px !important;
         height: 60px !important;
         z-index: 999999 !important;
@@ -163,11 +164,11 @@
       div[style*="position: fixed"][style*="bottom"],
       div[style*="position: fixed"][style*="right"] {
         position: fixed !important;
-        right: 30px !important;
-        top: 50% !important;
-        transform: translateY(-50%) !important;
-        bottom: auto !important;
-        left: auto !important;
+        left: 30px !important;
+        bottom: 30px !important;
+        top: auto !important;
+        transform: none !important;
+        right: auto !important;
         width: 60px !important;
         height: 60px !important;
         z-index: 999999 !important;
@@ -182,7 +183,7 @@
     
     // Add the new positioning style
     document.head.appendChild(style);
-    console.log('✅ Theme Tawk widget positioned to center-right');
+    console.log('✅ Theme Tawk widget positioned to bottom-left');
     
     // Also directly modify any existing Tawk elements immediately
     setTimeout(() => {
@@ -190,11 +191,11 @@
       tawkElements.forEach(el => {
         if (el) {
           el.style.position = 'fixed';
-          el.style.right = '30px';
-          el.style.top = '50%';
-          el.style.transform = 'translateY(-50%)';
-          el.style.bottom = 'auto';
-          el.style.left = 'auto';
+          el.style.left = '30px';
+          el.style.bottom = '30px';
+          el.style.top = 'auto';
+          el.style.transform = 'none';
+          el.style.right = 'auto';
           el.style.width = '60px';
           el.style.height = '60px';
           el.style.zIndex = '999999';
@@ -207,13 +208,13 @@
     let tawkMonitor = setInterval(() => {
       const tawkElements = document.querySelectorAll('[data-tawk-widget], #tawk-widget, iframe[src*="tawk"], div[id*="tawk"], div[class*="tawk"], div[style*="position: fixed"]');
       tawkElements.forEach(el => {
-        if (el && (el.style.bottom || el.style.right === '20px' || el.style.right === '10px')) {
+        if (el && (el.style.bottom || el.style.right === '20px' || el.style.right === '10px' || el.style.right)) {
           el.style.position = 'fixed';
-          el.style.right = '30px';
-          el.style.top = '50%';
-          el.style.transform = 'translateY(-50%)';
-          el.style.bottom = 'auto';
-          el.style.left = 'auto';
+          el.style.left = '30px';
+          el.style.bottom = '30px';
+          el.style.top = 'auto';
+          el.style.transform = 'none';
+          el.style.right = 'auto';
           el.style.width = '60px';
           el.style.height = '60px';
           el.style.zIndex = '999999';
@@ -244,10 +245,11 @@
           // Force positioning before showing
           Tawk_API.setAttributes({
             'position': 'fixed',
-            'right': '30px',
-            'top': '50%',
-            'transform': 'translateY(-50%)',
-            'bottom': 'auto',
+            'left': '30px',
+            'bottom': '30px',
+            'top': 'auto',
+            'transform': 'none',
+            'right': 'auto',
             'width': '60px',
             'height': '60px',
             'zIndex': '999999'
