@@ -1449,16 +1449,19 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     
     // Check exact matches (slug and spaced versions)
     if (tags.includes(themeLower) || tags.includes(themeSpaced) || tags.includes(themeSlug)) {
+      console.log(`✅ Theme match: ${p.title} has theme tag "${themeLower}"`);
       return true;
     }
     
     // Also check if any tag contains the theme (partial match for flexibility)
     for (const tag of tags) {
       if (tag.includes(themeLower) || themeLower.includes(tag)) {
+        console.log(`✅ Theme partial match: ${p.title} tag "${tag}" matches theme "${themeLower}"`);
         return true;
       }
     }
     
+    console.log(`❌ Theme no match: ${p.title} - tags: [${tags.join(', ')}], looking for: "${themeLower}"`);
     return false;
   }
 
@@ -1549,38 +1552,62 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
 
   const candidates = [];
   const excludeSet = new Set(Array.isArray(opts.excludeHandles) ? opts.excludeHandles.map(h=>String(h)) : []);
+  console.log(`🔍 Filtering ${products.length} products - category: ${desiredCategory}, theme: ${selectedTheme}, material: ${materialKey}, color: ${canonicalColor}`);
+  
+  let themeFiltered = 0;
+  let categoryFiltered = 0;
+  let materialFiltered = 0;
+  let colorFiltered = 0;
+  let priceFiltered = 0;
+  
   for (const product of products) {
     if (excludeSet.has(String(product.handle))) continue;
+    
     // Theme filtering - if theme specified, require it; otherwise allow all
     if (selectedTheme && !hasThemeTagStrict(product)) {
-      // If theme is specified, it's required
+      themeFiltered++;
       continue;
     }
     
     // Category enforcement - allow both strict tags and heuristic matching
     if (desiredCategory === 'dress' || !desiredCategory) {
       // Allow if product has dress tag OR matches dress heuristic (title/product_type)
-      if (!(hasDressTagStrict(product) || isDressHeuristic(product))) continue;
+      if (!(hasDressTagStrict(product) || isDressHeuristic(product))) {
+        categoryFiltered++;
+        continue;
+      }
     }
     if (desiredCategory === 'skirt') {
-      if (!hasSkirtTagStrict(product)) continue;
+      if (!hasSkirtTagStrict(product)) {
+        categoryFiltered++;
+        continue;
+      }
     }
     // Category enforcement
     if (desiredCategory) {
       const cat = classifyProduct(product);
       const allowed = desiredCategory === 'accessory' ? ['accessory','bag','jewelry'] : [desiredCategory];
       // Exclude skirts when asking for dresses only
-      if (desiredCategory === 'dress' && cat === 'skirt') continue;
-      if (!allowed.includes(cat)) continue;
+      if (desiredCategory === 'dress' && cat === 'skirt') {
+        categoryFiltered++;
+        continue;
+      }
+      if (!allowed.includes(cat)) {
+        categoryFiltered++;
+        continue;
+      }
     }
 
     // Optional material hard filter
-    if (!materialMatch(product)) continue;
+    if (!materialMatch(product)) {
+      materialFiltered++;
+      continue;
+    }
 
     // Price filtering - check BEFORE color matching to avoid unnecessary work
     const minPrice = lowestVariantPrice(product);
     if (!pricePassValue(minPrice)) {
-      console.log(`💰 Product ${product.title} filtered out by price: ${minPrice} (budget: under=${priceUnder}, over=${priceOver}, between=${priceBetween})`);
+      priceFiltered++;
       continue;
     }
 
