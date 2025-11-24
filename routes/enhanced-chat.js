@@ -1868,6 +1868,42 @@ function buildSizeAdviceReply(storeData, message, lang) {
     return null;
   };
 
+  const parseFootLength = (t) => {
+    // Formats: foot 24 cm, foot length 24cm, 24cm foot, 9.5 inches foot, size 9.5
+    // Foot length in cm
+    const cmM = t.match(/\b(foot|feet)\s*(?:length|size|is|:)?\s*(\d{2}(?:\.\d)?)\s*cm\b/i);
+    if (cmM) return parseFloat(cmM[2]);
+    const cmM2 = t.match(/(\d{2}(?:\.\d)?)\s*cm\s*(?:foot|feet|length)/i);
+    if (cmM2) return parseFloat(cmM2[1]);
+    
+    // Foot length in inches
+    const inM = t.match(/\b(foot|feet)\s*(?:length|size|is|:)?\s*(\d{1}(?:\.\d)?)\s*(?:in|inch|inches)\b/i);
+    if (inM) return Math.round(parseFloat(inM[2]) * 2.54 * 10) / 10;
+    const inM2 = t.match(/(\d{1}(?:\.\d)?)\s*(?:in|inch|inches)\s*(?:foot|feet|length)/i);
+    if (inM2) return Math.round(parseFloat(inM2[1]) * 2.54 * 10) / 10;
+    
+    // US/EU shoe size (convert to foot length)
+    const usSizeM = t.match(/\b(?:us|u\.s\.)\s*(?:size|shoe)?\s*(\d{1,2}(?:\.\d)?)\b/i);
+    if (usSizeM) {
+      const usSize = parseFloat(usSizeM[1]);
+      // US women's size to foot length (cm): approximate conversion
+      // US 5 = ~22cm, US 6 = ~23cm, US 7 = ~24cm, US 8 = ~25cm, US 9 = ~26cm, US 10 = ~27cm
+      const footLength = 19 + (usSize * 1.0);
+      return Math.round(footLength * 10) / 10;
+    }
+    
+    const euSizeM = t.match(/\b(?:eu|european)\s*(?:size|shoe)?\s*(\d{2,3})\b/i);
+    if (euSizeM) {
+      const euSize = parseInt(euSizeM[1], 10);
+      // EU size to foot length (cm): EU size = (foot length in cm + 1.5) * 1.5
+      // Reverse: foot length = (EU size / 1.5) - 1.5
+      const footLength = (euSize / 1.5) - 1.5;
+      return Math.round(footLength * 10) / 10;
+    }
+    
+    return null;
+  };
+
   const parseTriad = (t) => {
     // 88/70/95 (cm) or 34-27-38 (in)
     const tri = t.match(/(\d{2,3})\s*[\/\-]\s*(\d{2,3})\s*[\/\-]\s*(\d{2,3})/);
@@ -1894,6 +1930,7 @@ function buildSizeAdviceReply(storeData, message, lang) {
 
   const heightCm = parseHeight(text);
   const weightKg = parseWeight(text);
+  const footLengthCm = parseFootLength(text);
 
   // Product-specific size charts
   const getProductSpecificSizeChart = (category, measurements) => {
@@ -1965,15 +2002,30 @@ function buildSizeAdviceReply(storeData, message, lang) {
         break;
         
       case 'shoes':
-        if (heightCm) {
-          // Shoe sizing based on height (rough estimate)
-          // Note: Actual shoe size should be measured, but this gives a starting point
-          if (heightCm < 155) return 'EU 35-36 / US 5-6';
-          if (heightCm < 165) return 'EU 37-38 / US 6.5-7.5';
-          if (heightCm < 175) return 'EU 39-40 / US 8-9';
-          return 'EU 41+ / US 9.5+';
+        if (footLengthCm) {
+          // Accurate shoe sizing based on actual foot length
+          // Convert foot length (cm) to EU and US sizes
+          // EU size formula: (foot length in cm + 1.5) * 1.5
+          // US women's size: approximate conversion
+          const euSize = Math.round((footLengthCm + 1.5) * 1.5);
+          let usSize = Math.round((footLengthCm - 19) / 1.0);
+          if (usSize < 4) usSize = 4;
+          if (usSize > 12) usSize = 12;
+          
+          // UK size (approximately US - 0.5 to 1)
+          const ukSize = Math.max(2, Math.min(10, usSize - 1));
+          
+          return `EU ${euSize} / US ${usSize} / UK ${ukSize}`;
         }
-        return null; // Shoes need actual foot measurement
+        // Fallback: rough estimate based on height (less accurate)
+        if (heightCm) {
+          // Very rough estimate - should ask for foot measurement
+          if (heightCm < 155) return 'approximately EU 35-36 / US 5-6 (measure foot for accuracy)';
+          if (heightCm < 165) return 'approximately EU 37-38 / US 6.5-7.5 (measure foot for accuracy)';
+          if (heightCm < 175) return 'approximately EU 39-40 / US 8-9 (measure foot for accuracy)';
+          return 'approximately EU 41+ / US 9.5+ (measure foot for accuracy)';
+        }
+        return null; // Need foot measurement for accurate sizing
         
       default:
         // General sizing
@@ -1996,7 +2048,7 @@ function buildSizeAdviceReply(storeData, message, lang) {
   };
 
   // Get product-specific size recommendation
-  const productSize = getProductSpecificSizeChart(productCategory, { bust, waist, hip, heightCm, weightKg });
+  const productSize = getProductSpecificSizeChart(productCategory, { bust, waist, hip, heightCm, weightKg, footLengthCm });
   
   // Fallback to general sizing if product-specific didn't work
   const suggestByBWH = () => {
@@ -2027,13 +2079,14 @@ function buildSizeAdviceReply(storeData, message, lang) {
     : { dress: 'dress', jacket: 'jacket', pants: 'pants', skirt: 'skirt', top: 'top', shoes: 'shoes', bag: 'bag', general: 'item' }[productCategory] || 'item';
 
   let note = '';
-  if (lang === 'fr') {
-    note = `Conseil taille pour ${productName ? `"${productName}"` : `cette ${categoryName}`}: **${size}**.`;
-    if (heightCm) note += ` Taille: ${heightCm} cm.`;
-    if (weightKg) note += ` Poids: ${weightKg} kg.`;
-    if (bust) note += ` Tour de poitrine: ${bust} cm.`;
-    if (waist) note += ` Taille: ${waist} cm.`;
-    if (hip) note += ` Hanches: ${hip} cm.`;
+    if (lang === 'fr') {
+      note = `Conseil taille pour ${productName ? `"${productName}"` : `cette ${categoryName}`}: **${size}**.`;
+      if (heightCm) note += ` Taille: ${heightCm} cm.`;
+      if (weightKg) note += ` Poids: ${weightKg} kg.`;
+      if (bust) note += ` Tour de poitrine: ${bust} cm.`;
+      if (waist) note += ` Taille: ${waist} cm.`;
+      if (hip) note += ` Hanches: ${hip} cm.`;
+      if (footLengthCm) note += ` Longueur du pied: ${footLengthCm} cm.`;
     if (productCategory === 'shoes') {
       note += ` Pour les chaussures, mesurez votre pied du talon à l'orteil le plus long et consultez le guide des tailles du produit.`;
     } else {
@@ -2049,8 +2102,14 @@ function buildSizeAdviceReply(storeData, message, lang) {
     if (bust) note += ` Bust: ${bust} cm.`;
     if (waist) note += ` Waist: ${waist} cm.`;
     if (hip) note += ` Hip: ${hip} cm.`;
+    if (footLengthCm) note += ` Foot length: ${footLengthCm} cm.`;
     if (productCategory === 'shoes') {
-      note += ` For shoes, measure your foot from heel to longest toe and check the product's size guide.`;
+      if (footLengthCm) {
+        note += ` Based on a foot length of ${footLengthCm} cm.`;
+      } else {
+        note += ` For an accurate recommendation, please measure your foot from heel to longest toe (in cm) and share that measurement.`;
+      }
+      note += ` Shoes can vary by style (heels, sneakers, boots), so always check the product-specific size guide.`;
     } else {
       note += ` Please also check the product's size guide to confirm.`;
     }
