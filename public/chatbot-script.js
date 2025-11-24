@@ -154,7 +154,7 @@ async function openLiveChat() {
           if (++repeat > 10) clearInterval(ensureOpen); // Reduced from 20 to 10
         }, 200); // Increased from 50ms to 200ms
       } catch(_) {}
-      // Position Tawk widget to center-right when closed
+      // Position Tawk widget to bottom-left when closed
       try {
         // Add CSS to position Tawk widget - ultra aggressive override
         const style = document.createElement('style');
@@ -171,14 +171,14 @@ async function openLiveChat() {
           div[style*="bottom"],
           div[style*="right"] {
             position: fixed !important;
-            right: 30px !important;
-            top: 50% !important;
-            transform: translateY(-50%) !important;
+            left: 30px !important;
+            bottom: 30px !important;
+            top: auto !important;
+            transform: none !important;
             z-index: 999999 !important;
             width: 60px !important;
             height: 60px !important;
-            bottom: auto !important;
-            left: auto !important;
+            right: auto !important;
           }
           
           /* Make Tawk button smaller and properly positioned */
@@ -191,14 +191,14 @@ async function openLiveChat() {
           div[style*="position: fixed"] .tawk-button,
           div[style*="bottom"] .tawk-button {
             position: relative !important;
-            right: 0 !important;
+            left: 0 !important;
+            right: auto !important;
             bottom: 0 !important;
             top: auto !important;
             transform: none !important;
             width: 60px !important;
             height: 60px !important;
             border-radius: 50% !important;
-            left: auto !important;
           }
           
           /* Make Tawk button icon smaller */
@@ -217,8 +217,9 @@ async function openLiveChat() {
           [data-tawk-widget] .tawk-chat,
           #tawk-widget .tawk-chat,
           iframe[src*="tawk"] + div .tawk-chat {
-            right: 30px !important;
-            bottom: 80px !important;
+            left: 30px !important;
+            bottom: 100px !important;
+            right: auto !important;
           }
           
           /* Override any theme positioning with maximum specificity */
@@ -228,21 +229,21 @@ async function openLiveChat() {
           html body div[style*="position: fixed"],
           html body div[style*="bottom"] {
             position: fixed !important;
-            right: 30px !important;
-            top: 50% !important;
-            transform: translateY(-50%) !important;
-            bottom: auto !important;
-            left: auto !important;
+            left: 30px !important;
+            bottom: 30px !important;
+            top: auto !important;
+            transform: none !important;
+            right: auto !important;
           }
           
           /* Force override any inline styles */
           div[style*="position: fixed"][style*="bottom"] {
             position: fixed !important;
-            right: 30px !important;
-            top: 50% !important;
-            transform: translateY(-50%) !important;
-            bottom: auto !important;
-            left: auto !important;
+            left: 30px !important;
+            bottom: 30px !important;
+            top: auto !important;
+            transform: none !important;
+            right: auto !important;
           }
         `;
         
@@ -254,7 +255,7 @@ async function openLiveChat() {
         
         // Add the new positioning style
         document.head.appendChild(style);
-        console.log('✅ Tawk widget positioned to center-right');
+        console.log('✅ Tawk widget positioned to bottom-left');
         
         // Also try to directly modify any existing Tawk elements
         setTimeout(() => {
@@ -262,11 +263,11 @@ async function openLiveChat() {
           tawkElements.forEach(el => {
             if (el) {
               el.style.position = 'fixed';
-              el.style.right = '30px';
-              el.style.top = '50%';
-              el.style.transform = 'translateY(-50%)';
-              el.style.bottom = 'auto';
-              el.style.left = 'auto';
+              el.style.left = '30px';
+              el.style.bottom = '30px';
+              el.style.top = 'auto';
+              el.style.transform = 'none';
+              el.style.right = 'auto';
               el.style.width = '60px';
               el.style.height = '60px';
               el.style.zIndex = '999999';
@@ -280,13 +281,13 @@ async function openLiveChat() {
           // Use more efficient selector
           const tawkElements = document.querySelectorAll('#tawk-widget, [data-tawk-widget], iframe[src*="tawk"]');
           tawkElements.forEach(el => {
-            if (el && (el.style.bottom || el.style.right === '20px' || el.style.right === '10px')) {
+            if (el && (el.style.bottom || el.style.right === '20px' || el.style.right === '10px' || el.style.right)) {
               el.style.position = 'fixed';
-              el.style.right = '30px';
-              el.style.top = '50%';
-              el.style.transform = 'translateY(-50%)';
-              el.style.bottom = 'auto';
-              el.style.left = 'auto';
+              el.style.left = '30px';
+              el.style.bottom = '30px';
+              el.style.top = 'auto';
+              el.style.transform = 'none';
+              el.style.right = 'auto';
               el.style.width = '60px';
               el.style.height = '60px';
               el.style.zIndex = '999999';
@@ -502,14 +503,14 @@ window.testPositionTawk = function() {
       div[style*="bottom"],
       div[style*="right"] {
         position: fixed !important;
-        right: 30px !important;
-        top: 50% !important;
-        transform: translateY(-50%) !important;
+        left: 30px !important;
+        bottom: 30px !important;
+        top: auto !important;
+        transform: none !important;
         z-index: 999999 !important;
         width: 60px !important;
         height: 60px !important;
-        bottom: auto !important;
-        left: auto !important;
+        right: auto !important;
       }
       
       /* Make Tawk button smaller and properly positioned */
@@ -522,14 +523,14 @@ window.testPositionTawk = function() {
       div[style*="position: fixed"] .tawk-button,
       div[style*="bottom"] .tawk-button {
         position: relative !important;
-        right: 0 !important;
+        left: 0 !important;
+        right: auto !important;
         bottom: 0 !important;
         top: auto !important;
         transform: none !important;
         width: 60px !important;
         height: 60px !important;
         border-radius: 50% !important;
-        left: auto !important;
       }
       
       /* Make Tawk button icon smaller */
@@ -548,8 +549,9 @@ window.testPositionTawk = function() {
       [data-tawk-widget] .tawk-chat,
       #tawk-widget .tawk-chat,
       iframe[src*="tawk"] + div .tawk-chat {
-        right: 30px !important;
-        bottom: 80px !important;
+        left: 30px !important;
+        bottom: 100px !important;
+        right: auto !important;
       }
       
       /* Override any theme positioning with maximum specificity */
@@ -559,21 +561,21 @@ window.testPositionTawk = function() {
       html body div[style*="position: fixed"],
       html body div[style*="bottom"] {
         position: fixed !important;
-        right: 30px !important;
-        top: 50% !important;
-        transform: translateY(-50%) !important;
-        bottom: auto !important;
-        left: auto !important;
+        left: 30px !important;
+        bottom: 30px !important;
+        top: auto !important;
+        transform: none !important;
+        right: auto !important;
       }
       
       /* Force override any inline styles */
       div[style*="position: fixed"][style*="bottom"] {
         position: fixed !important;
-        right: 30px !important;
-        top: 50% !important;
-        transform: translateY(-50%) !important;
-        bottom: auto !important;
-        left: auto !important;
+        left: 30px !important;
+        bottom: 30px !important;
+        top: auto !important;
+        transform: none !important;
+        right: auto !important;
       }
     `;
     
@@ -585,18 +587,18 @@ window.testPositionTawk = function() {
     
     // Add the new positioning style
     document.head.appendChild(style);
-    console.log('✅ Tawk widget positioned to center-right for testing');
+    console.log('✅ Tawk widget positioned to bottom-left for testing');
     
     // Also directly modify any existing Tawk elements
     const tawkElements = document.querySelectorAll('[data-tawk-widget], #tawk-widget, iframe[src*="tawk"], div[id*="tawk"], div[class*="tawk"], div[style*="position: fixed"]');
     tawkElements.forEach(el => {
       if (el) {
         el.style.position = 'fixed';
-        el.style.right = '30px';
-        el.style.top = '50%';
-        el.style.transform = 'translateY(-50%)';
-        el.style.bottom = 'auto';
-        el.style.left = 'auto';
+        el.style.left = '30px';
+        el.style.bottom = '30px';
+        el.style.top = 'auto';
+        el.style.transform = 'none';
+        el.style.right = 'auto';
         el.style.width = '60px';
         el.style.height = '60px';
         el.style.zIndex = '999999';
