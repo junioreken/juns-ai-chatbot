@@ -1519,10 +1519,10 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
       continue;
     }
     
-    // Category enforcement - original logic restored
+    // Category enforcement - allow both strict tags and heuristic matching
     if (desiredCategory === 'dress' || !desiredCategory) {
-      const hasAnyStrict = true; // we don't know across all products here; allow heuristic fallback if missing tag
-      if (!(hasDressTagStrict(product) || (!hasAnyStrict && isDressHeuristic(product)))) continue;
+      // Allow if product has dress tag OR matches dress heuristic (title/product_type)
+      if (!(hasDressTagStrict(product) || isDressHeuristic(product))) continue;
     }
     if (desiredCategory === 'skirt') {
       if (!hasSkirtTagStrict(product)) continue;
