@@ -231,7 +231,6 @@ function setupTawkPositioningInChatbot() {
     console.log('Error positioning Tawk:', e);
   }
 }
-  // wait briefly for Tawk to be ready
   let tries = 0;
   const maxTries = 100; // ~5s worst case
   while (tries < maxTries) {
