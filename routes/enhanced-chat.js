@@ -1179,6 +1179,22 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
   const products = Array.isArray(storeData.products) ? storeData.products : [];
   if (products.length === 0) return '';
 
+  // Helper function to get all store tags (defined early for use in theme detection)
+  function allStoreTagsLower() {
+    try {
+      const set = new Set();
+      const prods = Array.isArray(storeData.products) ? storeData.products : [];
+      for (const p of prods) {
+        const raw = Array.isArray(p.tags) ? p.tags : String(p.tags || '').split(',');
+        for (const t of raw) {
+          const v = String(t).toLowerCase().trim();
+          if (v) set.add(v);
+        }
+      }
+      return Array.from(set);
+    } catch (_) { return []; }
+  }
+
   // If using stored context (for "more" requests), use it instead of parsing message
   if (opts.useStoredContext) {
     const ctx = opts.useStoredContext;
