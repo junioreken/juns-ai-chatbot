@@ -1449,19 +1449,16 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     
     // Check exact matches (slug and spaced versions)
     if (tags.includes(themeLower) || tags.includes(themeSpaced) || tags.includes(themeSlug)) {
-      console.log(`✅ Theme match: ${p.title} has theme tag "${themeLower}"`);
       return true;
     }
     
     // Also check if any tag contains the theme (partial match for flexibility)
     for (const tag of tags) {
       if (tag.includes(themeLower) || themeLower.includes(tag)) {
-        console.log(`✅ Theme partial match: ${p.title} tag "${tag}" matches theme "${themeLower}"`);
         return true;
       }
     }
     
-    console.log(`❌ Theme no match: ${p.title} - tags: [${tags.join(', ')}], looking for: "${themeLower}"`);
     return false;
   }
 
@@ -1552,21 +1549,26 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
 
   const candidates = [];
   const excludeSet = new Set(Array.isArray(opts.excludeHandles) ? opts.excludeHandles.map(h=>String(h)) : []);
-  console.log(`🔍 Filtering ${products.length} products - category: ${desiredCategory}, theme: ${selectedTheme}, material: ${materialKey}, color: ${canonicalColor}`);
+  console.log(`🔍 Filtering ${products.length} products - category: ${desiredCategory || 'any'}, theme: ${selectedTheme || 'any'}, material: ${materialKey || 'any'}, color: ${canonicalColor || 'any'}, budget: under=${priceUnder || 'none'}, over=${priceOver || 'none'}`);
   
   let themeFiltered = 0;
   let categoryFiltered = 0;
   let materialFiltered = 0;
   let colorFiltered = 0;
   let priceFiltered = 0;
+  let themeMatched = 0;
   
   for (const product of products) {
     if (excludeSet.has(String(product.handle))) continue;
     
     // Theme filtering - if theme specified, require it; otherwise allow all
-    if (selectedTheme && !hasThemeTagStrict(product)) {
-      themeFiltered++;
-      continue;
+    if (selectedTheme) {
+      if (hasThemeTagStrict(product)) {
+        themeMatched++;
+      } else {
+        themeFiltered++;
+        continue;
+      }
     }
     
     // Category enforcement - allow both strict tags and heuristic matching
