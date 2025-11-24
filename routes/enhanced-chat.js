@@ -1303,16 +1303,41 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
       }
     }
     
+    // Theme mapping: map user-friendly terms to actual store tags
+    const themeMapping = {
+      'nightclub': 'nightout',  // Map "nightclub" to "nightout" tag
+      'night-club': 'nightout',
+      'nightclub': 'nightout',
+      'night out': 'nightout',
+      'night-out': 'nightout'
+    };
+    
     // Use hardcoded theme if found (more reliable), otherwise use store tag theme
     if (themeRaw) {
       // Preserve 'nightclub' as its own theme; normalize 'night club' -> 'nightclub'
       theme = themeRaw.replace(/\s+/g, (m) => m === ' ' && themeRaw.includes('night club') ? '' : '-');
       if (theme === 'night-club') theme = 'nightclub';
+      
+      // Apply theme mapping (e.g., nightclub -> nightout)
+      const mappedTheme = themeMapping[theme.toLowerCase()] || theme;
+      if (mappedTheme !== theme) {
+        console.log(`🔄 Mapping theme "${theme}" to "${mappedTheme}"`);
+        theme = mappedTheme;
+      }
+      
       selectedTheme = theme ? decodeURIComponent(theme) : '';
       console.log(`🎯 Theme from keywords: ${selectedTheme}`);
     } else if (bestThemeFromTags) {
       theme = bestThemeFromTags;
-      selectedTheme = bestThemeFromTags; // Already lowercase from allStoreTagsLower
+      // Apply theme mapping to store tags too
+      const mappedTheme = themeMapping[bestThemeFromTags] || bestThemeFromTags;
+      if (mappedTheme !== bestThemeFromTags) {
+        console.log(`🔄 Mapping store tag theme "${bestThemeFromTags}" to "${mappedTheme}"`);
+        theme = mappedTheme;
+        selectedTheme = mappedTheme;
+      } else {
+        selectedTheme = bestThemeFromTags; // Already lowercase from allStoreTagsLower
+      }
       console.log(`🎯 Theme from store tags: ${selectedTheme}`);
     }
   }
@@ -1422,14 +1447,31 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     const synonyms = colorMap[canonicalColorKey] || [canonicalColorKey];
     const colorIdx = findColorOptionIndex(product);
     const variants = Array.isArray(product.variants) ? product.variants : [];
+    
+    // First, try to find exact variant match
     for (const variant of variants) {
       const value = colorIdx >= 0 ? String(variant[`option${colorIdx + 1}`] || '').toLowerCase() : String(variant.title || '').toLowerCase();
-      const hit = synonyms.find(term => value.includes(term));
-      if (hit) return { variant, matchedTerm: hit };
+      const hit = synonyms.find(term => {
+        // Exact word match (more strict)
+        const wordBoundary = new RegExp(`\\b${term}\\b`, 'i');
+        return wordBoundary.test(value);
+      });
+      if (hit) {
+        console.log(`🎨 Color match (variant): ${product.title} - variant "${value}" matches "${canonicalColorKey}"`);
+        return { variant, matchedTerm: hit };
+      }
     }
-    // Fallback: product-level
+    
+    // Fallback: product-level (title, handle, body, tags)
     const hay = [normalize(product.title), normalize(product.handle), normalize(product.body_html), normalize(product.tags)].join(' ');
-    const hit = synonyms.find(term => hay.includes(term));
+    const hit = synonyms.find(term => {
+      // Exact word match (more strict)
+      const wordBoundary = new RegExp(`\\b${term}\\b`, 'i');
+      return wordBoundary.test(hay);
+    });
+    if (hit) {
+      console.log(`🎨 Color match (product-level): ${product.title} - found "${canonicalColorKey}" in product content`);
+    }
     return { variant: null, matchedTerm: hit || '' };
   }
 
@@ -1447,15 +1489,36 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     const themeSpaced = themeLower.replace(/-/g, ' ');
     const themeSlug = themeLower.replace(/\s+/g, '-');
     
+    // Theme synonyms mapping (e.g., nightclub -> nightout)
+    const themeSynonyms = {
+      'nightclub': ['nightout', 'night-out', 'night out'],
+      'night-club': ['nightout', 'night-out', 'night out'],
+      'nightout': ['nightclub', 'night-club', 'night-out', 'night out']
+    };
+    const synonyms = themeSynonyms[themeLower] || [];
+    
     // Check exact matches (slug and spaced versions)
     if (tags.includes(themeLower) || tags.includes(themeSpaced) || tags.includes(themeSlug)) {
       return true;
+    }
+    
+    // Check synonyms (e.g., if looking for "nightclub", also accept "nightout")
+    for (const synonym of synonyms) {
+      if (tags.includes(synonym) || tags.includes(synonym.replace(/-/g, ' ')) || tags.includes(synonym.replace(/\s+/g, '-'))) {
+        return true;
+      }
     }
     
     // Also check if any tag contains the theme (partial match for flexibility)
     for (const tag of tags) {
       if (tag.includes(themeLower) || themeLower.includes(tag)) {
         return true;
+      }
+      // Check synonyms in partial match too
+      for (const synonym of synonyms) {
+        if (tag.includes(synonym) || synonym.includes(tag)) {
+          return true;
+        }
       }
     }
     
