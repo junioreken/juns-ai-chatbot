@@ -1259,6 +1259,15 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
   const products = Array.isArray(storeData.products) ? storeData.products : [];
   if (products.length === 0) return '';
 
+  const relaxTheme = Boolean(opts.relaxTheme);
+  const relaxColor = Boolean(opts.relaxColor);
+  const fallbackNote = (opts.fallbackNote || '').trim();
+  const mergeFallbackNote = (note) => {
+    const trimmed = String(note || '').trim();
+    if (!trimmed) return fallbackNote;
+    return fallbackNote ? `${fallbackNote} ${trimmed}`.trim() : trimmed;
+  };
+
   // Helper function to get all store tags (defined early for use in theme detection)
   function allStoreTagsLower() {
     try {
@@ -1727,7 +1736,7 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     if (excludeSet.has(String(product.handle))) continue;
     
     // Theme filtering - if theme specified, require it; otherwise allow all
-    if (selectedTheme) {
+    if (selectedTheme && !relaxTheme) {
       if (hasThemeTagStrict(product)) {
         themeMatched++;
       } else {
@@ -1788,8 +1797,9 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
       const { variant, matchedTerm } = matchVariantByColor(product, canonicalColor);
       matchedColorTerm = matchedTerm;
       
-      // If color is specified, we MUST have a color match (either variant or product-level)
-      if (!matchedColorTerm && !variant) {
+      const enforceColor = !relaxColor;
+      // If color is specified and we're enforcing it, we MUST have a color match (either variant or product-level)
+      if (enforceColor && !matchedColorTerm && !variant) {
         colorFiltered++;
         continue; // No color match - skip this product
       }
@@ -1839,7 +1849,33 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     }
   }
 
-  if (list.length === 0) return '';
+  if (list.length === 0) {
+    if (selectedTheme && !relaxTheme) {
+      const friendlyTheme = selectedTheme.replace(/-/g, ' ');
+      const note = lang === 'fr'
+        ? `Aucun article explicitement taggé "${friendlyTheme}". Voici les meilleures pièces proches de votre demande.`
+        : `I couldn’t find products explicitly tagged "${friendlyTheme}", so I’m showing the closest matches available.`;
+      console.log(`⚠️ No results after enforcing theme "${friendlyTheme}". Relaxing theme requirement.`);
+      return handleProductDiscovery(storeData, message, lang, {
+        ...opts,
+        relaxTheme: true,
+        fallbackNote: mergeFallbackNote(note)
+      });
+    }
+    if (canonicalColor && !relaxColor) {
+      const colorLabel = (colorFound || canonicalColor || '').replace(/-/g, ' ');
+      const note = lang === 'fr'
+        ? `Aucune variante exacte en ${colorLabel}. Voici les meilleures options trouvées pour votre demande.`
+        : `I couldn’t find an exact ${colorLabel} variant, so here are the best matches for your request.`;
+      console.log(`⚠️ No results after enforcing color "${colorLabel}". Relaxing color requirement.`);
+      return handleProductDiscovery(storeData, message, lang, {
+        ...opts,
+        relaxColor: true,
+        fallbackNote: mergeFallbackNote(note)
+      });
+    }
+    return '';
+  }
 
   // Prefer first image if present
   const grid = `
@@ -1861,8 +1897,9 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
   const header = lang==='fr'
     ? `Voici quelques${catLabel ? ` ${catLabel}` : ''} suggestions${displayColor ? ` en ${displayColor}` : ''}${selectedTheme ? ` pour ${selectedTheme.replace(/-/g,' ')}` : ''}:`
     : `Here are a few${catLabel ? ` ${catLabel}` : ''} picks${displayColor ? ` in ${displayColor}` : ''}${selectedTheme ? ` for ${selectedTheme.replace(/-/g,' ')}` : ''}:`;
+  const noteBlock = fallbackNote ? `\n<div class="product-note">${fallbackNote}</div>` : '';
 
-  return `${header}\n${grid}`;
+  return `${header}${noteBlock}\n${grid}`;
 }
 
 function formatActiveDiscounts(storeData, lang) {
