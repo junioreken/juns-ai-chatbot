@@ -147,7 +147,8 @@ router.post('/enhanced-chat', enhancedChatLimiter, async (req, res) => {
       const names = lastRecs.map(r => r.title || r.handle).filter(Boolean).join(', ');
       
       // Detect if this is a follow-up question (pronouns, "this", "that", "it", "more", "another", etc.)
-      const followUpIndicators = /\b(it|this|that|one|those|them|the|first|second|third|fourth|above|mentioned|previous|earlier|before|same|also|too|as well)\b/i;
+      // Do NOT include ultra-common articles like "the" here – they were causing every request to be flagged as a follow-up.
+      const followUpIndicators = /\b(it|this|that|one|those|them|first|second|third|fourth|above|mentioned|previous|earlier|before|same|also|too|as well)\b/i;
       const moreIndicators = /\b(more|another|others|other|different|alternatives|alternate|plus|encore|additional|extra|further|next|another one|more options|more samples|show me more|give me more|recommend more|suggest more|any other|any others)\b/i;
       const hasPronouns = followUpIndicators.test(message);
       const wantsMore = moreIndicators.test(message);
@@ -1841,11 +1842,11 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
       limit = (hasTheme || hasBudget) ? 30 : 12;
     }
     
-    if (bothRequested) {
-      const strict = list.filter(x => x.score >= 5).slice(0, limit);
-      list = strict.length >= 2 ? strict : list.filter(x => x.score >= 1).slice(0, limit);
-    } else {
-      list = list.filter(x => x.score >= 0).slice(0, limit);
+  if (bothRequested) {
+    const strict = list.filter(x => x.score >= 5).slice(0, limit);
+    list = strict.length >= 2 ? strict : list.filter(x => x.score >= 1).slice(0, limit);
+  } else {
+    list = list.filter(x => x.score >= 0).slice(0, limit);
     }
   }
 
