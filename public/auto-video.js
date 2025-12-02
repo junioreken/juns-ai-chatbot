@@ -10,7 +10,9 @@
       v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', '');
       v.autoplay = true; v.setAttribute('autoplay', '');
       if (!v.getAttribute('preload')) v.preload = 'auto';
-    } catch (_) {}
+    } catch (error) {
+      console.warn('[auto-video] Failed to enforce video attributes:', error);
+    }
   }
 
   function tryPlay(v) {

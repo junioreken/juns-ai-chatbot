@@ -285,7 +285,9 @@
           }
           Chat.message(content);
           ss.setItem('juns_upsell_shown','1');
-        } catch (_) {}
+        } catch (error) {
+          console.warn('[stylist-popup] Failed to show upsell message:', error);
+        }
       }, 15000);
       ss.removeItem('juns_popup_submitted');
     }

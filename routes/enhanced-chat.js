@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { OpenAI } = require('openai');
 const axios = require('axios');
+const rateLimit = require('express-rate-limit');
 const cache = require('../services/cache');
 const session = require('../services/session');
 const intentClassifier = require('../services/intentClassifier');
@@ -9,16 +10,57 @@ const escalation = require('../services/escalation');
 const analytics = require('../services/analytics');
 const tracking = require('../services/tracking');
 
+const CHAT_RATE_LIMIT_WINDOW_MS = Number(process.env.CHAT_RATE_LIMIT_WINDOW_MS || 60_000);
+const CHAT_RATE_LIMIT_MAX = Math.max(1, Number(process.env.CHAT_RATE_LIMIT_MAX || 40));
+const CHAT_MAX_MESSAGE_LENGTH = Math.max(200, Number(process.env.CHAT_MAX_MESSAGE_LENGTH || 1800));
+
+const enhancedChatLimiter = rateLimit({
+  windowMs: CHAT_RATE_LIMIT_WINDOW_MS,
+  max: CHAT_RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please wait a few seconds before trying again.' }
+});
+
 // Lazy init inside handler
 
-// Enhanced chat endpoint with all optimizations
-router.post('/enhanced-chat', async (req, res) => {
-  const startTime = Date.now();
-  const { message, name, email, lang, storeUrl, sessionId } = req.body;
-
-  if (!message) {
-    return res.status(400).json({ error: 'Missing message' });
+function normalizeIncomingMessage(raw) {
+  if (raw === undefined || raw === null) {
+    return { valid: false, status: 400, error: 'Missing message' };
   }
+  let text = typeof raw === 'string' ? raw : String(raw);
+  text = text.replace(/[\u0000-\u001F\u007F]+/g, '').trim();
+  if (!text) {
+    return { valid: false, status: 400, error: 'Message cannot be empty' };
+  }
+  if (text.length > CHAT_MAX_MESSAGE_LENGTH) {
+    text = text.slice(0, CHAT_MAX_MESSAGE_LENGTH);
+  }
+  const sanitized = text
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!sanitized) {
+    return { valid: false, status: 400, error: 'Message cannot be empty' };
+  }
+  return { valid: true, value: sanitized };
+}
+
+function logSuppressedError(context, error) {
+  console.warn(`[enhanced-chat] ${context}:`, error?.message || error);
+}
+
+// Enhanced chat endpoint with all optimizations
+router.post('/enhanced-chat', enhancedChatLimiter, async (req, res) => {
+  const startTime = Date.now();
+  const { name, email, lang, storeUrl, sessionId } = req.body || {};
+  const validationResult = normalizeIncomingMessage(req.body?.message);
+  if (!validationResult.valid) {
+    return res.status(validationResult.status).json({ error: validationResult.error });
+  }
+  let message = validationResult.value;
 
   try {
     // 1. Get or create session
@@ -114,7 +156,9 @@ router.post('/enhanced-chat', async (req, res) => {
       
       const anchors = `\nFOLLOW-UP ANCHORS:\n- Last intent: ${lastIntent || 'n/a'}${lastPolicy ? ` (${lastPolicy})` : ''}\n- Last products: ${names || 'n/a'}\n- Is follow-up: ${isFollowUpQuestion ? 'yes' : 'no'}`;
       conversationContextExtended = conversationContext + anchors;
-    } catch (_) {}
+    } catch (error) {
+      logSuppressedError('build follow-up anchors', error);
+    }
 
     // Helper: light HTML -> text sanitizer
     const stripHtml = (html) => String(html || '')
@@ -159,7 +203,9 @@ router.post('/enhanced-chat', async (req, res) => {
         await session.addMessage(currentSessionId, reply, false);
         await analytics.trackMessage(currentSessionId, reply, false);
         return res.json({ reply, intent: 'order_tracking', confidence: 0.95, sessionId: currentSessionId, escalation: { required: false } });
-      } catch (_) {}
+      } catch (error) {
+        logSuppressedError('persist product discovery context', error);
+      }
     }
 
     // 8b. Shipping label requests (high priority) - trigger live chat
@@ -223,7 +269,9 @@ router.post('/enhanced-chat', async (req, res) => {
           if (lastPolicyKind) {
             await session.updateContext(currentSessionId, { lastPolicyKind });
           }
-        } catch (_) {}
+        } catch (error) {
+          logSuppressedError('update last policy context', error);
+        }
         return res.json({ reply: policiesReply, intent: 'return_exchange', confidence: 0.9, sessionId: currentSessionId, escalation: { required: false } });
       }
     }
@@ -361,7 +409,11 @@ router.post('/enhanced-chat', async (req, res) => {
       let excludeHandles = [];
       if (hasLastRecs && !looksLikeFollowUp) {
         // Only exclude if it's NOT a follow-up question about attributes
-        try { excludeHandles = (await session.getLastRecommendations(currentSessionId)).map(r=>r.handle); } catch(_) {}
+        try {
+          excludeHandles = (await session.getLastRecommendations(currentSessionId)).map(r => r.handle);
+        } catch (error) {
+          logSuppressedError('fetch last recommendations for exclusion', error);
+        }
       }
       productDiscovery = handleProductDiscovery(storeData, message, lang, { excludeHandles });
       console.log(`📦 Product discovery result: ${productDiscovery ? `Found ${(productDiscovery.match(/product-card/g) || []).length} products` : 'No products'}`);
@@ -391,7 +443,9 @@ router.post('/enhanced-chat', async (req, res) => {
             console.log(`💾 Stored search context:`, searchContext);
           }
         }
-      } catch (_) {}
+      } catch (error) {
+        logSuppressedError('resolve pronoun follow-up intent', error);
+      }
       await session.addMessage(currentSessionId, productDiscovery, false);
       await analytics.trackMessage(currentSessionId, productDiscovery, false);
       return res.json({ reply: productDiscovery, intent: 'product_inquiry', confidence: 0.85, sessionId: currentSessionId, escalation: { required: false } });
@@ -575,7 +629,9 @@ router.post('/enhanced-chat', async (req, res) => {
           await analytics.trackMessage(currentSessionId, ask, false);
           return res.json({ reply: ask, intent: 'order_tracking', confidence: 0.75, sessionId: currentSessionId, escalation: { required: false } });
         }
-      } catch (_) {}
+      } catch (error) {
+        logSuppressedError('handle cached follow-up intent', error);
+      }
     }
 
   // 9. Build AI prompt with context
@@ -594,7 +650,9 @@ router.post('/enhanced-chat', async (req, res) => {
         // take up to 20 prior messages before the current one we just added for better context
         const prior = msgs.slice(Math.max(0, msgs.length - 21), Math.max(0, msgs.length - 1));
         history = prior.map(m => ({ role: m.isUser ? 'user' : 'assistant', content: stripHtml(m.content).slice(0, 1200) }));
-      } catch (_) {}
+      } catch (error) {
+        logSuppressedError('build OpenAI history', error);
+      }
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
@@ -749,9 +807,17 @@ Rules: Prefer follow_up when pronouns or recent products are referenced. Do not 
         max_tokens: 150
       });
       const txt = r.choices[0]?.message?.content || '';
-      try { routerDecision = JSON.parse(txt); } catch (_) { routerDecision = null; }
+      try {
+        routerDecision = JSON.parse(txt);
+      } catch (error) {
+        logSuppressedError('parse semantic router decision', error);
+        routerDecision = null;
+      }
     }
-  } catch (_) { routerDecision = null; }
+  } catch (error) {
+    logSuppressedError('semantic router invocation', error);
+    routerDecision = null;
+  }
 
   if (!SHOP_DOMAIN) {
     throw new Error('Shopify domain is not configured');
@@ -1206,7 +1272,10 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
         }
       }
       return Array.from(set);
-    } catch (_) { return []; }
+    } catch (error) {
+      logSuppressedError('collect store tags', error);
+      return [];
+    }
   }
 
   // If using stored context (for "more" requests), use it instead of parsing message

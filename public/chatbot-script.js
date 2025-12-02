@@ -34,7 +34,9 @@ function detectLang() {
     const pathIsFr = path === '/fr' || path.startsWith('/fr/') || /^\/(fr)(\b|\/|\?|#)/i.test(path);
     const navLang = (navigator.language || '').toLowerCase();
     if (htmlLang.startsWith('fr') || String(shopifyLocale).toLowerCase().startsWith('fr') || String(rootPrefix).startsWith('/fr') || pathIsFr || navLang.startsWith('fr')) return 'fr';
-  } catch (_) {}
+  } catch (error) {
+    console.warn('[JUNS chatbot] Failed to detect lang, defaulting to en:', error);
+  }
   return 'en';
 }
 
@@ -697,7 +699,10 @@ function ensureStylistPopup() {
       s.onload = () => resolve(true);
       s.onerror = () => resolve(false);
       document.head.appendChild(s);
-    } catch (_) { resolve(false); }
+    } catch (error) {
+      console.warn('[JUNS chatbot] Unable to ensure stylist popup script:', error);
+      resolve(false);
+    }
   });
 }
 
@@ -956,7 +961,9 @@ function createLauncher() {
           sessionStorage.setItem('juns_greeted','1');
         }
         sessionStorage.setItem('juns_chat_opened','1');
-      } catch (_) {}
+      } catch (error) {
+        console.warn('[JUNS chatbot] Unable to persist greeting state:', error);
+      }
     } else {
       box.style.display = "none";
     }

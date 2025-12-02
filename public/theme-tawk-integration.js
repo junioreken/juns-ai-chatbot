@@ -37,8 +37,14 @@
         });
         // Set up positioning when Tawk loads
         setupTawkPositioning();
-      } catch (e) {}
-      var f; while ((f = queue.shift())) { try { f(); } catch (e) {} }
+      } catch (e) {
+        console.warn('[theme-tawk] Failed to configure Tawk widget:', e);
+      }
+      var f;
+      while ((f = queue.shift())) {
+        try { f(); }
+        catch (e) { console.warn('[theme-tawk] Deferred callback failed:', e); }
+      }
     };
     (s0 && s0.parentNode ? s0.parentNode : document.head).insertBefore(s1, s0 || null);
   }
@@ -238,7 +244,9 @@
         var shadow = host && host.shadowRoot;
         var box = shadow && shadow.getElementById('juns-ai-chatbox');
         if (box) box.style.display = 'none';
-      } catch (e) {}
+      } catch (e) {
+        console.warn('[theme-tawk] Failed to hide GPT chatbot before opening Tawk:', e);
+      }
 
       ensureTawk(function () {
         try { 
@@ -256,11 +264,14 @@
           });
           Tawk_API.showWidget(); 
           Tawk_API.maximize(); 
-        } catch (e) {}
+        } catch (e) {
+          console.warn('[theme-tawk] Failed to open Tawk widget:', e);
+        }
       });
     },
     hide: function () {
-      try { if (window.Tawk_API) Tawk_API.hideWidget(); } catch (e) {}
+      try { if (window.Tawk_API) Tawk_API.hideWidget(); }
+      catch (e) { console.warn('[theme-tawk] Failed to hide Tawk widget:', e); }
     }
   };
 })();

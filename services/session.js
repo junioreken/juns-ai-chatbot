@@ -256,7 +256,9 @@ class SessionService {
       const add = normalized.map(it => it.handle).filter(Boolean);
       const merged = Array.from(new Set([...seen, ...add])).slice(-100);
       session.context.seenRecommendations = merged;
-    } catch (_) {}
+    } catch (error) {
+      console.warn('[session] Failed to merge seen recommendations:', error);
+    }
     await cache.set(`session:${sessionId}`, session, this.sessionTTL);
     return session.context.lastRecommendations;
   }

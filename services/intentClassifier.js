@@ -107,15 +107,17 @@ class IntentClassifier {
           if (isFollowUp) {
             console.log(`🔄 Detected follow-up question - reducing keyword handler priority`);
           }
-        } catch (_) {}
+        } catch (error) {
+          console.warn('[intentClassifier] Failed to inspect session context:', error);
+        }
       }
       
       // Check cache first (but skip cache for follow-ups to allow context-aware classification)
       if (!isFollowUp) {
-        const cacheKey = `intent:${message.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-        const cachedIntent = await cache.get(cacheKey);
-        if (cachedIntent) {
-          return cachedIntent;
+      const cacheKey = `intent:${message.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+      const cachedIntent = await cache.get(cacheKey);
+      if (cachedIntent) {
+        return cachedIntent;
         }
       }
 
@@ -126,7 +128,7 @@ class IntentClassifier {
       if (semanticMatch && semanticMatch.confidence > requiredConfidence) {
         if (!isFollowUp) {
           const cacheKey = `intent:${message.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-          await cache.set(cacheKey, semanticMatch, 3600);
+        await cache.set(cacheKey, semanticMatch, 3600);
         }
         return semanticMatch;
       }
@@ -138,7 +140,7 @@ class IntentClassifier {
       if (patternMatch && patternMatch.confidence > patternConfidence) {
         if (!isFollowUp) {
           const cacheKey = `intent:${message.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-          await cache.set(cacheKey, patternMatch, 3600);
+        await cache.set(cacheKey, patternMatch, 3600);
         }
         return patternMatch;
       }
@@ -149,18 +151,18 @@ class IntentClassifier {
       if (tfidfMatch && tfidfMatch.confidence > tfidfConfidence) {
         if (!isFollowUp) {
           const cacheKey = `intent:${message.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-          await cache.set(cacheKey, tfidfMatch, 3600);
+        await cache.set(cacheKey, tfidfMatch, 3600);
         }
         return tfidfMatch;
       }
 
       // Keyword matching (lower priority) - skip for follow-ups to allow LLM to handle
       if (!isFollowUp) {
-        const keywordMatch = this.matchKeywords(message);
-        if (keywordMatch && keywordMatch.confidence > 0.5) {
+      const keywordMatch = this.matchKeywords(message);
+      if (keywordMatch && keywordMatch.confidence > 0.5) {
           const cacheKey = `intent:${message.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-          await cache.set(cacheKey, keywordMatch, 3600);
-          return keywordMatch;
+        await cache.set(cacheKey, keywordMatch, 3600);
+        return keywordMatch;
         }
       }
 

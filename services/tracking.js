@@ -42,7 +42,8 @@ async function trackByNumber(trackingNumber, preferredSlug = '') {
       const last_update = fulfillment?.updated_at || match.updated_at || '';
       const link = (Array.isArray(fulfillment?.tracking_urls) && fulfillment.tracking_urls[0]) || fulfillment?.tracking_url || universalLink;
       return { status, courier, last_update, checkpoint: '', link };
-    } catch (_) {
+    } catch (error) {
+      console.warn('[tracking] Shopify fallback failed:', error?.message || error);
       return null;
     }
   }
@@ -63,14 +64,17 @@ async function trackByNumber(trackingNumber, preferredSlug = '') {
           }, { headers });
           slug = det && det.data && det.data.couriers && det.data.couriers[0] && det.data.couriers[0].slug ? det.data.couriers[0].slug : '';
         }
-      } catch (_) {}
+      } catch (error) {
+        console.warn('[tracking] AfterShip courier detection failed:', error?.message || error);
+      }
 
       // Create or ensure tracking exists (idempotent)
       try {
         await axios.post('https://api.aftership.com/v4/trackings', {
           tracking: { tracking_number: number, slug: slug || undefined }
         }, { headers });
-      } catch (_) {
+      } catch (error) {
+        console.warn('[tracking] AfterShip tracking create failed:', error?.message || error);
         // ignore if already exists or any 4xx which indicates duplicate
       }
 

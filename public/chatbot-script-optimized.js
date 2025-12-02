@@ -50,7 +50,8 @@ let sessionId = (function(){
       localStorage.setItem('juns_session_id', s);
     }
     return s;
-  } catch (_) {
+  } catch (error) {
+    console.warn('[JUNS chatbot optimized] Failed to manage session storage:', error);
     return null;
   }
 })();
@@ -312,7 +313,9 @@ function sendQuickMessage(message) {
       window.location.href = (isFr ? '/fr' : '') + '/pages/' + handle;
       return;
     }
-  } catch (_) {}
+  } catch (error) {
+    console.warn('[JUNS chatbot optimized] Quick message shortcut failed:', error);
+  }
   sendMessage(message);
 }
 
