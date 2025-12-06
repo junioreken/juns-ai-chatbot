@@ -77,6 +77,10 @@ Your JUN'S AI Chatbot has been completely upgraded with **5 major optimizations*
 
 ## 🚀 **Getting Started**
 
+### **Railway Auto-Deploy Reminder**
+- Every push to `main` (even docs-only commits) triggers the Railway auto-deploy pipeline.
+- Use tiny, deliberate commits when you just need to verify end-to-end redeploys.
+
 ### **Prerequisites**
 - Node.js 16+ 
 - Redis server (local or cloud)
