@@ -8,7 +8,7 @@
   );
   const isCollection = /\/collections\//i.test(PATH) || PATH === '/collections' || PATH === '/collections/';
   const isProduct = /\/products\//i.test(PATH);
-  const allowPopup = (isHome || isCollection || isProduct) && !isCartOrCheckout;
+  const allowPopup = isCollection && !isCartOrCheckout;
 
   const ss = window.sessionStorage;
   const ls = window.localStorage;
@@ -264,11 +264,19 @@
   // Boot
   if (allowPopup) {
     // Defer popup readiness to idle to avoid blocking initial render
-    const open = () => { if (ls.getItem('juns_dnd')==='1') return; showPopup(); };
+    const open = () => {
+      if (ls.getItem('juns_dnd') === '1') return;
+      if (ss.getItem('juns_popup_shown') === '1') return;
+      setTimeout(() => {
+        if (ls.getItem('juns_dnd') === '1') return;
+        if (ss.getItem('juns_popup_shown') === '1') return;
+        showPopup();
+      }, 4000);
+    };
     if ('requestIdleCallback' in window) window.requestIdleCallback(open, { timeout: 1600 });
     else setTimeout(open, 1600);
-    productPageHelper();
   }
+  productPageHelper();
 
   // Recommendations page soft upsell (deduped)
   if (/\/pages\/event-dress-recommendations/i.test(PATH)) {
