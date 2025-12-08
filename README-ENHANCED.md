@@ -119,6 +119,11 @@ npm start
 - `GET /api/analytics` - Analytics dashboard data
 - `GET /api/session/:sessionId` - Get session information
 
+## 👗 **Theme-Aware Recommendations**
+- `/recommend` now ranks Shopify products using a scoring engine that inspects **tags**, **titles/descriptions**, and **metafields** (occasion, dress_code, vibe, etc.).
+- Theme-specific rules (wedding, night out, business, casual, cocktail, graduation) boost dresses, shoes, and accessories that genuinely match the requested dress code.
+- When no high-confidence matches are found, the service falls back to exact tag matches to keep the grid populated.
+
 ### **Management & Monitoring**
 - `GET /health` - Enhanced health check with service status
 - `GET /dashboard` - Quick analytics overview
