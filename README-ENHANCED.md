@@ -123,6 +123,8 @@ npm start
 - `/recommend` now ranks Shopify products using a scoring engine that inspects **tags**, **titles/descriptions**, and **metafields** (occasion, dress_code, vibe, etc.).
 - Theme-specific rules (wedding, night out, business, casual, cocktail, graduation) boost dresses, shoes, and accessories that genuinely match the requested dress code.
 - When no high-confidence matches are found, the service falls back to exact tag matches to keep the grid populated.
+- Accessory quota: every response keeps at least 6 high-quality bags/shoes/accessories by relaxing thresholds when needed, so the recommendations page never shows an empty accessories grid.
+
 
 ### **Management & Monitoring**
 - `GET /health` - Enhanced health check with service status

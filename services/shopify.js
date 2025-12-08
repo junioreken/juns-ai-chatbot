@@ -98,6 +98,9 @@ const THEME_RULES = {
   }
 };
 
+const ACCESSORY_CATEGORIES = new Set(['bag', 'accessory', 'shoes', 'hair', 'jewelry']);
+const MIN_ACCESSORY_RESULTS = Number(process.env.RECOMMEND_MIN_ACCESSORIES || 6);
+
 async function fetchAllProducts(baseUrl, headers, cap = MAX_PRODUCTS) {
   const results = [];
   let url = baseUrl;
@@ -185,9 +188,32 @@ function determineCategory({ tags, title, productType, body }) {
   if (/\b(pant|trouser)\b/.test(hay)) return 'pants';
   if (/\b(shoe|heel|boot|sandal)\b/.test(hay)) return 'shoes';
   if (/\b(bag|clutch|purse|handbag)\b/.test(hay)) return 'bag';
-  if (/\b(accessor|earring|necklace|bracelet|belt|hair)\b/.test(hay)) return 'accessory';
+  if (/\b(accessor|earring|necklace|bracelet|belt|hair|jewel)\b/.test(hay)) return 'accessory';
   return 'other';
 }
+
+function getCategoryThreshold(theme, category) {
+  const rule = THEME_RULES[theme] || THEME_RULES.default;
+  const base = rule.minScore || 1.5;
+  if (!category || category === 'dress' || category === 'jumpsuit' || category === 'skirt') {
+    return base;
+  }
+  if (category === 'suit' || category === 'jacket' || category === 'pants') {
+    return Math.max(1.2, base - 0.6);
+  }
+  if (category === 'shoes') {
+    return Math.max(1.2, base - 1);
+  }
+  if (category === 'bag' || category === 'accessory') {
+    return Math.max(1.0, base - 1.2);
+  }
+  return Math.max(1.1, base - 0.8);
+}
+
+function isAccessoryCategory(category) {
+  return ACCESSORY_CATEGORIES.has(category);
+}
+
 
 function buildNormalizedProduct(product, metafieldLookup) {
   const tags = normalizeTags(product.tags);
@@ -416,23 +442,61 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60, offset
     );
     const minScore = (THEME_RULES[normalizedTheme] && THEME_RULES[normalizedTheme].minScore) || 1.5;
 
-    const scored = normalizedProducts.map((item) => ({
-      normalized: item,
-      score: scoreProductForTheme(normalizedTheme, item)
-    }));
-
-    const filtered = scored
-      .filter((entry) => entry.score >= minScore)
-      .filter((entry) => priceMatchesBudget(entry.normalized.priceNumeric, budget))
+    const scored = normalizedProducts
+      .map((item) => ({
+        normalized: item,
+        score: scoreProductForTheme(normalizedTheme, item)
+      }))
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         return a.normalized.priceNumeric - b.normalized.priceNumeric;
       });
 
+    const seenHandles = new Set();
+    const thresholded = [];
+    for (const entry of scored) {
+      const handle = entry.normalized.handle;
+      if (!handle || seenHandles.has(handle)) continue;
+      if (!priceMatchesBudget(entry.normalized.priceNumeric, budget)) continue;
+      const categoryThreshold = Math.max(
+        minScore,
+        getCategoryThreshold(normalizedTheme, entry.normalized.category)
+      );
+      if (entry.score >= categoryThreshold) {
+        thresholded.push(entry);
+        seenHandles.add(handle);
+      }
+    }
+
+    let accessoryCount = thresholded.reduce(
+      (sum, entry) => sum + (isAccessoryCategory(entry.normalized.category) ? 1 : 0),
+      0
+    );
+    if (accessoryCount < MIN_ACCESSORY_RESULTS) {
+      const accessoryThreshold = Math.max(1.1, minScore * 0.55);
+      for (const entry of scored) {
+        if (thresholded.length >= MAX_PRODUCTS) break;
+        const handle = entry.normalized.handle;
+        if (!handle || seenHandles.has(handle)) continue;
+        if (!isAccessoryCategory(entry.normalized.category)) continue;
+        if (!priceMatchesBudget(entry.normalized.priceNumeric, budget)) continue;
+        if (entry.score < accessoryThreshold) continue;
+        thresholded.push(entry);
+        seenHandles.add(handle);
+        accessoryCount += 1;
+        if (accessoryCount >= MIN_ACCESSORY_RESULTS) break;
+      }
+    }
+
+    const sortedSelected = thresholded.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.normalized.priceNumeric - b.normalized.priceNumeric;
+    });
+
     const start = Math.max(parseInt(offset || 0, 10), 0);
-    const windowed = filtered.slice(start, start + limit);
+    const windowed = sortedSelected.slice(start, start + limit);
     console.log(
-      `📊 Theme engine: ${filtered.length} strong matches (${windowed.length} returned) for "${normalizedTheme}" under budget "${budget}"`
+      `📊 Theme engine: ${sortedSelected.length} matches (${windowed.length} returned, ${accessoryCount} accessories) for "${normalizedTheme}" under budget "${budget}"`
     );
 
     if (windowed.length) {
@@ -443,6 +507,7 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60, offset
       `⚠️ Theme-specific scorer found no matches for "${normalizedTheme}". Falling back to exact tag search.`
     );
     return fallbackByExactTag(products, normalizedTheme, budget, offset, limit);
+
   } catch (error) {
     console.error('❌ getProductsByTheme error:', error.message);
     console.error('❌ Error stack:', error.stack);
