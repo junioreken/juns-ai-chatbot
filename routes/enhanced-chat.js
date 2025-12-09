@@ -1209,6 +1209,7 @@ function normalize(str) {
 }
 
 // Extract search context from message for storing
+
 function extractSearchContext(message, storeData) {
   const text = normalize(message);
   const categoryMap = {
@@ -1234,39 +1235,86 @@ function extractSearchContext(message, storeData) {
     sequin: ['sequin','sequins']
   };
   
-  const detectedCategories = Object.entries(categoryMap)
-    .filter(([, words]) => words.some(w => new RegExp(`\\b${w}\\b`,`i`).test(text)))
-    .map(([k]) => k);
-  const category = detectedCategories[0] || '';
-  
-  const allMaterialTerms = Object.values(materialMap).flat();
-  const materialFound = allMaterialTerms.find(m => new RegExp(`\\b${m}\\b`, 'i').test(text));
-  const material = materialFound && Object.keys(materialMap).find(k => materialMap[k].includes(materialFound)) || '';
-  
-  const themeMatch = text.match(/(wedding|gala|night\s*out|nightclub|night\s*club|office|business|work|professional|casual|birthday|cocktail|graduation|beach|summer|winter|eid)/i);
-  const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
-  let theme = themeRaw ? themeRaw.replace(/\s+/g, '-') : '';
+  let theme = (() => {
+    const tags = Array.isArray(storeData?.products) 
+      ? storeData.products.flatMap(p => (Array.isArray(p.tags) ? p.tags : String(p.tags || '').split(','))).map(t => t.trim().toLowerCase())
+      : [];
+    const themeTag = tags.find(tag => text.includes(tag));
+    const themeMatch = text.match(/(wedding|gala|night\s*out|nightclub|night\s*club|office|business|work|workwear|professional|casual|birthday|cocktail|graduation|beach|summer|winter|eid)/i);
+    const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
+    const themeMapping = {
+      'nightclub': 'nightout',
+      'night club': 'nightout',
+      'night-out': 'nightout',
+      'night out': 'nightout',
+      'work': 'business',
+      'workwear': 'business',
+      'office': 'business',
+      'professional': 'business'
+    };
+    if (themeRaw) return themeMapping[themeRaw] || themeRaw;
+    return themeTag || '';
+  })();
   if (theme === 'night-club') theme = 'nightclub';
   
-  const priceUnder = (() => {
-    const m = text.match(/under\s*\$?\s*(\d{2,4})/i) || text.match(/below\s*\$?\s*(\d{2,4})/i);
-    return m ? parseFloat(m[1]) : null;
+  const category = (() => {
+    for (const [cat, keywords] of Object.entries(categoryMap)) {
+      if (keywords.some(keyword => new RegExp(`\\b${keyword}\\b`, 'i').test(text))) return cat;
+    }
+    if (/\bdress(es)?\b/i.test(text)) return 'dress';
+    return '';
+  })();
+  
+  const material = (() => {
+    for (const [mat, keywords] of Object.entries(materialMap)) {
+      if (keywords.some(keyword => new RegExp(`\\b${keyword}\\b`, 'i').test(text))) return mat;
+    }
+    return '';
+  })();
+  
+  const canonicalColor = (() => {
+    const colors = ['red','blue','green','black','white','pink','purple','gold','silver','beige','yellow','orange','brown','grey','gray'];
+    return colors.find(color => new RegExp(`\b${color}\b`, 'i').test(text)) || '';
+  })();
+
+const priceUnder = (() => {
+    const patterns = [
+      /under\s*\$?\s*(\d{1,4})/i,
+      /below\s*\$?\s*(\d{1,4})/i,
+      /less\s*than\s*\$?\s*(\d{1,4})/i,
+      /max\s*\$?\s*(\d{1,4})/i,
+      /up\s*to\s*\$?\s*(\d{1,4})/i,
+      /budget[^0-9]{0,10}\$?\s*(\d{1,4})/i,
+      /\$?\s*(\d{1,4})\s*\$/
+    ];
+    for (const re of patterns) {
+      const m = text.match(re);
+      if (m) return parseFloat(m[1]);
+    }
+    return null;
   })();
   const priceOver = (() => {
-    const m = text.match(/over\s*\$?\s*(\d{2,4})/i) || text.match(/above\s*\$?\s*(\d{2,4})/i);
-    return m ? parseFloat(m[1]) : null;
+    const patterns = [
+      /over\s*\$?\s*(\d{1,4})/i,
+      /above\s*\$?\s*(\d{1,4})/i,
+      /at\s*least\s*\$?\s*(\d{1,4})/i
+    ];
+    for (const re of patterns) {
+      const m = text.match(re);
+      if (m) return parseFloat(m[1]);
+    }
+    return null;
   })();
   const priceBetween = (() => {
-    const m = text.match(/(?:between|from)\s*\$?\s*(\d{2,4})\s*(?:and|to|-)\s*\$?\s*(\d{2,4})/i);
+    const m = text.match(/(?:between|from)\s*\$?\s*(\d{1,4})\s*(?:and|to|-)\s*\$?\s*(\d{1,4})/i);
     return m ? [parseFloat(m[1]), parseFloat(m[2])].sort((a,b)=>a-b) : null;
   })();
   
   if (category || material || theme || priceUnder || priceOver || priceBetween) {
-    return { category, material, theme, priceUnder, priceOver, priceBetween };
+    return { category, material, theme, priceUnder, priceOver, priceBetween, color: canonicalColor };
   }
   return null;
 }
-
 function handleProductDiscovery(storeData, message, lang, opts = {}) {
   const products = Array.isArray(storeData.products) ? storeData.products : [];
   if (products.length === 0) return '';
@@ -1368,20 +1416,39 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     console.log(`🎯 Using stored price filters: under=${priceUnder}, over=${priceOver}, between=${priceBetween}`);
   } else {
     priceUnder = (() => {
-    const m = text.match(/under\s*\$?\s*(\d{2,4})/i) || text.match(/below\s*\$?\s*(\d{2,4})/i);
-    return m ? parseFloat(m[1]) : null;
-  })();
+      const patterns = [
+        /under\s*\$?\s*(\d{1,4})/i,
+        /below\s*\$?\s*(\d{1,4})/i,
+        /less\s*than\s*\$?\s*(\d{1,4})/i,
+        /max\s*\$?\s*(\d{1,4})/i,
+        /up\s*to\s*\$?\s*(\d{1,4})/i,
+        /budget[^0-9]{0,10}\$?\s*(\d{1,4})/i,
+        /\$?\s*(\d{1,4})\s*\$/
+      ];
+      for (const re of patterns) {
+        const m = text.match(re);
+        if (m) return parseFloat(m[1]);
+      }
+      return null;
+    })();
     priceOver = (() => {
-    const m = text.match(/over\s*\$?\s*(\d{2,4})/i) || text.match(/above\s*\$?\s*(\d{2,4})/i);
-    return m ? parseFloat(m[1]) : null;
-  })();
+      const patterns = [
+        /over\s*\$?\s*(\d{1,4})/i,
+        /above\s*\$?\s*(\d{1,4})/i,
+        /at\s*least\s*\$?\s*(\d{1,4})/i
+      ];
+      for (const re of patterns) {
+        const m = text.match(re);
+        if (m) return parseFloat(m[1]);
+      }
+      return null;
+    })();
     priceBetween = (() => {
-    const m = text.match(/(?:between|from)\s*\$?\s*(\d{2,4})\s*(?:and|to|-)\s*\$?\s*(\d{2,4})/i);
-    return m ? [parseFloat(m[1]), parseFloat(m[2])].sort((a,b)=>a-b) : null;
-  })();
+      const m = text.match(/(?:between|from)\s*\$?\s*(\d{1,4})\s*(?:and|to|-)\s*\$?\s*(\d{1,4})/i);
+      return m ? [parseFloat(m[1]), parseFloat(m[2])].sort((a,b)=>a-b) : null;
+    })();
   }
-
-  // Fallback loose budget parsing to catch "$50" or "50$" or "budget 50"
+// Fallback loose budget parsing to catch "$50" or "50$" or "budget 50"
   if (priceUnder === null && priceOver === null && priceBetween === null) {
     const loose = text.match(/(?:under|below|less than|up to|max|budget|cap|<=)\s*\$?\s*(\d{1,4})/i)
       || text.match(/\$?\s*(\d{1,4})\s*\$?\s*(?:budget|usd|dollars?)/i)
@@ -1390,16 +1457,6 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
       priceUnder = parseFloat(loose[1]);
       console.log(`💰 Fallback budget detected: under=${priceUnder}`);
     }
-  }
-
-  // If budget relaxation is requested, wipe price filters
-  if (relaxBudget) {
-    if (priceUnder !== null || priceOver !== null || priceBetween !== null) {
-      console.log(`🔄 Relaxing budget filters (under=${priceUnder}, over=${priceOver}, between=${priceBetween})`);
-    }
-    priceUnder = null;
-    priceOver = null;
-    priceBetween = null;
   }
 
   // If using stored context, prioritize stored theme
@@ -1905,16 +1962,12 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
   }
 
   if (list.length === 0) {
-    if (!relaxBudget && (priceUnder !== null || priceOver !== null || priceBetween !== null)) {
+    if (priceUnder !== null || priceOver !== null || priceBetween !== null) {
       const note = lang === 'fr'
-        ? `Je n'ai rien trouvé sous votre budget spécifié. Je vous montre les meilleures options proches, en élargissant le budget.`
-        : `I couldn’t find items under the specified budget. Showing closest matches with a relaxed budget.`;
-      console.log('⚠️ No results with budget filter. Relaxing budget.');
-      return handleProductDiscovery(storeData, message, lang, {
-        ...opts,
-        relaxBudget: true,
-        fallbackNote: mergeFallbackNote(note)
-      });
+        ? `Je n'ai rien trouvé qui respecte le budget indiqué. Voulez-vous que j'élargisse le budget ou la catégorie ?`
+        : `I couldn’t find products within the budget you specified. Want me to expand the budget or adjust the category?`;
+      console.log('⚠️ No results within budget; not relaxing budget automatically.');
+      return note;
     }
     if (selectedTheme && !relaxTheme) {
       const friendlyTheme = selectedTheme.replace(/-/g, ' ');
@@ -1943,8 +1996,7 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     return '';
   }
 
-  // Prefer first image if present
-  const grid = `
+const grid = `
 <div class="product-grid">
   ${list.map(({ product, chosenVariant }) => {
     let img = (product.images && product.images[0] && product.images[0].src) || '';
