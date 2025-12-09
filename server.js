@@ -15,6 +15,9 @@ const analytics = require('./services/analytics');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy so Express-rate-limit handles X-Forwarded-For correctly (Railway/proxies)
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json());

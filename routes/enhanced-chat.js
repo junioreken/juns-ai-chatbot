@@ -847,58 +847,7 @@ async function fetchShopifyData(endpoint, domainOverride = "") {
     throw new Error('Shopify admin token is not configured');
   }
 
-  // 8f. Semantic router (LLM) to reduce keyword reliance for follow-ups
-  let routerDecision = null;
-  try {
-    if (process.env.OPENAI_API_KEY) {
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      const lastRecs = await session.getLastRecommendations(currentSessionId);
-      const anchorProducts = Array.isArray(lastRecs) ? lastRecs.map(r => r.title || r.handle).filter(Boolean).slice(0, 5) : [];
-      const routerSystem = `You route user messages to structured actions as JSON only. Use conversation context and anchors.
-Actions: follow_up_attribute, availability, recommendation, policy, shipping_eta, size_help, representative, general.
-Attributes (when relevant): color, colors, size, sizes, price, stock, material, length, link.
-Fields: {"action": string, "attribute": string|null, "target_product": string|null, "color": string|null }.
-Rules: Prefer follow_up when pronouns or recent products are referenced. Do not pivot topics due to keywords.`;
-      const routerUser = `Context:\n${conversationContextExtended}\nRecent products: ${anchorProducts.join(', ') || 'n/a'}\nMessage: ${message}\nRespond with JSON only.`;
-      const r = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: 'system', content: routerSystem },
-          { role: 'user', content: routerUser }
-        ],
-        temperature: 0,
-        max_tokens: 150
-      });
-      const txt = r.choices[0]?.message?.content || '';
-      try {
-        routerDecision = JSON.parse(txt);
-      } catch (error) {
-        logSuppressedError('parse semantic router decision', error);
-        routerDecision = null;
-      }
-    }
-  } catch (error) {
-    logSuppressedError('semantic router invocation', error);
-    routerDecision = null;
-  }
-
-  if (!SHOP_DOMAIN) {
-    throw new Error('Shopify domain is not configured');
-  }
-
-  const baseUrl = SHOP_DOMAIN.startsWith('http') ? SHOP_DOMAIN : `https://${SHOP_DOMAIN}`;
-  const url = `${baseUrl}/admin/api/${ADMIN_API_VERSION}/${endpoint}`;
-
-  const { data } = await axios.get(url, {
-    headers: {
-      'X-Shopify-Access-Token': ADMIN_TOKEN,
-      'Content-Type': 'application/json'
-    }
-  });
-
-  return data;
-}
-
+  
 // Build comprehensive system prompt with advanced AI capabilities
 function buildSystemPrompt(lang, storeData, conversationContext, intentResult) {
   const isFrench = lang === 'fr';
