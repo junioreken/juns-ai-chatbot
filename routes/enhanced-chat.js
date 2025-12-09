@@ -1324,6 +1324,7 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
 
   const relaxTheme = Boolean(opts.relaxTheme);
   const relaxColor = Boolean(opts.relaxColor);
+  const relaxBudget = Boolean(opts.relaxBudget);
   const fallbackNote = (opts.fallbackNote || '').trim();
   const mergeFallbackNote = (note) => {
     const trimmed = String(note || '').trim();
@@ -1429,6 +1430,16 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     const m = text.match(/(?:between|from)\s*\$?\s*(\d{2,4})\s*(?:and|to|-)\s*\$?\s*(\d{2,4})/i);
     return m ? [parseFloat(m[1]), parseFloat(m[2])].sort((a,b)=>a-b) : null;
   })();
+  }
+
+  // If budget relaxation is requested, wipe price filters
+  if (relaxBudget) {
+    if (priceUnder !== null || priceOver !== null || priceBetween !== null) {
+      console.log(`🔄 Relaxing budget filters (under=${priceUnder}, over=${priceOver}, between=${priceBetween})`);
+    }
+    priceUnder = null;
+    priceOver = null;
+    priceBetween = null;
   }
 
   // If using stored context, prioritize stored theme
@@ -1913,6 +1924,17 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
   }
 
   if (list.length === 0) {
+    if (!relaxBudget && (priceUnder !== null || priceOver !== null || priceBetween !== null)) {
+      const note = lang === 'fr'
+        ? `Je n'ai rien trouvé sous votre budget spécifié. Je vous montre les meilleures options proches, en élargissant le budget.`
+        : `I couldn’t find items under the specified budget. Showing closest matches with a relaxed budget.`;
+      console.log('⚠️ No results with budget filter. Relaxing budget.');
+      return handleProductDiscovery(storeData, message, lang, {
+        ...opts,
+        relaxBudget: true,
+        fallbackNote: mergeFallbackNote(note)
+      });
+    }
     if (selectedTheme && !relaxTheme) {
       const friendlyTheme = selectedTheme.replace(/-/g, ' ');
       const note = lang === 'fr'
