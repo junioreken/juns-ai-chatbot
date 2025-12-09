@@ -9,6 +9,7 @@ const intentClassifier = require('../services/intentClassifier');
 const escalation = require('../services/escalation');
 const analytics = require('../services/analytics');
 const tracking = require('../services/tracking');
+const semanticAnswers = require('../services/semanticAnswers');
 
 const CHAT_RATE_LIMIT_WINDOW_MS = Number(process.env.CHAT_RATE_LIMIT_WINDOW_MS || 60_000);
 const CHAT_RATE_LIMIT_MAX = Math.max(1, Number(process.env.CHAT_RATE_LIMIT_MAX || 40));
@@ -46,6 +47,28 @@ function normalizeIncomingMessage(raw) {
     return { valid: false, status: 400, error: 'Message cannot be empty' };
   }
   return { valid: true, value: sanitized };
+}
+
+const KNOWLEDGE_INTENT_TAGS = {
+  shipping_info: ['shipping', 'delivery', 'cost'],
+  shipping_label: ['shipping', 'label'],
+  order_tracking: ['order', 'tracking'],
+  return_exchange: ['returns', 'refund', 'exchange'],
+  size_help: ['size', 'fit', 'measurement'],
+  general_help: [],
+  detailed_help: [],
+  representative_request: ['contact', 'support']
+};
+
+function deriveKnowledgeTags(intent, message = '') {
+  const tags = new Set(KNOWLEDGE_INTENT_TAGS[intent] || []);
+  const lower = String(message || '').toLowerCase();
+  if (/\bshipping|delivery|ship\b/.test(lower)) tags.add('shipping');
+  if (/\breturn|refund|exchange\b/.test(lower)) tags.add('returns');
+  if (/\bsize|fit|measurement|guide\b/.test(lower)) tags.add('size');
+  if (/\btrack|status|order\b/.test(lower)) tags.add('order');
+  if (/\bcontact|support|agent|human\b/.test(lower)) tags.add('contact');
+  return Array.from(tags);
 }
 
 function logSuppressedError(context, error) {
@@ -159,6 +182,45 @@ router.post('/enhanced-chat', enhancedChatLimiter, async (req, res) => {
       conversationContextExtended = conversationContext + anchors;
     } catch (error) {
       logSuppressedError('build follow-up anchors', error);
+    }
+
+    const knowledgeTags = deriveKnowledgeTags(intentResult.intent, message);
+    const shouldUseKnowledgeBase = knowledgeTags.length > 0 && !isFollowUpQuestion;
+    if (shouldUseKnowledgeBase) {
+      try {
+        const match = await semanticAnswers.findBestAnswer(message, {
+          lang: lang || 'en',
+          tags: knowledgeTags
+        });
+        if (match) {
+          const reply = match.answer;
+          await session.addMessage(currentSessionId, reply, false);
+          await analytics.trackMessage(currentSessionId, reply, false);
+          return res.json({
+            reply,
+            intent: 'knowledge_base',
+            confidence: Number(match.score.toFixed(3)),
+            sessionId: currentSessionId,
+            knowledgeBase: { id: match.id, tags: match.tags, score: match.score },
+            escalation: { required: false }
+          });
+        }
+
+        const clarification = lang === 'fr'
+          ? "Je veux être sûre de bien répondre. Pouvez-vous préciser votre question ?"
+          : "I want to make sure I answer correctly--could you clarify your question?";
+        await session.addMessage(currentSessionId, clarification, false);
+        await analytics.trackMessage(currentSessionId, clarification, false);
+        return res.json({
+          reply: clarification,
+          intent: 'clarification_needed',
+          confidence: 0.35,
+          sessionId: currentSessionId,
+          escalation: { required: false }
+        });
+      } catch (error) {
+        logSuppressedError('semantic knowledge base', error);
+      }
     }
 
     // Helper: light HTML -> text sanitizer
