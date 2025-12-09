@@ -1243,7 +1243,7 @@ function extractSearchContext(message, storeData) {
   const materialFound = allMaterialTerms.find(m => new RegExp(`\\b${m}\\b`, 'i').test(text));
   const material = materialFound && Object.keys(materialMap).find(k => materialMap[k].includes(materialFound)) || '';
   
-  const themeMatch = text.match(/(wedding|gala|night\s*out|nightclub|night\s*club|office|business|casual|birthday|cocktail|graduation|beach|summer|winter|eid)/i);
+  const themeMatch = text.match(/(wedding|gala|night\s*out|nightclub|night\s*club|office|business|work|professional|casual|birthday|cocktail|graduation|beach|summer|winter|eid)/i);
   const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
   let theme = themeRaw ? themeRaw.replace(/\s+/g, '-') : '';
   if (theme === 'night-club') theme = 'nightclub';
@@ -1381,6 +1381,17 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
   })();
   }
 
+  // Fallback loose budget parsing to catch "$50" or "50$" or "budget 50"
+  if (priceUnder === null && priceOver === null && priceBetween === null) {
+    const loose = text.match(/(?:under|below|less than|up to|max|budget|cap|<=)\s*\$?\s*(\d{1,4})/i)
+      || text.match(/\$?\s*(\d{1,4})\s*\$?\s*(?:budget|usd|dollars?)/i)
+      || text.match(/\$?\s*(\d{1,4})\s*\$/);
+    if (loose) {
+      priceUnder = parseFloat(loose[1]);
+      console.log(`💰 Fallback budget detected: under=${priceUnder}`);
+    }
+  }
+
   // If budget relaxation is requested, wipe price filters
   if (relaxBudget) {
     if (priceUnder !== null || priceOver !== null || priceBetween !== null) {
@@ -1400,7 +1411,7 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     console.log(`🎯 Using stored theme: ${selectedTheme}`);
   } else {
     // FIRST: Check hardcoded theme keywords (faster, more reliable)
-    const themeMatch = text.match(/(wedding|gala|night\s*out|nightclub|night\s*club|office|business|casual|birthday|cocktail|graduation|beach|summer|winter|eid)/i);
+    const themeMatch = text.match(/(wedding|gala|night\s*out|nightclub|night\s*club|office|business|work|professional|casual|birthday|cocktail|graduation|beach|summer|winter|eid)/i);
   const themeRaw = themeMatch ? themeMatch[1].toLowerCase() : '';
     
     // SECOND: Try to infer theme from store tags (catches all other themes)
@@ -1424,7 +1435,9 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
       'night-club': 'nightout',
       'nightclub': 'nightout',
       'night out': 'nightout',
-      'night-out': 'nightout'
+      'night-out': 'nightout',
+      'work': 'business',
+      'professional': 'business'
     };
     
     // Use hardcoded theme if found (more reliable), otherwise use store tag theme
@@ -1463,6 +1476,7 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     'gala': ['gala','evening','black-tie','luxury','formal'],
     'night-out': ['night out','night-out','party','sexy','bold','club','short'],
     'office': ['office','work','business','professional','chic','neutral'],
+    'business': ['business','office','work','professional','chic','tailored','structured'],
     'casual': ['casual','day','everyday','relaxed','cozy','soft','sweater','pullover','fleece','autumn','winter','warm','streetwear'],
     'birthday': ['birthday','celebration','party','fun','bright'],
     'cocktail': ['cocktail','semi-formal'],
@@ -1471,6 +1485,17 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
     'summer': ['summer','beach','boho','sun'],
     'eid': ['eid','modest','abaya','long','classy']
   };
+
+  const businessExcludes = ['party','club','nightout','night-out','sexy','bodycon','mini'];
+  function isBusinessAppropriate(p) {
+    const tags = normalizeTagsValue(p.tags);
+    const hay = [normalize(p.title), normalize(p.product_type || ''), normalize(p.body_html)].join(' ');
+    const allow = tags.some((t) => /office|work|business|professional|blazer|suit|tailor|structured/.test(t))
+      || /office|work|business|professional|blazer|suit|tailor|structured/.test(hay);
+    const bad = tags.some((t) => businessExcludes.includes(t)) || /party|club|night\s*out|sexy|bodycon|mini/.test(hay);
+    if (bad && !allow) return false;
+    return allow;
+  }
 
   // Category intent parsing
   const categoryMap = {
@@ -1763,6 +1788,13 @@ function handleProductDiscovery(storeData, message, lang, opts = {}) {
       if (hasThemeTagStrict(product)) {
         themeMatched++;
       } else {
+        themeFiltered++;
+        continue;
+      }
+    }
+    
+    if (selectedTheme && new Set(['business','office','work','professional']).has(selectedTheme)) {
+      if (!isBusinessAppropriate(product)) {
         themeFiltered++;
         continue;
       }
