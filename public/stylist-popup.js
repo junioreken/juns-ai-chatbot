@@ -149,10 +149,10 @@
       secondary: 'Je parcours seulement',
       themeLabel: 'Thème',
       budgetLabel: 'Budget',
-      themes: ['Mariage','Soirée','Bureau','Décontracté','Cocktail','Remise des diplômes'],
-      budgets: ['Moins de 80 $','Moins de 150 $','Sans limite'],
-      mapTheme: { 'Mariage':'wedding','Soirée':'night-out','Bureau':'business','Décontracté':'casual','Cocktail':'cocktail','Remise des diplômes':'graduation' },
-      mapBudget: { 'Moins de 80 $':'under-80','Moins de 150 $':'under-150','Sans limite':'no-limit' },
+      themes: ['Mariage','Soirée','Décontracté','Cocktail','Remise des diplômes'],
+      budgets: ['Moins de 50 $','Moins de 100 $','Sans limite'],
+      mapTheme: { 'Mariage':'wedding','Soirée':'night-out','Décontracté':'casual','Cocktail':'cocktail','Remise des diplômes':'graduation' },
+      mapBudget: { 'Moins de 50 $':'under-50','Moins de 100 $':'under-100','Sans limite':'no-limit' },
       greet: "Bonjour 👋 Je suis votre styliste JUN’S. Besoin d’aide pour la taille, la livraison ou des idées de tenues ?"
     } : {
       title: 'Find your perfect outfit ✨',
@@ -161,10 +161,10 @@
       secondary: 'Just browsing',
       themeLabel: 'Theme',
       budgetLabel: 'Budget',
-      themes: ['Wedding','Night Out','Business','Casual','Cocktail','Graduation'],
-      budgets: ['Under $80','Under $150','No limit'],
-      mapTheme: { 'Wedding':'wedding','Night Out':'night-out','Business':'business','Casual':'casual','Cocktail':'cocktail','Graduation':'graduation' },
-      mapBudget: { 'Under $80':'under-80','Under $150':'under-150','No limit':'no-limit' },
+      themes: ['Wedding','Night Out','Casual','Cocktail','Graduation'],
+      budgets: ['Under $50','Under $100','No limit'],
+      mapTheme: { 'Wedding':'wedding','Night Out':'night-out','Casual':'casual','Cocktail':'cocktail','Graduation':'graduation' },
+      mapBudget: { 'Under $50':'under-50','Under $100':'under-100','No limit':'no-limit' },
       greet: "Hi 👋 I’m your JUN’S Stylist. Need sizing, delivery, or outfit ideas?"
     };
     shadow.innerHTML = `<style>${styles}</style><div class="backdrop"></div><div class="card" role="dialog" aria-label="${T.title}">
