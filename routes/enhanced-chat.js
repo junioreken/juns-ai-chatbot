@@ -855,7 +855,17 @@ async function fetchShopifyData(endpoint, domainOverride = "") {
     throw new Error('Shopify admin token is not configured');
   }
 
-  
+  const base = SHOP_DOMAIN.startsWith('http') ? SHOP_DOMAIN : `https://${SHOP_DOMAIN}`;
+  const url = `${base}/admin/api/${ADMIN_API_VERSION}/${endpoint}`;
+  const headers = {
+    'X-Shopify-Access-Token': ADMIN_TOKEN,
+    'Content-Type': 'application/json'
+  };
+  const { data } = await axios.get(url, { headers, timeout: 12000 });
+  return data || {};
+}
+
+// Build comprehensive system prompt with advanced AI capabilities
 // Build comprehensive system prompt with advanced AI capabilities
 function buildSystemPrompt(lang, storeData, conversationContext, intentResult) {
   const isFrench = lang === 'fr';
