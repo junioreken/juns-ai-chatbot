@@ -684,7 +684,7 @@ function isSupportIntent(text) {
 }
 
 // Ensure stylist popup script is present, then resolve
-const STYLIST_POPUP_VERSION = "2025-01-08-1";
+const STYLIST_POPUP_VERSION = "2025-01-08-2";
 function ensureStylistPopup() {
   return new Promise((resolve) => {
     if (window.JUNS && window.JUNS.stylist && typeof window.JUNS.stylist.open === 'function') return resolve(true);
