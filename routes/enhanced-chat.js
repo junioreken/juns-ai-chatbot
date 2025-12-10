@@ -513,6 +513,14 @@ router.post('/enhanced-chat', enhancedChatLimiter, async (req, res) => {
       await analytics.trackMessage(currentSessionId, productDiscovery, false);
       return res.json({ reply: productDiscovery, intent: 'product_inquiry', confidence: 0.85, sessionId: currentSessionId, escalation: { required: false } });
     }
+    if (wantsProducts && !productDiscovery) {
+      const note = lang === 'fr'
+        ? "Je n'ai pas trouvé d'articles pour cette demande. Voulez-vous que j'assouplisse la couleur, le thème ou le budget ?"
+        : "I couldn’t find items for that request. Want me to loosen the color, theme, or budget filters?";
+      await session.addMessage(currentSessionId, note, false);
+      await analytics.trackMessage(currentSessionId, note, false);
+      return res.json({ reply: note, intent: 'product_inquiry', confidence: 0.55, sessionId: currentSessionId, escalation: { required: false } });
+    }
 
     // 8f. Discounts/promos quick answer
     if (/(discount|promo|code|coupon|sale)/i.test(lower)) {
@@ -1277,6 +1285,7 @@ function extractSearchContext(message, storeData) {
     return colors.find(color => new RegExp(`\b${color}\b`, 'i').test(text)) || '';
   })();
 
+
 const priceUnder = (() => {
     const patterns = [
       /under\s*\$?\s*(\d{1,4})/i,
@@ -1317,7 +1326,11 @@ const priceUnder = (() => {
 }
 function handleProductDiscovery(storeData, message, lang, opts = {}) {
   const products = Array.isArray(storeData.products) ? storeData.products : [];
-  if (products.length === 0) return '';
+  if (products.length === 0) {
+    return lang === 'fr'
+      ? "Je n'ai pas pu charger les produits pour le moment. Pouvez-vous réessayer dans un instant ?"
+      : "I couldn't load products right now. Could you try again in a moment?";
+  }
 
   const relaxTheme = Boolean(opts.relaxTheme);
   const relaxColor = Boolean(opts.relaxColor);
