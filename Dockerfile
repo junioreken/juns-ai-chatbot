@@ -10,6 +10,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY server.js ./
 COPY routes/ ./routes/
 COPY services/ ./services/
+COPY data/ ./data/
 COPY public/ ./public/
 
 # Copy configuration files
