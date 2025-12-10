@@ -684,11 +684,13 @@ function isSupportIntent(text) {
 }
 
 // Ensure stylist popup script is present, then resolve
+const STYLIST_POPUP_VERSION = "2025-01-08-1";
 function ensureStylistPopup() {
   return new Promise((resolve) => {
     if (window.JUNS && window.JUNS.stylist && typeof window.JUNS.stylist.open === 'function') return resolve(true);
     try {
-      const url = ASSET_ORIGIN ? `${ASSET_ORIGIN}/stylist-popup.js` : '/stylist-popup.js';
+      const base = ASSET_ORIGIN ? `${ASSET_ORIGIN}/stylist-popup.js` : '/stylist-popup.js';
+      const url = `${base}?v=${STYLIST_POPUP_VERSION}`;
       const exist = Array.from(document.getElementsByTagName('script')).some(s => (s.src || '').includes('stylist-popup.js'));
       if (exist) {
         setTimeout(() => resolve(Boolean(window.JUNS && window.JUNS.stylist)), 300);
