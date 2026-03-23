@@ -4,6 +4,8 @@ const ADMIN_API_VERSION = process.env.SHOPIFY_API_VERSION || '2023-07';
 const MAX_PRODUCTS = 1000;
 const MAX_METAFIELD_PRODUCTS = 120;
 const METAFIELD_BATCH_SIZE = 20;
+const PRODUCT_CACHE_REFRESH_MS = Number(process.env.SHOPIFY_PRODUCT_REFRESH_MS || 7 * 60 * 1000); // default ~7 minutes
+const PRODUCT_FETCH_TIMEOUT_MS = Number(process.env.SHOPIFY_PRODUCT_FETCH_TIMEOUT || 20000); // default 20s to reduce timeouts
 
 const RELEVANT_METAFIELD_NAMESPACES = ['custom', 'jun', 'details', 'global', 'theme', 'attributes'];
 const RELEVANT_METAFIELD_KEYS = ['theme', 'occasion', 'event', 'style', 'use_case', 'dress_code', 'vibe', 'collection', 'recommended_event'];
@@ -101,12 +103,12 @@ const THEME_RULES = {
 const ACCESSORY_CATEGORIES = new Set(['bag', 'accessory', 'shoes', 'hair', 'jewelry']);
 const MIN_ACCESSORY_RESULTS = Number(process.env.RECOMMEND_MIN_ACCESSORIES || 6);
 
-async function fetchAllProducts(baseUrl, headers, cap = MAX_PRODUCTS) {
+async function fetchAllProducts(baseUrl, headers, cap = MAX_PRODUCTS, timeoutMs = PRODUCT_FETCH_TIMEOUT_MS) {
   const results = [];
   let url = baseUrl;
   let guard = 0;
   while (url && results.length < cap && guard++ < 20) {
-    const res = await axios.get(url, { headers, timeout: 15000 });
+    const res = await axios.get(url, { headers, timeout: timeoutMs });
     const arr = res.data?.products || [];
     for (const p of arr) {
       results.push(p);
@@ -405,6 +407,111 @@ if (shopifyDomain) {
   console.log('🔧 Cleaned Shopify domain:', shopifyDomain);
 }
 
+// In-memory product cache to eliminate per-request Shopify calls
+const productCache = {
+  products: [],
+  normalizedProducts: [],
+  metafieldLookup: {},
+  lastUpdated: null,
+  lastAttempt: null,
+  loading: false,
+  error: null
+};
+let productRefreshTimer = null;
+
+function getProductCacheState() {
+  return {
+    ready: Array.isArray(productCache.normalizedProducts) && productCache.normalizedProducts.length > 0,
+    loading: productCache.loading,
+    lastUpdated: productCache.lastUpdated,
+    lastAttempt: productCache.lastAttempt,
+    error: productCache.error ? productCache.error.message : null,
+    count: productCache.normalizedProducts.length
+  };
+}
+
+function buildCacheError(message) {
+  const err = new Error(message);
+  err.code = 'CACHE_NOT_READY';
+  err.cacheState = getProductCacheState();
+  return err;
+}
+
+async function loadProductCache(reason = 'manual-refresh') {
+  if (!shopifyDomain || !accessToken) {
+    const message = 'Shopify credentials missing - cannot load product cache';
+    productCache.error = new Error(message);
+    console.warn(`[shopify-cache] ${message}`);
+    return;
+  }
+  if (productCache.loading) {
+    console.log(`[shopify-cache] Skipping ${reason}: cache load already in progress`);
+    return;
+  }
+
+  const started = Date.now();
+  productCache.loading = true;
+  productCache.lastAttempt = new Date();
+  console.log(`[shopify-cache] Loading Shopify products (${reason})...`);
+
+  try {
+    const base = `https://${shopifyDomain}/admin/api/${ADMIN_API_VERSION}/products.json?limit=250`;
+    const headers = { 'X-Shopify-Access-Token': accessToken, 'Content-Type': 'application/json' };
+    const products = await fetchAllProducts(base, headers, MAX_PRODUCTS, PRODUCT_FETCH_TIMEOUT_MS);
+    console.log(`[shopify-cache] Fetched ${products.length} products in ${Date.now() - started}ms`);
+
+    const metafieldLookup = await fetchProductMetafields(products);
+    if (Object.keys(metafieldLookup).length) {
+      console.log(
+        `[shopify-cache] Loaded metafields for ${Object.keys(metafieldLookup).length} products`
+      );
+    }
+
+    const normalizedProducts = products.map((product) =>
+      buildNormalizedProduct(product, metafieldLookup)
+    );
+
+    productCache.products = products;
+    productCache.normalizedProducts = normalizedProducts;
+    productCache.metafieldLookup = metafieldLookup;
+    productCache.lastUpdated = new Date();
+    productCache.error = null;
+
+    console.log(
+      `[shopify-cache] Cache ready with ${normalizedProducts.length} normalized products (reason=${reason})`
+    );
+  } catch (error) {
+    productCache.error = error;
+    console.error(`[shopify-cache] Failed to load products: ${error.message}`);
+  } finally {
+    productCache.loading = false;
+    console.log(`[shopify-cache] Load ${productCache.error ? 'failed' : 'completed'} in ${Date.now() - started}ms`);
+  }
+}
+
+function startProductCacheWarmup() {
+  if (!shopifyDomain || !accessToken) {
+    console.warn('[shopify-cache] Shopify credentials missing - skipping cache warmup');
+    return;
+  }
+
+  // Kick off initial warmup without blocking the server start
+  loadProductCache('startup').catch((err) => {
+    console.error('[shopify-cache] Startup warmup failed:', err.message);
+  });
+
+  if (productRefreshTimer) clearInterval(productRefreshTimer);
+  productRefreshTimer = setInterval(() => {
+    loadProductCache('interval-refresh').catch((err) => {
+      console.error('[shopify-cache] Refresh failed:', err.message);
+    });
+  }, PRODUCT_CACHE_REFRESH_MS);
+
+  console.log(
+    `[shopify-cache] Scheduled background refresh every ${Math.round(PRODUCT_CACHE_REFRESH_MS / 60000)} minute(s)`
+  );
+}
+
 async function getLatestOrderByEmail(email) {
   const url = `https://${shopifyDomain}/admin/api/${ADMIN_API_VERSION}/orders.json?email=${email}&status=any`;
   const response = await axios.get(url, {
@@ -423,23 +530,19 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60, offset
     }
 
     const normalizedTheme = normalizeThemeSlug(theme);
-    const base = `https://${shopifyDomain}/admin/api/${ADMIN_API_VERSION}/products.json?limit=250`;
-    const headers = { 'X-Shopify-Access-Token': accessToken, 'Content-Type': 'application/json' };
+    const cacheState = getProductCacheState();
+    const hasCache = cacheState.ready;
 
-    console.log(`🔍 Fetching Shopify catalog for theme "${normalizedTheme}"...`);
-    const products = await fetchAllProducts(base, headers, MAX_PRODUCTS);
-    console.log(`📦 Aggregated ${products.length} products from Shopify`);
-
-    const metafieldLookup = await fetchProductMetafields(products);
-    if (Object.keys(metafieldLookup).length) {
-      console.log(
-        `📎 Enriched ${Object.keys(metafieldLookup).length} products with metafield context`
-      );
+    if (!hasCache) {
+      if (cacheState.loading) {
+        throw buildCacheError('Product cache is still loading');
+      }
+      throw buildCacheError('Product cache is empty');
     }
 
-    const normalizedProducts = products.map((product) =>
-      buildNormalizedProduct(product, metafieldLookup)
-    );
+    // Use cached, pre-normalized products to avoid per-request API calls
+    const normalizedProducts = productCache.normalizedProducts;
+    const products = productCache.products;
     const minScore = (THEME_RULES[normalizedTheme] && THEME_RULES[normalizedTheme].minScore) || 1.5;
 
     const scored = normalizedProducts
@@ -515,4 +618,10 @@ async function getProductsByTheme(theme, budget = 'no-limit', limit = 60, offset
   }
 }
 
-module.exports = { getLatestOrderByEmail, getProductsByTheme };
+module.exports = {
+  getLatestOrderByEmail,
+  getProductsByTheme,
+  startProductCacheWarmup,
+  loadProductCache,
+  getProductCacheState
+};

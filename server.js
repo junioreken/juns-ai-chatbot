@@ -7,6 +7,7 @@ const axios = require('axios');
 
 // Import enhanced services
 const cache = require('./services/cache');
+const { startProductCacheWarmup } = require('./services/shopify');
 const session = require('./services/session');
 const intentClassifier = require('./services/intentClassifier');
 const escalation = require('./services/escalation');
@@ -67,6 +68,7 @@ if (!SHOPIFY_DOMAIN || !SHOPIFY_API_TOKEN) {
   app.use('/recommend', testRecommendRouter);
 } else {
   console.log('✅ Using real Shopify products from', SHOPIFY_DOMAIN);
+  startProductCacheWarmup();
   app.use('/recommend', recommendRouter);
 }
 
